@@ -1,0 +1,6 @@
+id,name,skills,experience,education,location
+1,John Doe,"Python, JavaScript, SQL",5,"B.Sc. in Computer Science","New York, NY"
+2,Jane Smith,"Java, C++, Machine Learning",7,"M.Sc. in Data Science","San Francisco, CA"
+3,Bob Johnson,"HTML, CSS, React",3,"B.A. in Web Development","Austin, TX"
+4,Alice Williams,"Ruby, Rails, PostgreSQL",4,"B.Sc. in Software Engineering","Seattle, WA"
+5,Charlie Brown,"Go, Docker, Kubernetes",6,"B.Sc. in Information Technology","Chicago, IL"

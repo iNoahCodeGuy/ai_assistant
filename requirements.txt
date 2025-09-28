@@ -1,0 +1,11 @@
+streamlit
+langchain
+faiss-cpu
+openai
+sqlite3
+postgresql
+langgraph
+langsmith
+pandas
+numpy
+dotenv
