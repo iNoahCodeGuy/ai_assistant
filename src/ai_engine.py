@@ -3,7 +3,7 @@ from typing import Dict, List, Any, Optional
 import openai
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
-from langchain.callbacks import get_openai_callback
+from langchain_community.callbacks import get_openai_callback
 import streamlit as st
 import pandas as pd
 
