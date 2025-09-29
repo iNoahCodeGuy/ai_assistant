@@ -1,6 +1,6 @@
 from streamlit import st
-from components.chat_interface import ChatInterface
 from components.role_selector import RoleSelector
+from components.chat_interface import ChatInterface
 from components.analytics_panel import AnalyticsPanel
 
 def main():
@@ -11,11 +11,10 @@ def main():
     
     # Chat interface
     chat_interface = ChatInterface(role)
-    chat_interface.run_chat()
+    chat_interface.display_chat()
     
     # Analytics panel
-    analytics_panel = AnalyticsPanel()
-    analytics_panel.display_metrics()
+    AnalyticsPanel().display_metrics()
 
 if __name__ == "__main__":
     main()
