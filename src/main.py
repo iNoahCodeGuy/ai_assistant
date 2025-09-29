@@ -83,5 +83,32 @@ def main():
     if st.sidebar.button("Clear Chat"):
         st.session_state.chat_history = []
 
+    # Special UI for Confession role
+    if st.session_state.role == "Looking to confess crush":
+        st.subheader("Anonymous / Named Confession")
+        st.markdown("Provide a message. Name is optional. We store only what you submit. No hidden PII capture.")
+        with st.form("confession_form"):
+            name = st.text_input("Name (optional)")
+            message = st.text_area("Your message", max_chars=500, help="Max 500 characters")
+            consent = st.checkbox("I consent to storing this submitted content.", value=False)
+            submitted = st.form_submit_button("Submit Confession")
+        if submitted:
+            if not consent:
+                st.warning("Consent required to store the message.")
+            elif not message.strip():
+                st.warning("Message cannot be empty.")
+            else:
+                import csv, os, datetime
+                os.makedirs("data", exist_ok=True)
+                path = "data/confessions.csv"
+                write_header = not os.path.exists(path)
+                with open(path, "a", newline="", encoding="utf-8") as f:
+                    w = csv.writer(f)
+                    if write_header:
+                        w.writerow(["timestamp", "name", "message", "consent"])
+                    w.writerow([datetime.datetime.utcnow().isoformat(), name.strip(), message.strip(), "yes"])
+                st.success("Confession stored. 💌")
+        st.stop()
+
 if __name__ == "__main__":
     main()

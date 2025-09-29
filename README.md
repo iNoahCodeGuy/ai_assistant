@@ -1,11 +1,11 @@
 # Noah's AI Assistant
 
-Noah's AI Assistant is a retrieval-augmented generative AI application designed to adapt its conversational style and retrieval strategy based on distinct user roles. The system provides tailored responses for hiring managers, software developers, casual visitors, and personal interactions, ensuring a seamless user experience.
+Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
 
 ## Table of Contents
-
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Role-Specific Behaviors](#role-specific-behaviors)
 - [Installation](#installation)
 - [Usage](#usage)
 - [File Structure](#file-structure)
@@ -13,64 +13,93 @@ Noah's AI Assistant is a retrieval-augmented generative AI application designed 
 - [License](#license)
 
 ## Features
-
-- **Role-Based Interaction**: Users can select their role to receive customized responses.
-- **Retrieval-Augmented Generation**: Combines document retrieval with generative AI for accurate and relevant answers.
-- **Dual-Audience Formatting**: Provides both technical details and plain-English summaries.
-- **Analytics Panel**: Displays metrics and insights about user interactions.
-- **Compliance and Safety**: Enforces guardrails to ensure safe and compliant responses.
+- **Role-Based Interaction**: Session-level role selection shapes retrieval + formatting.
+- **Retrieval-Augmented Generation (RAG)**: FAISS vector stores (career KB, code index, optional transcripts).
+- **Dual-Audience Formatting**: Engineer Detail + Plain-English Summary (for technical audiences).
+- **Code & Career Grounding**: File:line citations where available.
+- **MMA Query Routing**: Direct fight link for MMA-related queries (bypasses general retrieval).
+- **Confession Mode**: Lightweight, guarded input path with no unintended PII retention.
+- **Analytics Panel**: Interaction counts, role distribution, basic query metrics.
+- **Extensible Orchestration**: Designed to plug into LangGraph for future routing graphs.
+- **Observability Ready**: LangSmith integration hooks (traces/evals) planned.
 
 ## Tech Stack
+- **Frontend/UI**: Streamlit (chat UI, role selector, analytics panel)
+- **Core Framework**: LangChain (loaders, embeddings, retrieval pipeline)
+- **Vector Storage**: FAISS (career_kb, code_index, transcripts)
+- **Models**: OpenAI GPT (generation), OpenAI Embeddings (vectorization)
+- **Memory**: Short-term window buffer + future rolling summary
+- **Orchestration**: LangGraph (planned for branching + invariants)
+- **Observability**: LangSmith (optional via API key)
+- **Analytics DB**: SQLite (default) / Postgres (future)
+- **Testing**: Pytest (structure placeholder)
 
-- **Frontend/UI**: Streamlit for chat UI, role prompt, and analytics panel.
-- **Core Framework**: LangChain for document loading, embeddings, retrieval, and RAG pipeline.
-- **Vector Storage**: FAISS for career knowledge base, code index, and YouTube transcripts.
-- **Models**: OpenAI GPT for answers and OpenAI Embeddings for vectorization.
-- **Memory**: Short-term buffer and rolling summary for context management.
-- **Orchestration**: LangGraph for routing retrieval and enforcing invariants.
-- **Observability**: LangSmith for traces and evaluations.
-- **Analytics Database**: SQLite/Postgres for metrics logging.
+## Role-Specific Behaviors
+
+### 1. Hiring Manager (nontechnical)
+- Goal: High-level résumé narrative
+- Sources: Career KB CSV, résumé text
+- Format: Career Overview → Notable Outcomes → Source Citations (lightweight)
+- UI: Contact CTA (email / LinkedIn)
+
+### 2. Hiring Manager (technical)
+- Goal: Blend career signal + engineering depth
+- Sources: Career KB + Code Index
+- Format:
+  - Section 1: Engineer Detail (with file:line citations)
+  - Section 2: Plain-English Summary
+- UI: Expandable code reference (future enhancement)
+
+### 3. Software Developer
+- Goal: Deep technical explanation, architecture, design tradeoffs
+- Sources: Code Index + Career KB fallback
+- Format: Engineer Detail → Summary (same dual format)
+
+### 4. Just Looking Around
+- Goal: Fun facts + MMA info
+- MMA queries: Direct fight link
+- Other queries: Light career / personal facts
+
+### 5. Looking to Confess Crush
+- Goal: Safe, minimal interaction channel
+- Storage: Only explicit submission, no hidden PII retention
+- Response: Acknowledgment only (no model overreach)
 
 ## Installation
+```bash
+git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant-.git
+cd NoahsAIAssistant-
+pip install -r requirements.txt
+```
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/noahs-ai-assistant.git
-   cd noahs-ai-assistant
-   ```
-
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Set up your environment variables by copying `.env.example` to `.env` and filling in the necessary values.
+Copy environment variables:
+```bash
+cp .env.example .env
+# edit .env and add OPENAI_API_KEY, optional LANGSMITH_API_KEY
+```
 
 ## Usage
-
-To run the application, execute the following command:
+Development run (current entrypoint uses Streamlit main):
+```bash
+streamlit run src/main.py
 ```
-streamlit run src/ui/streamlit_app.py
-```
-
-Follow the prompts in the Streamlit interface to interact with Noah's AI Assistant.
+(If/when a dedicated `src/ui/streamlit_app.py` is added, update command accordingly.)
 
 ## File Structure
-
 ```
 noahs-ai-assistant
 ├── src
 │   ├── main.py
-│   ├── config
-│   ├── core
-│   ├── retrieval
-│   ├── agents
-│   ├── ui
-│   ├── analytics
-│   └── utils
-├── data
-├── vector_stores
-├── tests
+│   ├── config/
+│   ├── core/
+│   ├── retrieval/
+│   ├── agents/
+│   ├── ui/
+│   ├── analytics/
+│   └── utils/
+├── data/
+├── vector_stores/
+├── tests/
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -78,100 +107,9 @@ noahs-ai-assistant
 ```
 
 ## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-<<<<<<< HEAD
-# Noah's AI Assistant
-
-Noah's AI Assistant is a retrieval-augmented generative AI application designed to adapt its conversational style and retrieval strategy based on distinct user roles. The system provides tailored responses for hiring managers, software developers, casual visitors, and personal interactions, ensuring a seamless user experience.
-
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Installation](#installation)
-- [Usage](#usage)
-- [File Structure](#file-structure)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Features
-
-- **Role-Based Interaction**: Users can select their role to receive customized responses.
-- **Retrieval-Augmented Generation**: Combines document retrieval with generative AI for accurate and relevant answers.
-- **Dual-Audience Formatting**: Provides both technical details and plain-English summaries.
-- **Analytics Panel**: Displays metrics and insights about user interactions.
-- **Compliance and Safety**: Enforces guardrails to ensure safe and compliant responses.
-
-## Tech Stack
-
-- **Frontend/UI**: Streamlit for chat UI, role prompt, and analytics panel.
-- **Core Framework**: LangChain for document loading, embeddings, retrieval, and RAG pipeline.
-- **Vector Storage**: FAISS for career knowledge base, code index, and YouTube transcripts.
-- **Models**: OpenAI GPT for answers and OpenAI Embeddings for vectorization.
-- **Memory**: Short-term buffer and rolling summary for context management.
-- **Orchestration**: LangGraph for routing retrieval and enforcing invariants.
-- **Observability**: LangSmith for traces and evaluations.
-- **Analytics Database**: SQLite/Postgres for metrics logging.
-
-## Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/noahs-ai-assistant.git
-   cd noahs-ai-assistant
-   ```
-
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Set up your environment variables by copying `.env.example` to `.env` and filling in the necessary values.
-
-## Usage
-
-To run the application, execute the following command:
-```
-streamlit run src/ui/streamlit_app.py
-```
-
-Follow the prompts in the Streamlit interface to interact with Noah's AI Assistant.
-
-## File Structure
-
-```
-noahs-ai-assistant
-├── src
-│   ├── main.py
-│   ├── config
-│   ├── core
-│   ├── retrieval
-│   ├── agents
-│   ├── ui
-│   ├── analytics
-│   └── utils
-├── data
-├── vector_stores
-├── tests
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
-```
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+1. Create a branch: feature/<name>
+2. Keep commits focused
+3. Open PR → request review
 
 ## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-=======
-# NoahsAIAssistant-
-AI assistant 
->>>>>>> d1d7b1e47ac5cf6abad6183fce0ba8c6f24431b7
+MIT (see LICENSE if present). Add LICENSE file if not yet created.
