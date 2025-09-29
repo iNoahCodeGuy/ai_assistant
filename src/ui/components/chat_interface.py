@@ -1,12 +1,14 @@
 from streamlit import st
 
 class ChatInterface:
-    def __init__(self):
+    def __init__(self, role: str):
+        self.role = role
         self.user_input = ""
         self.chat_history = []
 
     def display_chat(self):
         st.title("Noah's AI Assistant Chat")
+        st.caption(f"Active role: {self.role}")
         self.user_input = st.text_input("You:", "")
         
         if st.button("Send"):
@@ -30,5 +32,5 @@ class ChatInterface:
         return "This is a placeholder response."
 
 if __name__ == "__main__":
-    chat_interface = ChatInterface()
+    chat_interface = ChatInterface(role="default")
     chat_interface.display_chat()
