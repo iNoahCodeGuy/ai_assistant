@@ -23,6 +23,8 @@ class Settings:
         self.career_kb_path = os.getenv("CAREER_KB_PATH", "data/career_kb.csv")
         self.code_index_path = os.getenv("CODE_INDEX_PATH", "vector_stores/code_index/")
         self.mma_kb_path = os.getenv("MMA_KB_PATH", "data/mma_kb.csv")
+        # Media / external links
+        self.youtube_fight_link = os.getenv("YOUTUBE_FIGHT_LINK", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     
     def validate_api_key(self):
         """Validate that OpenAI API key is set."""

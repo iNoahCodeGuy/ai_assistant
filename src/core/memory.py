@@ -8,6 +8,8 @@ class Memory:
         self.persistence_file = persistence_file
         self.session_data = {}
         self.load_persistent_data()
+        # Ephemeral role separate from persisted session contexts
+        self._active_role: str | None = None
     
     def load_persistent_data(self):
         """Load persistent memory from file."""
@@ -55,3 +57,12 @@ class Memory:
         if session_id in self.session_data:
             del self.session_data[session_id]
             self.save_persistent_data()
+
+    # --- Role helpers expected by router/tests ---
+    def set_role(self, role: str):
+        """Set active role for current in-memory context (not auto-persisted)."""
+        self._active_role = role
+
+    def get_role(self) -> str | None:
+        """Return active role if set."""
+        return self._active_role

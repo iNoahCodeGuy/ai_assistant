@@ -1,74 +1,52 @@
 from typing import Any, Dict, Tuple, List
 import re
+from typing import Dict, Any, List
+from langchain.schema import Document
 
 class ResponseFormatter:
-    def __init__(self):
-        pass
+    """Formats responses based on role and content type."""
 
-    def format_response(self, response: Dict[str, Any], role: str) -> Tuple[str, str]:
-        # response expected keys: answer, sources, confidence, role
-        if role == 'Hiring Manager (nontechnical)':
-            return self._format_nontechnical(response)
-        if role in ['Hiring Manager (technical)', 'Software Developer']:
-            return self._format_technical(response)
-        if role == 'Just looking around':
-            return self._format_fun_facts(response)
-        if role == 'Looking to confess crush':
-            return self._format_crush_confession(response)
-        return (response.get('answer', ''), '')
+    def format(self, response_data: Dict[str, Any]) -> str:
+        response = response_data.get("response", "")
+        rtype = response_data.get("type", "general")
+        context = response_data.get("context", [])
 
-    # --- Nontechnical Hiring Manager ---
-    def _format_nontechnical(self, response: Dict[str, Any]) -> Tuple[str, str]:
-        answer = response.get('answer', '')
-        sources: List[str] = response.get('sources', [])
-        overview = self._extract_overview(answer)
-        outcomes = self._extract_outcomes(answer)
-        if not sources:
-            sources_block = "Sources: (No explicit sources retrieved – please ask for clarification if needed.)"
-        else:
-            sources_block = "Sources:\n" + "\n".join(f"- {s}" for s in sources[:5])
-        contact_block = "Contact: noahdelacalzada@gmail.com | LinkedIn: https://www.linkedin.com/in/noah-de-la-calzada-250412358/"
-        formatted = (
-            "Career Overview:\n" + overview + "\n\n" +
-            "Notable Outcomes:\n" + ("\n".join(f"- {o}" for o in outcomes) if outcomes else "- Impact narratives available on request.") + "\n\n" +
-            sources_block + "\n\n" +
-            contact_block
-        )
-        return formatted, ''
+        if rtype == "technical":
+            return self._format_technical_response(response, context)
+        if rtype == "mma":
+            return self._format_mma_response(response_data)
+        if rtype == "career":
+            return self._format_career_response(response, context)
+        if rtype == "fun":
+            return self._format_fun_response(response)
+        if rtype == "confession":
+            return "💌 " + response
+        return self._format_general_response(response)
 
-    def _extract_overview(self, text: str) -> str:
-        # First paragraph or first 3 sentences
-        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-        return ' '.join(sentences[:3]).strip()
+    def _format_technical_response(self, response: str, context: List[Document]) -> str:
+        out = f"## Engineer Detail\n{response}\n\n"
+        if context:
+            out += "### Citations\n"
+            for i, doc in enumerate(context[:3], 1):
+                fp = doc.metadata.get("file_path") or doc.metadata.get("source", "unknown")
+                line = doc.metadata.get("start_line", "?")
+                out += f"{i}. `{fp}:{line}`\n"
+        out += "\n## Plain-English Summary\n(High-level explanation forthcoming.)"
+        return out
 
-    def _extract_outcomes(self, text: str) -> List[str]:
-        # Heuristic: lines/sentences containing verbs and numbers or key action words
-        keywords = ['improv', 'build', 'develop', 'launch', 'deliver', 'rank', 'close', 'prototype']
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        picked = []
-        for s in sentences:
-            lower = s.lower()
-            if any(k in lower for k in keywords):
-                picked.append(s.strip())
-        # dedupe
-        seen = set()
-        uniq = []
-        for p in picked:
-            if p not in seen and len(p) > 25:
-                seen.add(p)
-                uniq.append(p)
-        return uniq[:6]
+    def _format_mma_response(self, data: Dict[str, Any]) -> str:
+        base = data.get("response", "")
+        link = data.get("youtube_link")
+        if link:
+            return f"{base}\n\nWatch: {link}"
+        return base
 
-    # --- Technical / Developer ---
-    def _format_technical(self, response: Dict[str, Any]) -> Tuple[str, str]:
-        answer = response.get('answer', '')
-        sources = response.get('sources', [])
-        detail_block = answer
-        source_block = '' if not sources else ('\n\nSources:\n' + '\n'.join(f'- {s}' for s in sources[:5]))
-        return detail_block + source_block, ''
+    def _format_career_response(self, response: str, context: List[Document]) -> str:
+        sources = "\n".join(f"- {d.metadata.get('source','unknown')}" for d in context[:3]) or "- (no sources)"
+        return f"## Career Overview\n{response}\n\n### Notable Outcomes\n(Derived from grounded data.)\n\n### Sources\n{sources}"
 
-    def _format_fun_facts(self, response: Dict[str, Any]) -> Tuple[str, str]:
-        return response.get('answer', ''), ''
+    def _format_fun_response(self, response: str) -> str:
+        return f"### Fun Facts\n{response}"
 
-    def _format_crush_confession(self, response: Dict[str, Any]) -> Tuple[str, str]:
-        return response.get('answer', ''), ''
+    def _format_general_response(self, response: str) -> str:
+        return response
