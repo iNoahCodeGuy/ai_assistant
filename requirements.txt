@@ -1,11 +1,10 @@
 streamlit
 langchain
-faiss-cpu
 openai
-sqlite3
-postgresql
 langgraph
 langsmith
 pandas
 numpy
-dotenv
+python-dotenv
+faiss-cpu
+matplotlib
