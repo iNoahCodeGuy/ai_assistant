@@ -1,6 +1,5 @@
 from typing import List, Dict, Any, Optional
 from core.memory import Memory
-from core.rag_engine import RagEngine
 
 class RoleRouter:
     def __init__(self, max_context_tokens: int = 4000):
@@ -11,7 +10,7 @@ class RoleRouter:
         role: str, 
         user_input: str, 
         memory: Memory, 
-        rag_engine: RagEngine,
+        rag_engine: Any,
         chat_history: Optional[List[Dict[str, str]]] = None
     ) -> str:
         """Route user input based on role with chat history context."""
@@ -67,26 +66,41 @@ class RoleRouter:
         
         return "\n".join(context_parts)
     
-    def _handle_nontechnical_manager(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_nontechnical_manager(self, user_input: str, context: str, rag_engine: Any) -> str:
         """Handle nontechnical hiring manager queries."""
+        if rag_engine:
+            result = rag_engine.query(user_input, role="Hiring Manager (nontechnical)")
+            return result.get("answer", "I'm still learning about Noah. Please check back soon!")
         return f"Based on Noah's background and the query '{user_input}', here's what you should know about his qualifications and experience."
     
-    def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_technical_manager(self, user_input: str, context: str, rag_engine: Any) -> str:
         """Handle technical hiring manager queries."""
+        if rag_engine:
+            result = rag_engine.query(user_input, role="Hiring Manager (technical)")
+            return result.get("answer", "I'm still learning about Noah's technical skills. Please check back soon!")
         return f"Technical response for '{user_input}' with detailed analysis of Noah's technical capabilities."
     
-    def _handle_developer(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_developer(self, user_input: str, context: str, rag_engine: Any) -> str:
         """Handle software developer queries."""
+        if rag_engine:
+            result = rag_engine.query(user_input, role="Software Developer")
+            return result.get("answer", "I'm still learning about Noah's development approach. Please check back soon!")
         return f"Developer-focused response for '{user_input}' with code examples and technical depth."
     
-    def _handle_casual(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_casual(self, user_input: str, context: str, rag_engine: Any) -> str:
         """Handle casual visitor queries."""
+        if rag_engine:
+            result = rag_engine.query(user_input, role="Just looking around")
+            return result.get("answer", "I'm still learning about Noah. Please check back soon!")
         return f"Friendly response about Noah's background for '{user_input}' including interesting details."
     
     def _handle_confession(self, user_input: str, context: str) -> str:
         """Handle confession queries with appropriate boundaries."""
         return "Thank you for sharing! While I appreciate your message, I'm focused on helping visitors learn about Noah's professional background and projects."
     
-    def _handle_default(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_default(self, user_input: str, context: str, rag_engine: Any) -> str:
         """Default handler for unspecified roles."""
+        if rag_engine:
+            result = rag_engine.query(user_input)
+            return result.get("answer", "I'm still learning about Noah. Please check back soon!")
         return f"General response about Noah's background for '{user_input}'."
