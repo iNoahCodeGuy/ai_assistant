@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 from core.rag_engine import RagEngine
 from core.memory import Memory
 from config.settings import Settings
+from .roles import role_include_code  # NEW import
 
 class RoleRouter:
     """Routes queries based on user role and query type."""
@@ -60,9 +61,8 @@ class RoleRouter:
 
     def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
         """Enhanced technical manager handling with code snippets."""
-        
-        # Use enhanced retrieval
-        results = rag_engine.retrieve_with_code(user_input, "Hiring Manager (technical)")
+        include_code = True  # technical manager always gets code for technical queries
+        results = rag_engine.retrieve_with_code(user_input, include_code=include_code)
         
         prompt = f"""
         {context}
@@ -91,15 +91,15 @@ class RoleRouter:
         if query_type == "technical":
             ctx = rag_engine.retrieve_code_info(query)
             resp = self._handle_developer_with_code(query, ctx, rag_engine)
-        else:
-            ctx = rag_engine.retrieve_career_info(query)
-            resp = rag_engine.generate_response(query, ctx, "Software Developer")
+            return {"response": resp, "type": "technical", "context": ctx}
+        ctx = rag_engine.retrieve_career_info(query)
+        resp = rag_engine.generate_response_with_context(query, ctx, "Software Developer")
         return {"response": resp, "type": query_type, "context": ctx}
 
     def _handle_developer_with_code(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
         """Enhanced developer handling with detailed code integration."""
-        
-        results = rag_engine.retrieve_with_code(user_input, "Software Developer")
+        include_code = True
+        results = rag_engine.retrieve_with_code(user_input, include_code=include_code)
         
         # More detailed code integration for developers
         response = rag_engine.generate_technical_response(user_input, "Software Developer")

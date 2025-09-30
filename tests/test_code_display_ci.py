@@ -61,7 +61,7 @@ class TestCodeDisplayCI:
         assert engine is not None
         
         # Test basic retrieval
-        result = engine.retrieve_with_code("test", role="Software Developer")
+        result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
         assert isinstance(result, dict)
         assert 'code_snippets' in result
         assert 'has_code' in result
@@ -95,7 +95,7 @@ class TestCodeDisplayCI:
             engine = RagEngine(settings=settings)
             
             # Should still work in degraded mode
-            result = engine.retrieve_with_code("test", role="Software Developer")
+            result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
             assert isinstance(result, dict)
     
     @pytest.mark.skipif(
@@ -112,7 +112,7 @@ class TestCodeDisplayCI:
         # Test actual API call
         response = router.route(
             role="Software Developer",
-            query="What is the main purpose of the RagEngine class?",
+            query="Show me the technical implementation and code architecture of the RagEngine class",
             memory=memory,
             rag_engine=engine,
             chat_history=[]
@@ -156,7 +156,7 @@ class TestCodeDisplayHealthChecks:
                 health_status['vector_store'] = True
             
             # Test response generation
-            result = engine.retrieve_with_code("test", role="Software Developer")
+            result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
             if isinstance(result, dict) and 'code_snippets' in result:
                 health_status['response_generation'] = True
                 
@@ -185,7 +185,7 @@ class TestCodeDisplayHealthChecks:
         
         # Measure query time
         start_time = time.time()
-        result = engine.retrieve_with_code("RagEngine", role="Software Developer")
+        result = engine.retrieve_with_code("RagEngine", role="Software Developer", include_code=True)
         query_time = time.time() - start_time
         
         # Log performance metrics

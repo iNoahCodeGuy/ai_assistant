@@ -16,6 +16,8 @@ from __future__ import annotations
 from typing import List, Dict, Any, Optional, Union
 import os
 import logging
+from dataclasses import dataclass  # added for CodeDisplayMetrics
+from datetime import datetime      # added for CodeDisplayMetrics
 
 # Clean imports using compatibility layer
 from .langchain_compat import (
@@ -190,48 +192,48 @@ class RagEngine:
             "role": role
         }
 
-    def retrieve_with_code(self, query: str, role: str = None, top_k: int = 5) -> Dict[str, Any]:
-        """Enhanced retrieval that includes code snippets for technical roles."""
-        
+    def retrieve_with_code(self, query: str, role: str = None, top_k: int = 5, include_code: Optional[bool] = None) -> Dict[str, Any]:
+        """Enhanced retrieval that can include code snippets when allowed.
+        DEPRECATION: passing only `role` to trigger code inclusion will be removed in a future version.
+        Callers should pass include_code=bool explicitly (RoleRouter now handles this).
+        """
+        if include_code is None and role is not None:
+            logger.debug("DEPRECATION: implicit role-based code inclusion – supply include_code explicitly.")
         # Ensure latest code before searching (unless disabled)
         self.ensure_code_index_current()
-        
-        # Get standard career knowledge
         career_results = self.retrieve(query, top_k)
-        
-        # Add code snippets for technical roles
-        code_snippets = []
-        if role in ["Hiring Manager (technical)", "Software Developer"] and self.code_index:
+
+        # Decide if code should be included
+        if include_code is None:
             try:
-                # Extract keywords from query for better code search
-                query_keywords = [word.strip().lower() for word in query.split() 
-                                if len(word) > 3 and word.lower() not in ['what', 'how', 'the', 'this', 'that']]
-                
-                # Search using both query text and keywords
+                from src.agents.roles import role_include_code  # lightweight, no circular dependency
+                include_code = role_include_code(role)
+            except Exception:
+                include_code = False
+
+        code_snippets: List[Dict[str, Any]] = []
+        if include_code and self.code_index:
+            try:
+                query_keywords = [w.strip().lower() for w in query.split()
+                                   if len(w) > 3 and w.lower() not in {'what','how','the','this','that'}]
                 code_results = self.code_index.search_code(query, max_results=3)
                 if not code_results and query_keywords:
                     code_results = self.code_index.search_by_keywords(query_keywords, max_results=3)
-                
-                for result in code_results:
+                for r in code_results:
                     code_snippets.append({
-                        "file": result["file"],
-                        "citation": result["citation"],
-                        "content": result["content"],
-                        "type": result["type"],
-                        "name": result["name"],
-                        "github_url": result["github_url"],
-                        "line_start": result["line_start"],
-                        "line_end": result["line_end"]
+                        "file": r["file"],
+                        "citation": r["citation"],
+                        "content": r["content"],
+                        "type": r["type"],
+                        "name": r["name"],
+                        "github_url": r["github_url"],
+                        "line_start": r["line_start"],
+                        "line_end": r["line_end"],
                     })
             except Exception as e:
                 logger.warning(f"Code retrieval failed: {e}")
-        
-        return {
-            **career_results,
-            "code_snippets": code_snippets,
-            "has_code": len(code_snippets) > 0,
-            "code_index_version": self.code_index_version()
-        }
+
+        return {**career_results, "code_snippets": code_snippets, "has_code": bool(code_snippets), "code_index_version": self.code_index_version()}
 
     def retrieve_code_info(self, query: str) -> List[Dict[str, Any]]:
         """Specifically retrieve code-related information."""
@@ -292,3 +294,10 @@ class RagEngine:
             "ready": self.vector_store is not None,
             "code_index_version": self.code_service.version() if self.code_service else "none"
         }
+
+@dataclass
+class CodeDisplayMetrics:
+    """Metrics for code display operations."""
+    timestamp: datetime
+    query_time: float
+    # ... all fields documented

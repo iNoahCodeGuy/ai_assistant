@@ -21,10 +21,14 @@ class DummyRag:
         self.code_calls += 1
         return [DummyDoc("Code snippet X", {"file_path": "src/core/rag_engine.py", "start_line": 10})]
 
-    def retrieve_with_code(self, query: str, role: str = None):
+    def retrieve_with_code(self, query: str, role: str = None, include_code: bool = None):
         """Enhanced retrieval method expected by role router after refactor."""
         self.career_calls += 1
-        if role in ["Hiring Manager (technical)", "Software Developer"]:
+        
+        # Handle include_code parameter (new refactored path)
+        should_include_code = include_code if include_code is not None else (role in ["Hiring Manager (technical)", "Software Developer"])
+        
+        if should_include_code:
             self.code_calls += 1
         return {
             "matches": ["Career fact A"],
@@ -34,8 +38,8 @@ class DummyRag:
                 "citation": "src/core/rag_engine.py:10", 
                 "content": "def __init__(self):",
                 "github_url": "https://github.com/noah/repo/blob/main/src/core/rag_engine.py#L10"
-            }] if role in ["Hiring Manager (technical)", "Software Developer"] else [],
-            "has_code": role in ["Hiring Manager (technical)", "Software Developer"],
+            }] if should_include_code else [],
+            "has_code": should_include_code,
             "code_index_version": "abc123"
         }
 

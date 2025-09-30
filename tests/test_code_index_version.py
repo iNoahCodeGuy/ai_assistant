@@ -22,7 +22,7 @@ def test_code_index_version_changes(tmp_path):
     time.sleep(0.2)  # ensure mtime difference on fast filesystems
 
     # Trigger ensure_code_index_current via retrieve_with_code
-    engine.retrieve_with_code("probe change", role="Software Developer")
+    engine.retrieve_with_code("probe change", role="Software Developer", include_code=True)
     new_version = engine.code_index_version()
     assert new_version != initial_version, f"Version did not change: {initial_version} == {new_version}"
 
@@ -30,6 +30,6 @@ def test_code_index_version_changes(tmp_path):
 def test_retrieve_with_code_includes_version():
     s = Settings()
     engine = RagEngine(settings=s)
-    result = engine.retrieve_with_code("any query", role="Software Developer")
+    result = engine.retrieve_with_code("any query", role="Software Developer", include_code=True)
     assert 'code_index_version' in result
     assert len(result['code_index_version']) >= 8

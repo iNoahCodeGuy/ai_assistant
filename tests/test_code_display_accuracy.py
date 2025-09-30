@@ -31,7 +31,8 @@ class TestCodeDisplayAccuracy:
         """Test that code snippets contain all required metadata."""
         result = rag_engine_with_code.retrieve_with_code(
             "RagEngine initialization", 
-            role="Software Developer"
+            role="Software Developer",
+            include_code=True
         )
         
         assert result.get('has_code') is not None
@@ -48,7 +49,8 @@ class TestCodeDisplayAccuracy:
         """Test that citations follow file:line format."""
         result = rag_engine_with_code.retrieve_with_code(
             "retrieve_with_code", 
-            role="Hiring Manager (technical)"
+            role="Hiring Manager (technical)",
+            include_code=True
         )
         
         for snippet in result.get('code_snippets', []):
@@ -66,7 +68,8 @@ class TestCodeDisplayAccuracy:
         """Test that GitHub URLs are properly formatted."""
         result = rag_engine_with_code.retrieve_with_code(
             "code_index", 
-            role="Software Developer"
+            role="Software Developer",
+            include_code=True
         )
         
         for snippet in result.get('code_snippets', []):
@@ -78,7 +81,8 @@ class TestCodeDisplayAccuracy:
         """Test that retrieved code content is meaningful."""
         result = rag_engine_with_code.retrieve_with_code(
             "class RagEngine", 
-            role="Software Developer"
+            role="Software Developer",
+            include_code=True
         )
         
         for snippet in result.get('code_snippets', []):
@@ -199,7 +203,7 @@ def test_function_{int(time.time())}():
             time.sleep(0.1)  # Ensure filesystem timestamp difference
             
             # Trigger code index refresh
-            engine.retrieve_with_code("test function", role="Software Developer")
+            engine.retrieve_with_code("test function", role="Software Developer", include_code=True)
             
             new_version = engine.code_index_version()
             assert new_version != initial_version, \
@@ -237,7 +241,7 @@ def test_function_{int(time.time())}():
             engine = RagEngine(settings=settings)
             
             # Should still work without crashing
-            result = engine.retrieve_with_code("test query", role="Software Developer")
+            result = engine.retrieve_with_code("test query", role="Software Developer", include_code=True)
             
             assert 'code_snippets' in result
             assert result['has_code'] is False
@@ -293,5 +297,21 @@ class TestResponseFormatting:
         assert simplified_count > 0, f"Summary should contain simplified terms: {summary}"
 
 
+# Example test needed:
+def test_metrics_collection_accuracy():
+    monitor = CodeDisplayMonitor()
+    # Test metrics recording and aggregation
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
+
+UNTESTED MODULES:
+- src/analytics/code_display_monitor.py (Production monitoring)
+- src/analytics/feedback_test_generator.py (Automated test generation) 
+- src/analytics/metrics_collector.py (Performance metrics)
+- src/analytics/database.py (Database integration)
+
+UNDERTESTED:
+- src/ui/streamlit_app.py (Main application interface)
+- src/ui/components/ (User interface components)

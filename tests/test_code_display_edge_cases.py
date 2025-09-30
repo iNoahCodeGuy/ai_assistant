@@ -30,7 +30,7 @@ class TestCodeDisplayEdgeCases:
         ]
         
         for query in edge_case_queries:
-            result = engine.retrieve_with_code(query, role="Software Developer")
+            result = engine.retrieve_with_code(query, role="Software Developer", include_code=True)
             
             # Should not crash and should return valid structure
             assert isinstance(result, dict)
@@ -46,7 +46,8 @@ class TestCodeDisplayEdgeCases:
         # Query for something unlikely to exist
         result = engine.retrieve_with_code(
             "quantum_flux_capacitor_implementation_xyz123", 
-            role="Software Developer"
+            role="Software Developer",
+            include_code=True
         )
         
         assert result['has_code'] is False
@@ -62,7 +63,8 @@ class TestCodeDisplayEdgeCases:
             
             result = engine.retrieve_with_code(
                 "test query", 
-                role="Software Developer"
+                role="Software Developer",
+                include_code=True
             )
             
             # Should fall back gracefully
@@ -89,7 +91,7 @@ class TestCodeDisplayEdgeCases:
                 'line_end': 1000
             }]
             
-            result = engine.retrieve_with_code("large function", role="Software Developer")
+            result = engine.retrieve_with_code("large function", role="Software Developer", include_code=True)
             
             # Should handle large content appropriately
             assert result['has_code'] is True
@@ -106,7 +108,7 @@ class TestCodeDisplayEdgeCases:
         engine = RagEngine(settings=settings)
         
         def query_code():
-            return engine.retrieve_with_code("test", role="Software Developer")
+            return engine.retrieve_with_code("test", role="Software Developer", include_code=True)
         
         # Run multiple queries concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -125,7 +127,7 @@ class TestCodeDisplayEdgeCases:
         engine = RagEngine(settings=settings)
         
         start_time = time.time()
-        result = engine.retrieve_with_code("RagEngine", role="Software Developer")
+        result = engine.retrieve_with_code("RagEngine", role="Software Developer", include_code=True)
         end_time = time.time()
         
         # Should complete within 10 seconds (generous limit for CI)
@@ -148,7 +150,7 @@ class TestCodeDisplayEdgeCases:
         ]
         
         for query in unicode_queries:
-            result = engine.retrieve_with_code(query, role="Software Developer")
+            result = engine.retrieve_with_code(query, role="Software Developer", include_code=True)
             
             # Should handle gracefully without crashing
             assert isinstance(result, dict)
@@ -173,7 +175,8 @@ class TestCodeDisplayPerformance:
         start_time = time.time()
         
         for role in roles * 3:  # Test each role 3 times
-            result = engine.retrieve_with_code("RagEngine", role=role)
+            result = engine.retrieve_with_code("RagEngine", role=role, include_code=(role in [
+                "Software Developer", "Hiring Manager (technical)"]))
             assert isinstance(result, dict)
         
         end_time = time.time()
