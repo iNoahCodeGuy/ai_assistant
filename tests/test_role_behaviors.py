@@ -98,3 +98,16 @@ def test_confession_role_bypasses_llm():
     # No retrieval calls
     assert rag.career_calls == 0 and rag.code_calls == 0
     assert "💌" in formatted
+"""
+Below was an accidental paste of shell setup commands causing a SyntaxError in test collection.
+Keeping them here (inside a string literal) for developer reference only.
+
+git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant-.git
+cd NoahsAIAssistant-
+git checkout feature/role-specific-behaviors
+python -m venv .venv
+Activate venv (PowerShell):
+    . .venv/Scripts/Activate.ps1
+pip install -r requirements.txt
+pytest -q
+"""

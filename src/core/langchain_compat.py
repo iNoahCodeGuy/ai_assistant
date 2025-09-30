@@ -14,23 +14,26 @@ from typing import List, Any
 
 # --- Resilient OpenAI Embeddings ---
 try:
-    from langchain.embeddings import OpenAIEmbeddings  # type: ignore
+    from langchain_openai import OpenAIEmbeddings  # type: ignore
 except Exception:
     try:
-        from langchain_community.embeddings import OpenAIEmbeddings  # type: ignore
+        from langchain.embeddings import OpenAIEmbeddings  # type: ignore
     except Exception:
-        class OpenAIEmbeddings:  # type: ignore
-            def __init__(self, *_, **__):
-                pass
-            def embed_query(self, text: str) -> List[float]:
-                return [float((hash(text) >> i) & 0xFF) / 255.0 for i in range(0, 32)]
+        try:
+            from langchain_community.embeddings import OpenAIEmbeddings  # type: ignore
+        except Exception:
+            class OpenAIEmbeddings:  # type: ignore
+                def __init__(self, *_, **__):
+                    pass
+                def embed_query(self, text: str) -> List[float]:
+                    return [float((hash(text) >> i) & 0xFF) / 255.0 for i in range(0, 32)]
 
 # --- Resilient FAISS Vector Store ---
 try:
-    from langchain.vectorstores import FAISS  # type: ignore
+    from langchain_community.vectorstores import FAISS  # type: ignore
 except Exception:
     try:
-        from langchain_community.vectorstores import FAISS  # type: ignore
+        from langchain.vectorstores import FAISS  # type: ignore
     except Exception:
         class _StubVectorStore:
             def __init__(self, *_, **__):
@@ -55,10 +58,10 @@ except Exception:
 
 # --- Resilient Document Loaders ---
 try:
-    from langchain.document_loaders import CSVLoader  # type: ignore
+    from langchain_community.document_loaders import CSVLoader  # type: ignore
 except Exception:
     try:
-        from langchain_community.document_loaders import CSVLoader  # type: ignore
+        from langchain.document_loaders import CSVLoader  # type: ignore
     except Exception:
         class CSVLoader:  # type: ignore
             def __init__(self, file_path: str, source_column: str = "source"):
@@ -83,10 +86,10 @@ except Exception:
 
 # --- Resilient QA Chain ---
 try:
-    from langchain.chains import RetrievalQA  # type: ignore
+    from langchain_community.chains import RetrievalQA  # type: ignore
 except Exception:
     try:
-        from langchain_community.chains import RetrievalQA  # type: ignore
+        from langchain.chains import RetrievalQA  # type: ignore
     except Exception:
         class RetrievalQA:  # type: ignore
             @staticmethod
@@ -107,18 +110,21 @@ except Exception:
 
 # --- Resilient ChatOpenAI ---
 try:
-    from langchain.chat_models import ChatOpenAI  # type: ignore
+    from langchain_openai import ChatOpenAI  # type: ignore
 except Exception:
     try:
-        from langchain_openai import ChatOpenAI  # type: ignore
+        from langchain.chat_models import ChatOpenAI  # type: ignore
     except Exception:
-        class ChatOpenAI:  # type: ignore
-            def __init__(self, *_, **__):
-                pass
-            def predict(self, prompt: str) -> str:
-                words = prompt.strip().split()
-                tail = " ".join(words[-40:])
-                return f"[DEGRADED MODE SYNTHESIS]\n{tail}"
+        try:
+            from langchain_community.chat_models import ChatOpenAI  # type: ignore
+        except Exception:
+            class ChatOpenAI:  # type: ignore
+                def __init__(self, *_, **__):
+                    pass
+                def predict(self, prompt: str) -> str:
+                    words = prompt.strip().split()
+                    tail = " ".join(words[-40:])
+                    return f"[DEGRADED MODE SYNTHESIS]\n{tail}"
 
 # --- Document Schema ---
 try:
