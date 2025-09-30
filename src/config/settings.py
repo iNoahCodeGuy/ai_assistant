@@ -25,6 +25,10 @@ class Settings:
         self.mma_kb_path = os.getenv("MMA_KB_PATH", "data/mma_kb.csv")
         # Media / external links
         self.youtube_fight_link = os.getenv("YOUTUBE_FIGHT_LINK", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        
+        # Feature Flags / Controls
+        # Disable automatic code index rebuild detection (useful for performance-sensitive or deterministic test runs)
+        self.disable_auto_rebuild = os.getenv("DISABLE_AUTO_REBUILD", "false").lower() in ("1", "true", "yes")
     
     def validate_api_key(self):
         """Validate that OpenAI API key is set."""

@@ -24,15 +24,64 @@ class ResponseFormatter:
         return self._format_general_response(response)
 
     def _format_technical_response(self, response: str, context: List[Document]) -> str:
-        out = f"## Engineer Detail\n{response}\n\n"
+        """Enhanced technical formatting with code snippets and proper citations."""
+        sections = []
+        
+        # Engineer Detail Section
+        sections.append("## 🔧 Engineer Detail")
+        sections.append(response)
+        
+        # Code Examples Section (if context contains code snippets)
+        code_snippets = [doc for doc in context if hasattr(doc, 'metadata') and doc.metadata.get('type') == 'code']
+        if code_snippets:
+            sections.append("\n## 💻 Code Examples")
+            for snippet in code_snippets[:3]:
+                metadata = snippet.metadata
+                sections.append(f"\n### {metadata.get('name', 'Code Snippet')}")
+                sections.append(f"**File:** `{metadata.get('citation', 'unknown')}`")
+                sections.append(f"```python\n{snippet.page_content}\n```")
+                if metadata.get('github_url'):
+                    sections.append(f"[View on GitHub]({metadata['github_url']})")
+        
+        # Plain-English Summary
+        sections.append("\n## 📋 Plain-English Summary")
+        sections.append(self._generate_summary(response))
+        
+        # Citations Section
         if context:
-            out += "### Citations\n"
-            for i, doc in enumerate(context[:3], 1):
-                fp = doc.metadata.get("file_path") or doc.metadata.get("source", "unknown")
-                line = doc.metadata.get("start_line", "?")
-                out += f"{i}. `{fp}:{line}`\n"
-        out += "\n## Plain-English Summary\n(High-level explanation forthcoming.)"
-        return out
+            sections.append("\n## 📚 Citations")
+            for i, doc in enumerate(context[:5], 1):
+                if hasattr(doc, 'metadata'):
+                    source = doc.metadata.get("source") or doc.metadata.get("file_path", "unknown")
+                    line = doc.metadata.get("start_line", "")
+                    line_info = f":{line}" if line else ""
+                    sections.append(f"{i}. `{source}{line_info}`")
+                else:
+                    sections.append(f"{i}. {str(doc)[:100]}...")
+        
+        return "\n".join(sections)
+
+    def _generate_summary(self, technical_text: str) -> str:
+        """Generate plain-English summary from technical content."""
+        # Simple heuristic - take first 2 sentences and simplify
+        sentences = technical_text.split('. ')[:2]
+        summary = '. '.join(sentences)
+        
+        # Replace technical terms with simpler alternatives
+        replacements = {
+            'FAISS': 'a search system',
+            'vector store': 'database',
+            'embeddings': 'text representations',
+            'RAG': 'information retrieval',
+            'LangChain': 'AI framework',
+            'AST': 'code analysis',
+            'API': 'programming interface'
+        }
+        
+        for tech_term, simple_term in replacements.items():
+            summary = summary.replace(tech_term, simple_term)
+        
+        return summary
 
     def _format_mma_response(self, data: Dict[str, Any]) -> str:
         base = data.get("response", "")

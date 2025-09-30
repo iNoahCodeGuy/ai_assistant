@@ -17,18 +17,11 @@ from typing import List, Dict, Any, Optional, Union
 import os
 import logging
 
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import CSVLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-
-# ChatOpenAI import compatibility (older/newer langchain versions)
-try:  # langchain >= 0.1 style
-    from langchain.chat_models import ChatOpenAI  # type: ignore
-except Exception:  # modular packages style
-    from langchain_openai import ChatOpenAI  # type: ignore
+# Clean imports using compatibility layer
+from .langchain_compat import (
+    OpenAIEmbeddings, FAISS, CSVLoader, RecursiveCharacterTextSplitter,
+    RetrievalQA, PromptTemplate, ChatOpenAI, Document
+)
 
 # Optional imports for typing (not strictly required at runtime)
 try:
@@ -52,153 +45,87 @@ class RagEngine:
     """Complete RAG implementation with FAISS vector store and role-based responses."""
     
     def __init__(self, *args, **kwargs):
-        """Flexible initializer.
-        Acceptable calls:
-          RagEngine(settings=Settings())
-          RagEngine(career_kb, code_index)
-        """
+        """Flexible initializer using factory pattern."""
         self.settings: Optional[Settings] = kwargs.get("settings")
         self._provided_career_kb = None
         self._provided_code_index = None
-        # Public attributes expected by tests
-        self.career_kb = None
-        self.code_index = None
-
+        
+        # Parse initialization arguments
         if len(args) == 1 and self.settings is None:
-            # Allow RagEngine(settings_obj)
             possible_settings = args[0]
             if hasattr(possible_settings, "validate_api_key"):
                 self.settings = possible_settings
         elif len(args) == 2:  # (career_kb, code_index) test path
             self._provided_career_kb, self._provided_code_index = args
-            self.career_kb = self._provided_career_kb
-            self.code_index = self._provided_code_index
 
         if self.settings is None:
-            # create default settings if not provided (tests path won't need API usage heavily)
             self.settings = Settings()
 
-        # Validate API key (will raise early if missing for real use)
+        # Validate API key
         try:
             self.settings.validate_api_key()
         except Exception as e:
             logger.warning(f"API key validation warning: {e}")
 
-        # Embeddings & LLM
-        self.embeddings = OpenAIEmbeddings(
-            openai_api_key=getattr(self.settings, "openai_api_key", None),
-            model=getattr(self.settings, "embedding_model", "text-embedding-ada-002")
+        # Initialize using factory
+        from .rag_factory import RagEngineFactory
+        factory = RagEngineFactory(self.settings)
+        
+        # Create core components
+        self.embeddings, emb_degraded = factory.create_embeddings()
+        self.llm, llm_degraded = factory.create_llm()
+        self.degraded_mode = emb_degraded or llm_degraded
+        
+        # Create knowledge bases
+        self.career_kb = factory.create_career_kb(self._provided_career_kb)
+        self.code_index = factory.create_code_index(self._provided_code_index)
+        
+        # Initialize code service
+        from src.retrieval.code_service import CodeIndexService
+        self.code_service = CodeIndexService(settings=self.settings, code_index=self.code_index)
+        self._code_index_snapshot = self.code_service._snapshot  # compatibility
+        
+        # Load and process documents
+        self._career_docs = factory.load_documents(self.career_kb, self._provided_career_kb)
+        
+        # Create vector store
+        self.vector_store, self._faiss_ok = factory.create_vector_store(self._career_docs, self.embeddings)
+        
+        # Create response generator
+        from .response_generator import ResponseGenerator
+        self.response_generator = ResponseGenerator(
+            llm=self.llm,
+            qa_chain=None,  # Will be set after creation
+            degraded_mode=self.degraded_mode
         )
-        self.llm = ChatOpenAI(
-            openai_api_key=getattr(self.settings, "openai_api_key", None),
-            model_name=getattr(self.settings, "openai_model", "gpt-3.5-turbo"),
-            temperature=0.4
-        )
-
-        # If initialized with settings only, attempt to create career_kb object for symmetry
-        if self.career_kb is None:
-            try:
-                from src.retrieval.career_kb import CareerKnowledgeBase  # local import to avoid cycles
-                self.career_kb = CareerKnowledgeBase(getattr(self.settings, "career_kb_path", "data/career_kb.csv"))
-            except Exception:
-                pass
-        if self.code_index is None:
-            try:
-                from src.retrieval.code_index import CodeIndex
-                self.code_index = CodeIndex('vector_stores/code_index')
-            except Exception:
-                pass
-
-        # Load or build documents
-        self._career_docs = self._load_or_wrap_career_docs()
-        # Code index currently not integrated into semantic store (placeholder for future)
-
-        # Build FAISS vector store
-        self.vector_store: Optional[FAISS] = None
-        if self._career_docs:
-            try:
-                self.vector_store = FAISS.from_documents(self._career_docs, self.embeddings)
-            except Exception as e:  # Fallback minimal store
-                logger.error(f"Failed building FAISS store: {e}")
-                self.vector_store = None
-
-        if self.vector_store:
-            try:
-                FAISS_PATH.parent.mkdir(parents=True, exist_ok=True)
-                self.vector_store.save_local(str(FAISS_PATH))
-            except Exception as e:
-                logger.warning(f"Could not persist FAISS index: {e}")
-        else:
-            # Try loading existing
-            if FAISS_PATH.exists():
-                try:
-                    self.vector_store = FAISS.load_local(
-                        str(FAISS_PATH),
-                        self.embeddings,
-                        allow_dangerous_deserialization=True
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to load existing FAISS index: {e}")
-
-        # Build Retrieval QA chain if vector store available
-        self.qa_chain: Optional[RetrievalQA] = None
-        if self.vector_store:
-            prompt = self._build_prompt()
-            try:
-                self.qa_chain = RetrievalQA.from_chain_type(
-                    llm=self.llm,
-                    chain_type="stuff",
-                    retriever=self.vector_store.as_retriever(search_kwargs={"k": 4}),
-                    chain_type_kwargs={"prompt": prompt},
-                    return_source_documents=True
-                )
-            except Exception as e:
-                logger.error(f"Failed creating QA chain: {e}")
+        
+        # Create QA chain
+        factory._faiss_ok = self._faiss_ok
+        factory.degraded_mode = self.degraded_mode
+        self.qa_chain = factory.create_qa_chain(self.llm, self.vector_store, self.response_generator)
+        self.response_generator.qa_chain = self.qa_chain  # Update reference
 
     def _build_prompt(self) -> PromptTemplate:
-        template = (
-            "You are Noah's AI Assistant. Use the provided context about Noah to answer the question.\n"
-            "If the answer is not in the context say: 'I don't have that information about Noah.'\n\n"
-            "Context: {context}\n\nQuestion: {question}\n\nAnswer:"
-        )
-        return PromptTemplate(template=template, input_variables=["context", "question"])
+        return self.response_generator.build_basic_prompt()
 
     def _load_or_wrap_career_docs(self):
         """Return list[Document] for the career knowledge base."""
-        from langchain.schema import Document
+        from .document_processor import DocumentProcessor
+        processor = DocumentProcessor(chunk_size=600, chunk_overlap=60)
+        
         # If provided via tests (pandas DataFrame inside career_kb.data maybe)
         if self._provided_career_kb is not None:
-            try:
-                rows = self._provided_career_kb.get_all_entries()
-                docs = []
-                for row in rows:
-                    # Attempt common column names
-                    q = row.get("Question") or row.get("question") or ""
-                    a = row.get("Answer") or row.get("answer") or ""
-                    content = f"Q: {q}\nA: {a}".strip()
-                    if content:
-                        docs.append(Document(page_content=content, metadata={"source": "career_kb"}))
-                return self._split_docs(docs)
-            except Exception as e:
-                logger.error(f"Error wrapping provided career KB: {e}")
-                return []
+            return processor.load_from_career_kb(self._provided_career_kb)
+        
         # Else load from CSV path
         path = getattr(self.settings, "career_kb_path", "data/career_kb.csv")
-        if os.path.exists(path):
-            try:
-                loader = CSVLoader(file_path=path, source_column="Question")
-                raw_docs = loader.load()
-                return self._split_docs(raw_docs)
-            except Exception as e:
-                logger.error(f"Error loading CSV career KB: {e}")
-        return []
+        return processor.load_from_csv(path, source_column="Question")
 
     def _split_docs(self, docs):
-        splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=60)
-        try:
-            return splitter.split_documents(docs)
-        except Exception:
-            return docs
+        # Deprecated - kept for compatibility
+        from .document_processor import DocumentProcessor
+        processor = DocumentProcessor()
+        return processor._split_documents(docs)
 
     # Public API expected by tests -------------------------------------------------
     def embed(self, text: str) -> List[float]:
@@ -209,7 +136,7 @@ class RagEngine:
             logger.error(f"Embedding error: {e}")
             return []
 
-    def retrieve(self, query: str) -> Dict[str, Any]:
+    def retrieve(self, query: str, top_k: int = 4) -> Dict[str, Any]:
         """Retrieve semantically relevant docs; include a 'skills' key for test.
 
         Returns dict with keys: 'matches', 'skills', 'raw'
@@ -217,7 +144,7 @@ class RagEngine:
         matches: List[str] = []
         if self.vector_store:
             try:
-                docs = self.vector_store.similarity_search(query, k=4)
+                docs = self.vector_store.similarity_search(query, k=top_k)
                 matches = [d.page_content for d in docs]
             except Exception as e:
                 logger.error(f"Similarity search failed: {e}")
@@ -231,22 +158,11 @@ class RagEngine:
 
     def generate_response(self, query: str) -> str:
         """Generate an answer using RetrievalQA chain if available."""
-        answer = ""
-        if self.qa_chain:
-            try:
-                # RetrievalQA with return_source_documents=True returns dict
-                result = self.qa_chain({"query": query})
-                answer = result.get("result") or result.get("answer") or ""
-            except Exception as e:
-                logger.error(f"QA chain error: {e}")
-        if not answer:
-            # Fallback naive synthesis from retrieve
-            retrieved = self.retrieve(query)
-            answer = "\n".join(retrieved.get("matches", [])[:2]) or "I don't have enough information right now."
-        # Ensure test expectation for 'tech stack'
-        if "tech stack" not in answer.lower() and "tech stack" in query.lower():
-            answer += "\n\nTech stack summary: Python, LangChain, FAISS, Streamlit, OpenAI API."
-        return answer
+        retrieved = self.retrieve(query)
+        return self.response_generator.generate_basic_response(
+            query, 
+            fallback_docs=retrieved.get("matches", [])
+        )
 
     # Convenience wrapper for main UI (role aware)
     def query(self, user_input: str, role: Optional[str] = None) -> Dict[str, Any]:
@@ -265,8 +181,8 @@ class RagEngine:
                         source_citations.append(src)
             except Exception:
                 pass
-        role_suffix = self._role_suffix(role)
-        final_answer = base_answer + role_suffix
+        
+        final_answer = self.response_generator.add_role_suffix(base_answer, role)
         return {
             "answer": final_answer,
             "sources": source_citations,
@@ -274,16 +190,99 @@ class RagEngine:
             "role": role
         }
 
-    def _role_suffix(self, role: Optional[str]) -> str:
-        if not role:
-            return ""
-        role_map = {
-            "Hiring Manager (technical)": "\n\n[Technical Emphasis: Highlights practical hands-on experimentation with LangChain & RAG.]",
-            "Hiring Manager (nontechnical)": "\n\n[Business Emphasis: Noah bridges customer insight with emerging AI capabilities.]",
-            "Software Developer": "\n\n[Dev Note: Focus on pragmatic prototyping and fast iteration.]",
-            "Looking to confess crush": "\n\n[Friendly Tone: Keeping this professional but personable.]",
+    def retrieve_with_code(self, query: str, role: str = None, top_k: int = 5) -> Dict[str, Any]:
+        """Enhanced retrieval that includes code snippets for technical roles."""
+        
+        # Ensure latest code before searching (unless disabled)
+        self.ensure_code_index_current()
+        
+        # Get standard career knowledge
+        career_results = self.retrieve(query, top_k)
+        
+        # Add code snippets for technical roles
+        code_snippets = []
+        if role in ["Hiring Manager (technical)", "Software Developer"] and self.code_index:
+            try:
+                # Extract keywords from query for better code search
+                query_keywords = [word.strip().lower() for word in query.split() 
+                                if len(word) > 3 and word.lower() not in ['what', 'how', 'the', 'this', 'that']]
+                
+                # Search using both query text and keywords
+                code_results = self.code_index.search_code(query, max_results=3)
+                if not code_results and query_keywords:
+                    code_results = self.code_index.search_by_keywords(query_keywords, max_results=3)
+                
+                for result in code_results:
+                    code_snippets.append({
+                        "file": result["file"],
+                        "citation": result["citation"],
+                        "content": result["content"],
+                        "type": result["type"],
+                        "name": result["name"],
+                        "github_url": result["github_url"],
+                        "line_start": result["line_start"],
+                        "line_end": result["line_end"]
+                    })
+            except Exception as e:
+                logger.warning(f"Code retrieval failed: {e}")
+        
+        return {
+            **career_results,
+            "code_snippets": code_snippets,
+            "has_code": len(code_snippets) > 0,
+            "code_index_version": self.code_index_version()
         }
-        return role_map.get(role, "")
+
+    def retrieve_code_info(self, query: str) -> List[Dict[str, Any]]:
+        """Specifically retrieve code-related information."""
+        if not self.code_index:
+            return []
+        
+        try:
+            return self.code_index.search_code(query, max_results=5)
+        except Exception as e:
+            logger.warning(f"Code info retrieval failed: {e}")
+            return []
+
+    def retrieve_career_info(self, query: str) -> List[Dict[str, Any]]:
+        """Specifically retrieve career-related information."""
+        try:
+            result = self.retrieve(query)
+            # Convert to list format expected by role router
+            return [{"content": match, "source": "career_kb"} for match in result.get("matches", [])]
+        except Exception as e:
+            logger.warning(f"Career info retrieval failed: {e}")
+            return []
+
+    def generate_response_with_context(self, query: str, context: List[Dict[str, Any]], role: str = None) -> str:
+        """Generate response with explicit context list (advanced role-aware path)."""
+        return self.response_generator.generate_contextual_response(query, context, role)
+
+    def generate_technical_response(self, query: str, role: str) -> str:
+        """Generate response with code integration for technical roles."""
+        results = self.retrieve_with_code(query, role)
+        return self.response_generator.generate_technical_response(
+            query,
+            career_matches=results.get("matches", []),
+            code_snippets=results.get("code_snippets", []),
+            role=role
+        )
+
+    # Backward compatibility wrappers (delegate to services)
+    def ensure_code_index_current(self):  # deprecated - use code_service
+        if getattr(self, 'code_service', None):
+            self.code_service.ensure_current()
+            self._code_index_snapshot = self.code_service._snapshot
+
+    def code_index_version(self) -> str:  # deprecated - use code_service  
+        if getattr(self, 'code_service', None):
+            return self.code_service.version()
+        return "none"
+
+    def _snapshot_code_index(self):  # deprecated - use code_service
+        if getattr(self, 'code_service', None):
+            self.code_service.snapshot_sources()
+            self._code_index_snapshot = self.code_service._snapshot
 
     # Summary helper
     def get_knowledge_summary(self) -> Dict[str, Any]:
@@ -291,4 +290,5 @@ class RagEngine:
             "documents": len(self._career_docs),
             "vector_store": bool(self.vector_store),
             "ready": self.vector_store is not None,
+            "code_index_version": self.code_service.version() if self.code_service else "none"
         }

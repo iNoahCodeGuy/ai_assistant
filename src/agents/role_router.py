@@ -50,21 +50,67 @@ class RoleRouter:
     def _handle_hiring_manager(self, query: str, query_type: str, rag_engine: RagEngine, technical: bool) -> Dict[str, Any]:
         if technical and query_type == "technical":
             ctx = rag_engine.retrieve_code_info(query)
-            resp = rag_engine.generate_response(query, ctx, "Hiring Manager (technical)")
+            resp = self._handle_technical_manager(query, ctx, rag_engine)
             return {"response": resp, "type": "technical", "context": ctx}
         # Default to career-focused for nontechnical or non-technical query
         ctx = rag_engine.retrieve_career_info(query)
-        resp = rag_engine.generate_response(query, ctx,
+        resp = rag_engine.generate_response_with_context(query, ctx,
                                             "Hiring Manager (technical)" if technical else "Hiring Manager (nontechnical)")
         return {"response": resp, "type": "career", "context": ctx}
+
+    def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+        """Enhanced technical manager handling with code snippets."""
+        
+        # Use enhanced retrieval
+        results = rag_engine.retrieve_with_code(user_input, "Hiring Manager (technical)")
+        
+        prompt = f"""
+        {context}
+        
+        Current question: {user_input}
+        
+        Provide a technical hiring manager response with:
+        1. **Engineer Detail** (include code examples and file:line citations)
+        2. **Plain-English Summary** (business-friendly explanation)
+        
+        Available code snippets: {len(results.get('code_snippets', []))}
+        Career context: {results.get('matches', [])}
+        """
+        
+        response = rag_engine.generate_technical_response(user_input, "Hiring Manager (technical)")
+        
+        # Add code snippets to response
+        if results.get("code_snippets"):
+            response += "\n\n**Code References:**\n"
+            for snippet in results["code_snippets"]:
+                response += f"- [{snippet['citation']}]({snippet['github_url']})\n"
+        
+        return response
 
     def _handle_developer(self, query: str, query_type: str, rag_engine: RagEngine) -> Dict[str, Any]:
         if query_type == "technical":
             ctx = rag_engine.retrieve_code_info(query)
+            resp = self._handle_developer_with_code(query, ctx, rag_engine)
         else:
             ctx = rag_engine.retrieve_career_info(query)
-        resp = rag_engine.generate_response(query, ctx, "Software Developer")
+            resp = rag_engine.generate_response(query, ctx, "Software Developer")
         return {"response": resp, "type": query_type, "context": ctx}
+
+    def _handle_developer_with_code(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+        """Enhanced developer handling with detailed code integration."""
+        
+        results = rag_engine.retrieve_with_code(user_input, "Software Developer")
+        
+        # More detailed code integration for developers
+        response = rag_engine.generate_technical_response(user_input, "Software Developer")
+        
+        if results.get("code_snippets"):
+            response += "\n\n## Code Implementation\n"
+            for snippet in results["code_snippets"]:
+                response += f"\n### {snippet['name']} ([{snippet['citation']}]({snippet['github_url']}))\n"
+                response += f"```python\n{snippet['content']}\n```\n"
+        
+        return response
 
     def _handle_casual(self, query: str, query_type: str, rag_engine: RagEngine) -> Dict[str, Any]:
         if query_type == "mma":
