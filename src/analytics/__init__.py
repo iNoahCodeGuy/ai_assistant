@@ -1,3 +1,3 @@
-from .metrics_collector import MetricsCollector
+from .cloud_analytics import cloud_analytics, CloudAnalytics, UserInteractionData
 
-__all__ = ["MetricsCollector"]
+__all__ = ["cloud_analytics", "CloudAnalytics", "UserInteractionData"]

@@ -8,3 +8,14 @@ numpy
 python-dotenv
 faiss-cpu
 matplotlib
+# Cloud Database Dependencies
+psycopg2-binary
+sqlalchemy
+alembic
+# Google Cloud Dependencies  
+google-cloud-sql-connector
+google-cloud-secret-manager
+google-cloud-pubsub
+google-cloud-aiplatform
+redis
+google-cloud-storage

@@ -27,8 +27,8 @@ except ImportError:
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from src.analytics.comprehensive_analytics import (
-    ComprehensiveAnalytics, UserInteraction, create_interaction_from_rag_result
+from src.analytics.cloud_analytics import (
+    CloudAnalytics, UserInteractionData
 )
 
 

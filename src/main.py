@@ -1,10 +1,13 @@
-from streamlit import st
+import streamlit as st
+import time
+import uuid
+from datetime import datetime
 from core.rag_engine import RagEngine
 from core.memory import Memory
 from agents.role_router import RoleRouter
 from agents.response_formatter import ResponseFormatter
-from analytics.metrics_collector import MetricsCollector
-from config.settings import Settings
+from analytics.cloud_analytics import cloud_analytics, UserInteractionData
+from config.cloud_config import cloud_settings
 
 ROLE_OPTIONS = [
     "Hiring Manager (nontechnical)",
@@ -19,15 +22,19 @@ def init_state():
         st.session_state.role = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []  # list[dict(role="user"/"assistant", content=str)]
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())
 
 def main():
     init_state()
-    settings = Settings()
+    
+    # Validate cloud configuration
+    cloud_settings.validate_configuration()
+    
     memory = Memory()
-    rag_engine = RagEngine(settings)
+    rag_engine = RagEngine(cloud_settings)
     role_router = RoleRouter()
     response_formatter = ResponseFormatter()
-    metrics_collector = MetricsCollector()
 
     st.title("Noah's AI Assistant")
 
@@ -51,33 +58,95 @@ def main():
     # Chat input (multi-turn)
     user_input = st.chat_input("Ask a question...")
     if user_input:
+        # Start timing for analytics
+        start_time = time.time()
+        
         # Append user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Metrics
-        metrics_collector.log_interaction(st.session_state.role, user_input)
+        try:
+            # Route + format
+            raw_response = role_router.route(
+                st.session_state.role,
+                user_input,
+                memory,
+                rag_engine,
+                chat_history=st.session_state.chat_history
+            )
+            formatted = response_formatter.format(raw_response)
+            
+            # Calculate response time
+            response_time = time.time() - start_time
+            
+            # Determine query type
+            query_type = "general"
+            if any(keyword in user_input.lower() for keyword in ["code", "implementation", "architecture"]):
+                query_type = "technical"
+            elif any(keyword in user_input.lower() for keyword in ["career", "experience", "background"]):
+                query_type = "career"
+            elif any(keyword in user_input.lower() for keyword in ["mma", "fight", "fighting"]):
+                query_type = "mma"
+            
+            # Count citations and code snippets in response
+            code_snippets = formatted.count("```")
+            citations = formatted.count("[") + formatted.count("Source:")
+            
+            # Log interaction to cloud analytics
+            interaction_data = UserInteractionData(
+                session_id=st.session_state.session_id,
+                timestamp=datetime.utcnow(),
+                user_role=st.session_state.role,
+                query=user_input,
+                query_type=query_type,
+                response_time=response_time,
+                response_length=len(formatted),
+                code_snippets_shown=code_snippets,
+                citations_provided=citations,
+                success=True,
+                conversation_turn=len(st.session_state.chat_history) // 2
+            )
+            
+            cloud_analytics.log_interaction(interaction_data)
+            
+            # Append assistant message
+            st.session_state.chat_history.append({"role": "assistant", "content": formatted})
 
-        # Route + format
-        raw_response = role_router.route(
-            st.session_state.role,
-            user_input,
-            memory,
-            rag_engine,
-            chat_history=st.session_state.chat_history  # pass history if router supports it
-        )
-        formatted = response_formatter.format(raw_response)
+            with st.chat_message("assistant"):
+                st.markdown(formatted)
+                
+        except Exception as e:
+            # Log failed interaction
+            response_time = time.time() - start_time
+            interaction_data = UserInteractionData(
+                session_id=st.session_state.session_id,
+                timestamp=datetime.utcnow(),
+                user_role=st.session_state.role,
+                query=user_input,
+                query_type="error",
+                response_time=response_time,
+                response_length=0,
+                code_snippets_shown=0,
+                citations_provided=0,
+                success=False,
+                conversation_turn=len(st.session_state.chat_history) // 2
+            )
+            
+            cloud_analytics.log_interaction(interaction_data)
+            
+            st.error(f"Sorry, I encountered an error: {str(e)}")
 
-        # Append assistant message
-        st.session_state.chat_history.append({"role": "assistant", "content": formatted})
-
-        with st.chat_message("assistant"):
-            st.markdown(formatted)
-
-    # Analytics panel
-    with st.expander("Analytics", expanded=False):
-        metrics_collector.display_metrics()
+    # Cloud Analytics panel
+    with st.expander("System Health", expanded=False):
+        health_status = cloud_analytics.health_check()
+        if health_status["status"] == "healthy":
+            st.success("✅ Analytics system healthy")
+            st.metric("Total Interactions", health_status["total_interactions"])
+            st.metric("Recent (24h)", health_status["recent_interactions_24h"])
+        else:
+            st.error("❌ Analytics system unhealthy")
+            st.error(health_status.get("error", "Unknown error"))
 
     # Simple clear chat
     if st.sidebar.button("Clear Chat"):

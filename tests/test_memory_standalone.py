@@ -142,9 +142,9 @@ def test_streamlit_integration():
     
     try:
         # Test core imports
-        from config.settings import Settings
-        settings = Settings()
-        print("✅ Settings import works")
+        from config.cloud_config import cloud_settings
+        settings = cloud_settings
+        print("✅ Cloud settings import works")
         
         # Test that we can create instances without errors
         memory = Memory()

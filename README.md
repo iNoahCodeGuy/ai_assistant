@@ -25,14 +25,16 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 
 ## Tech Stack
 - **Frontend/UI**: Streamlit (chat UI, role selector, analytics panel)
-- **Core Framework**: LangChain (loaders, embeddings, retrieval pipeline)
-- **Vector Storage**: FAISS (career_kb, code_index, transcripts)
+- **Core Framework**: LangChain (loaders, embeddings, retrieval pipeline) 
+- **Vector Storage**: Google Vertex AI Vector Search (career_kb, code_index)
 - **Models**: OpenAI GPT (generation), OpenAI Embeddings (vectorization)
-- **Memory**: Short-term window buffer + future rolling summary
-- **Orchestration**: LangGraph (planned for branching + invariants)
-- **Observability**: LangSmith (optional via API key)
-- **Analytics DB**: SQLite (default) / Postgres (future)
-- **Testing**: Pytest (structure placeholder)
+- **Memory**: Google Cloud Memorystore (Redis) for session management
+- **Analytics DB**: Google Cloud SQL (PostgreSQL) with real-time analytics
+- **Event Streaming**: Google Cloud Pub/Sub for analytics events
+- **Security**: Google Secret Manager for API keys and credentials
+- **Deployment**: Google Cloud Run with auto-scaling
+- **Observability**: Cloud-native monitoring and LangSmith integration
+- **Testing**: Pytest with cloud environment support
 
 ## Role-Specific Behaviors
 

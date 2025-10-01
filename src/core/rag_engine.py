@@ -25,18 +25,8 @@ from .langchain_compat import (
     RetrievalQA, PromptTemplate, ChatOpenAI, Document
 )
 
-# Optional imports for typing (not strictly required at runtime)
-try:
-    from src.config.settings import Settings  # type: ignore
-except Exception:  # pragma: no cover
-    class Settings:  # fallback minimal
-        openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-        openai_model: str = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-        embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
-        career_kb_path: str = os.getenv("CAREER_KB_PATH", "data/career_kb.csv")
-        def validate_api_key(self):
-            if not self.openai_api_key:
-                raise ValueError("OPENAI_API_KEY not set")
+# Import cloud configuration
+from config.cloud_config import cloud_settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,26 +38,24 @@ class RagEngine:
     
     def __init__(self, *args, **kwargs):
         """Flexible initializer using factory pattern."""
-        self.settings: Optional[Settings] = kwargs.get("settings")
+        self.settings = kwargs.get("settings", cloud_settings)
         self._provided_career_kb = None
         self._provided_code_index = None
         
         # Parse initialization arguments
-        if len(args) == 1 and self.settings is None:
+        if len(args) == 1 and not hasattr(self.settings, "validate_configuration"):
+            # Assume it's cloud_settings if it has validate_configuration
             possible_settings = args[0]
-            if hasattr(possible_settings, "validate_api_key"):
+            if hasattr(possible_settings, "validate_configuration"):
                 self.settings = possible_settings
         elif len(args) == 2:  # (career_kb, code_index) test path
             self._provided_career_kb, self._provided_code_index = args
 
-        if self.settings is None:
-            self.settings = Settings()
-
-        # Validate API key
+        # Validate configuration
         try:
-            self.settings.validate_api_key()
+            self.settings.validate_configuration()
         except Exception as e:
-            logger.warning(f"API key validation warning: {e}")
+            logger.warning(f"Configuration validation warning: {e}")
 
         # Initialize using factory
         from .rag_factory import RagEngineFactory

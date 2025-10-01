@@ -1,14 +1,14 @@
 from typing import Dict, Any, List, Optional
 from core.rag_engine import RagEngine
 from core.memory import Memory
-from config.settings import Settings
+from config.cloud_config import cloud_settings
 from .roles import role_include_code  # NEW import
 
 class RoleRouter:
     """Routes queries based on user role and query type."""
 
     def __init__(self):
-        self.settings = Settings()
+        self.settings = cloud_settings
 
     def route(
         self,
