@@ -3,6 +3,7 @@
 Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
 
 ## Table of Contents
+- [🚀 Quickstart](#-quickstart)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Role-Specific Behaviors](#role-specific-behaviors)
@@ -11,6 +12,60 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 - [File Structure](#file-structure)
 - [Contributing](#contributing)
 - [License](#license)
+
+## 🚀 Quickstart
+
+**Get Noah's AI Assistant running locally in 5 minutes**
+
+### Prerequisites
+- ✅ Python 3.11+ installed
+- ✅ OpenAI API key ([get one here](https://platform.openai.com/api-keys)) - $5 free credit for new accounts
+- ✅ Supabase account ([sign up free](https://supabase.com/dashboard)) - Free tier is sufficient
+
+### Quick Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/noahcal/noahs-ai-assistant.git
+cd noahs-ai-assistant
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Set up environment variables
+# Create a .env file with your API keys:
+OPENAI_API_KEY=sk-...
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGc...
+```
+
+**Get Supabase credentials**:
+1. Create a new project in [Supabase Dashboard](https://supabase.com/dashboard)
+2. Go to Settings → API
+3. Copy `URL` and `service_role` key (⚠️ keep this secret!)
+
+```bash
+# 4. Set up the database schema
+# Follow the step-by-step guide in docs/PHASE_1_SETUP.md
+# This creates tables for knowledge base, messages, and analytics
+
+# 5. Run the data migration (one-time)
+python scripts/migrate_data_to_supabase.py
+
+# 6. Start the Streamlit app
+streamlit run src/main.py
+```
+
+**🎉 Success!** Open http://localhost:8501 in your browser.
+
+**First steps**:
+1. Select a role (try "Software Developer" to see code retrieval)
+2. Ask a question like "What's your Python experience?"
+3. See RAG in action with grounded responses!
+
+**Need help?** See [PHASE_1_SETUP.md](docs/PHASE_1_SETUP.md) for detailed setup instructions.
+
+**Next**: Learn about [architecture](docs/ARCHITECTURE.md) or explore the [glossary](docs/GLOSSARY.md) for technical terms.
 
 ## Features
 - **Role-Based Interaction**: Session-level role selection shapes retrieval + formatting.

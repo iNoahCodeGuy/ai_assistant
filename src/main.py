@@ -1,3 +1,60 @@
+"""Main entry point for Noah's AI Assistant Streamlit application.
+
+This file orchestrates the complete user interaction flow:
+
+1. **Role Selection** (one-time, persisted in session)
+   - Users must select their role before chatting
+   - Role determines retrieval strategy and response style
+   - Stored in Streamlit session state (survives page reruns)
+
+2. **Multi-Turn Chat Interface**
+   - Built with Streamlit's chat components
+   - Maintains conversation history in session
+   - Each message triggers RAG pipeline
+
+3. **Request Processing**
+   - Route to appropriate agent based on role
+   - Retrieve relevant knowledge (pgvector or FAISS)
+   - Generate contextually-aware response
+   - Format for target audience (technical vs business)
+
+4. **Analytics Logging**
+   - Every interaction logged to Supabase
+   - Tracks: query, response, latency, tokens, role
+   - Enables evaluation metrics and debugging
+
+Streamlit Session State Variables:
+    role (str): User's selected role (None until first selection)
+        Options: "Hiring Manager (technical)", "Software Developer", etc.
+    
+    chat_history (List[Dict]): Conversation messages for display
+        Format: [{"role": "user"|"assistant", "content": str}, ...]
+    
+    session_id (str): UUID for tracking conversation in analytics
+        Generated once per session, persists across reruns
+
+Why Role Selection First:
+    Different roles need different knowledge sources and response styles:
+    - Software Developer: Prioritize code index, technical depth
+    - Hiring Manager (technical): Career KB + code snippets, dual-audience format
+    - Hiring Manager (nontechnical): Career KB only, business-focused
+    - Casual Visitor: Lightweight retrieval, conversational tone
+    
+    Without knowing the role, we can't optimize retrieval or formatting.
+
+Usage:
+    streamlit run src/main.py
+    
+    Then:
+    1. Select your role from dropdown
+    2. Click "Confirm Role"
+    3. Start chatting!
+
+Environment Variables Required:
+    OPENAI_API_KEY: For embeddings and LLM generation
+    SUPABASE_URL: Your Supabase project URL
+    SUPABASE_SERVICE_KEY: Service role key (bypasses RLS)
+"""
 import streamlit as st
 import time
 import uuid
@@ -10,20 +67,77 @@ from analytics.supabase_analytics import supabase_analytics, UserInteractionData
 from config.supabase_config import supabase_settings
 
 ROLE_OPTIONS = [
-    "Hiring Manager (nontechnical)",
-    "Hiring Manager (technical)",
-    "Software Developer",
-    "Just looking around",
-    "Looking to confess crush"
+    "Hiring Manager (nontechnical)",  # Business-focused, career KB only
+    "Hiring Manager (technical)",     # Dual-audience: code + plain English
+    "Software Developer",              # Deep technical, code index priority
+    "Just looking around",             # Casual visitor, lightweight retrieval
+    "Looking to confess crush"         # Fun mode, guarded PII handling
 ]
 
 def init_state():
+    """Initialize Streamlit session state variables.
+    
+    Session state persists across Streamlit reruns (when user interacts).
+    This ensures role selection and chat history survive page updates.
+    
+    Why check 'not in': Streamlit reruns entire script on every interaction.
+    Without this guard, we'd reset state to None on every rerun.
+    """
     if "role" not in st.session_state:
-        st.session_state.role = None
+        st.session_state.role = None  # Will be set once user selects role
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []  # list[dict(role="user"/"assistant", content=str)]
     if "session_id" not in st.session_state:
+        # Generate unique ID for this conversation (for analytics tracking)
         st.session_state.session_id = str(uuid.uuid4())
+
+def main():
+    """Main application flow: validate config → role selection → chat loop."""
+    init_state()
+    
+    # Ensure all required environment variables are set
+    # Raises helpful error if OPENAI_API_KEY, SUPABASE_URL, etc. are missing
+    supabase_settings.validate_configuration()
+    
+    # Initialize all services
+    memory = Memory()  # Conversation history manager
+    rag_engine = RagEngine(supabase_settings)  # Retrieval engine (pgvector or FAISS)
+    role_router = RoleRouter()  # Routes queries based on role
+    response_formatter = ResponseFormatter()  # Formats responses for target audience
+
+    st.title("Noah's AI Assistant")
+
+    # ========== ROLE SELECTION PHASE ==========
+    # User must select role before accessing chat interface.
+    # This ensures we know their context before retrieval.
+    if st.session_state.role is None:
+        st.write("Hello, I am Noah's AI Assistant. To better provide assistance, which best describes you?")
+        st.session_state.role = st.selectbox("Select your role:", ROLE_OPTIONS)
+        st.button("Confirm Role", on_click=lambda: None)  # Dummy callback, just for UI
+        st.stop()  # Stop execution until role is confirmed (page will rerun)
+    else:
+        # Role already selected - show it in sidebar with option to change
+        st.sidebar.markdown(f"**Active Role:** {st.session_state.role}")
+        if st.sidebar.button("Change Role"):
+            st.session_state.role = None  # Reset role
+            st.stop()  # Force rerun to show role selection screen
+
+    # ========== CHAT INTERFACE ==========
+    # Display prior messages from session (survives reruns)
+    for m in st.session_state.chat_history:
+        with st.chat_message(m["role"]):  # "user" or "assistant"
+            st.markdown(m["content"])
+
+    # Chat input (multi-turn conversation)
+    user_input = st.chat_input("Ask a question...")
+    if user_input:
+        # Start timer for response latency tracking
+        start_time = time.time()
+        
+        # Display user message immediately
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
 def main():
     init_state()
