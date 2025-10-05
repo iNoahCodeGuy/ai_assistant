@@ -14,27 +14,45 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 
 ## Features
 - **Role-Based Interaction**: Session-level role selection shapes retrieval + formatting.
-- **Retrieval-Augmented Generation (RAG)**: FAISS vector stores (career KB, code index, optional transcripts).
+- **Retrieval-Augmented Generation (RAG)**: Supabase pgvector stores (career KB, code index).
 - **Dual-Audience Formatting**: Engineer Detail + Plain-English Summary (for technical audiences).
 - **Code & Career Grounding**: File:line citations where available.
 - **MMA Query Routing**: Direct fight link for MMA-related queries (bypasses general retrieval).
 - **Confession Mode**: Lightweight, guarded input path with no unintended PII retention.
-- **Analytics Panel**: Interaction counts, role distribution, basic query metrics.
+- **Analytics Tracking**: Interaction logging, retrieval tracking, user feedback with Supabase.
+- **Contact Requests**: Email delivery via Resend, SMS notifications via Twilio.
 - **Extensible Orchestration**: Designed to plug into LangGraph for future routing graphs.
-- **Observability Ready**: LangSmith integration hooks (traces/evals) planned.
+- **Observability Ready**: LangSmith integration hooks (traces/evals).
 
 ## Tech Stack
-- **Frontend/UI**: Streamlit (chat UI, role selector, analytics panel)
-- **Core Framework**: LangChain (loaders, embeddings, retrieval pipeline) 
-- **Vector Storage**: Google Vertex AI Vector Search (career_kb, code_index)
-- **Models**: OpenAI GPT (generation), OpenAI Embeddings (vectorization)
-- **Memory**: Google Cloud Memorystore (Redis) for session management
-- **Analytics DB**: Google Cloud SQL (PostgreSQL) with real-time analytics
-- **Event Streaming**: Google Cloud Pub/Sub for analytics events
-- **Security**: Google Secret Manager for API keys and credentials
-- **Deployment**: Google Cloud Run with auto-scaling
-- **Observability**: Cloud-native monitoring and LangSmith integration
-- **Testing**: Pytest with cloud environment support
+
+### Current Architecture (Supabase + Vercel)
+- **Frontend/UI**: Streamlit (chat UI, role selector, session management)
+- **Core Framework**: LangChain (loaders, embeddings, retrieval pipeline)
+- **Database**: Supabase Postgres with pgvector extension
+- **Vector Search**: pgvector with IVFFLAT indexing for semantic similarity
+- **Models**: OpenAI GPT-3.5/4 (generation), OpenAI ada-002 (embeddings)
+- **Analytics**: Direct Supabase writes (messages, retrieval_logs, feedback)
+- **External Services**: 
+  - Resend (email delivery)
+  - Twilio (SMS notifications)
+- **API Layer**: Next.js API routes for external integrations
+- **Security**: Row Level Security (RLS) policies, environment variables
+- **Deployment**: Hybrid (Streamlit + Vercel serverless)
+- **Observability**: LangSmith integration for tracing
+- **Testing**: Pytest with Supabase mocking
+
+### Cost Estimates
+- **Supabase Pro**: ~$25/month (includes PostgreSQL + pgvector + Storage)
+- **OpenAI API**: Variable based on usage (~$10-30/month for moderate traffic)
+- **Vercel**: Free tier (serverless functions for API routes)
+- **Resend**: Free tier up to 3,000 emails/month
+- **Twilio**: Pay-as-you-go (~$0.0075/SMS)
+- **Total**: ~$35-60/month for production deployment
+
+**Previous GCP Architecture** (archived): Cost ~$100-200/month
+- Used Cloud SQL, Pub/Sub, Secret Manager, Vertex AI, Cloud Run
+- Migrated to Supabase for 50-75% cost reduction and simplified maintenance
 
 ## Role-Specific Behaviors
 
@@ -68,24 +86,83 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 - Response: Acknowledgment only (no model overreach)
 
 ## Installation
+
+### Prerequisites
+- Python 3.10+
+- Supabase account (free tier available)
+- OpenAI API key
+- (Optional) Resend API key for email
+- (Optional) Twilio credentials for SMS
+
+### Setup Steps
+
+1. **Clone the repository**
 ```bash
 git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant-.git
 cd NoahsAIAssistant-
+```
+
+2. **Install Python dependencies**
+```bash
 pip install -r requirements.txt
 ```
 
-Copy environment variables:
+3. **Configure Supabase**
+   - Create a new project at [supabase.com](https://supabase.com)
+   - Run the SQL migration in `supabase/migrations/001_initial_schema.sql` in your Supabase SQL Editor
+   - Copy your project URL and service role key
+
+4. **Set environment variables**
 ```bash
 cp .env.example .env
-# edit .env and add OPENAI_API_KEY, optional LANGSMITH_API_KEY
+# Edit .env and add:
+# SUPABASE_URL=your_project_url
+# SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# OPENAI_API_KEY=your_openai_key
+# (Optional) RESEND_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM
+```
+
+5. **Populate knowledge base** (optional)
+```bash
+python scripts/migrate_data_to_supabase.py
 ```
 
 ## Usage
-Development run (current entrypoint uses Streamlit main):
+
+### Development
+Run the Streamlit application locally:
 ```bash
 streamlit run src/main.py
 ```
-(If/when a dedicated `src/ui/streamlit_app.py` is added, update command accordingly.)
+
+### Production Deployment
+
+**Option 1: Streamlit Community Cloud**
+- Deploy directly from GitHub
+- Set environment variables in Streamlit Cloud dashboard
+- Best for chat interface only
+
+**Option 2: Hybrid (Streamlit + Vercel)**
+- Deploy Streamlit for chat UI
+- Deploy Next.js API routes to Vercel for email/SMS integrations
+- Configure `vercel.json` for serverless functions
+
+### Database Schema
+The Supabase database includes:
+- `kb_chunks`: Knowledge base with pgvector embeddings
+- `messages`: Chat interaction logs
+- `retrieval_logs`: RAG pipeline tracking
+- `links`: External resource URLs
+- `feedback`: User ratings and contact requests
+
+### Architecture Overview
+```
+User → Streamlit UI → RagEngine (pgvector search) → OpenAI GPT → Response
+                ↓
+        Supabase Analytics (messages, retrieval_logs)
+                ↓
+        Feedback → Email (Resend) / SMS (Twilio)
+```
 
 ## File Structure
 ```
