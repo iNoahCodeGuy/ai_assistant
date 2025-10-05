@@ -6,16 +6,20 @@ langsmith
 pandas
 numpy
 python-dotenv
-faiss-cpu
 matplotlib
-# Cloud Database Dependencies
+
+# Supabase Dependencies (replaces GCP services)
+supabase>=2.0.0
+postgrest-py
+httpx
+
+# Database
 psycopg2-binary
 sqlalchemy
-alembic
-# Google Cloud Dependencies  
-google-cloud-sql-connector
-google-cloud-secret-manager
-google-cloud-pubsub
-google-cloud-aiplatform
-redis
-google-cloud-storage
+
+# External Services
+resend  # Email delivery (replaces SendGrid)
+twilio  # SMS notifications
+
+# Note: FAISS removed - using Supabase pgvector instead
+# Note: GCP packages removed - using Supabase instead

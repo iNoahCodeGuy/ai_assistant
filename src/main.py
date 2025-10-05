@@ -6,8 +6,8 @@ from core.rag_engine import RagEngine
 from core.memory import Memory
 from agents.role_router import RoleRouter
 from agents.response_formatter import ResponseFormatter
-from analytics.cloud_analytics import cloud_analytics, UserInteractionData
-from config.cloud_config import cloud_settings
+from analytics.supabase_analytics import supabase_analytics, UserInteractionData
+from config.supabase_config import supabase_settings
 
 ROLE_OPTIONS = [
     "Hiring Manager (nontechnical)",
@@ -28,11 +28,11 @@ def init_state():
 def main():
     init_state()
     
-    # Validate cloud configuration
-    cloud_settings.validate_configuration()
+    # Validate Supabase configuration
+    supabase_settings.validate_configuration()
     
     memory = Memory()
-    rag_engine = RagEngine(cloud_settings)
+    rag_engine = RagEngine(supabase_settings)
     role_router = RoleRouter()
     response_formatter = ResponseFormatter()
 
@@ -77,8 +77,9 @@ def main():
             )
             formatted = response_formatter.format(raw_response)
             
-            # Calculate response time
+            # Calculate response time and token usage
             response_time = time.time() - start_time
+            latency_ms = int(response_time * 1000)
             
             # Determine query type
             query_type = "general"
@@ -89,26 +90,20 @@ def main():
             elif any(keyword in user_input.lower() for keyword in ["mma", "fight", "fighting"]):
                 query_type = "mma"
             
-            # Count citations and code snippets in response
-            code_snippets = formatted.count("```")
-            citations = formatted.count("[") + formatted.count("Source:")
-            
-            # Log interaction to cloud analytics
+            # Log interaction to Supabase analytics
             interaction_data = UserInteractionData(
                 session_id=st.session_state.session_id,
-                timestamp=datetime.utcnow(),
-                user_role=st.session_state.role,
+                role_mode=st.session_state.role,
                 query=user_input,
+                answer=formatted,
                 query_type=query_type,
-                response_time=response_time,
-                response_length=len(formatted),
-                code_snippets_shown=code_snippets,
-                citations_provided=citations,
-                success=True,
-                conversation_turn=len(st.session_state.chat_history) // 2
+                latency_ms=latency_ms,
+                tokens_prompt=None,  # TODO: Extract from OpenAI response
+                tokens_completion=None,  # TODO: Extract from OpenAI response
+                success=True
             )
             
-            cloud_analytics.log_interaction(interaction_data)
+            supabase_analytics.log_interaction(interaction_data)
             
             # Append assistant message
             st.session_state.chat_history.append({"role": "assistant", "content": formatted})
@@ -119,31 +114,29 @@ def main():
         except Exception as e:
             # Log failed interaction
             response_time = time.time() - start_time
+            latency_ms = int(response_time * 1000)
+            
             interaction_data = UserInteractionData(
                 session_id=st.session_state.session_id,
-                timestamp=datetime.utcnow(),
-                user_role=st.session_state.role,
+                role_mode=st.session_state.role,
                 query=user_input,
+                answer=f"Error: {str(e)}",
                 query_type="error",
-                response_time=response_time,
-                response_length=0,
-                code_snippets_shown=0,
-                citations_provided=0,
-                success=False,
-                conversation_turn=len(st.session_state.chat_history) // 2
+                latency_ms=latency_ms,
+                success=False
             )
             
-            cloud_analytics.log_interaction(interaction_data)
+            supabase_analytics.log_interaction(interaction_data)
             
             st.error(f"Sorry, I encountered an error: {str(e)}")
 
-    # Cloud Analytics panel
+    # Supabase Analytics panel
     with st.expander("System Health", expanded=False):
-        health_status = cloud_analytics.health_check()
+        health_status = supabase_analytics.health_check()
         if health_status["status"] == "healthy":
             st.success("✅ Analytics system healthy")
-            st.metric("Total Interactions", health_status["total_interactions"])
-            st.metric("Recent (24h)", health_status["recent_interactions_24h"])
+            st.metric("Total Messages", health_status["total_messages"])
+            st.metric("Recent (24h)", health_status["recent_messages_24h"])
         else:
             st.error("❌ Analytics system unhealthy")
             st.error(health_status.get("error", "Unknown error"))

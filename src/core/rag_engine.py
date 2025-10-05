@@ -25,8 +25,8 @@ from .langchain_compat import (
     RetrievalQA, PromptTemplate, ChatOpenAI, Document
 )
 
-# Import cloud configuration
-from config.cloud_config import cloud_settings
+# Import Supabase configuration
+from config.supabase_config import supabase_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,13 @@ class RagEngine:
     
     def __init__(self, *args, **kwargs):
         """Flexible initializer using factory pattern."""
-        self.settings = kwargs.get("settings", cloud_settings)
+        self.settings = kwargs.get("settings", supabase_settings)
         self._provided_career_kb = None
         self._provided_code_index = None
         
         # Parse initialization arguments
         if len(args) == 1 and not hasattr(self.settings, "validate_configuration"):
-            # Assume it's cloud_settings if it has validate_configuration
+            # Assume it's supabase_settings if it has validate_configuration
             possible_settings = args[0]
             if hasattr(possible_settings, "validate_configuration"):
                 self.settings = possible_settings

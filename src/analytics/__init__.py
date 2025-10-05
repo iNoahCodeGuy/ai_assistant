@@ -1,3 +1,3 @@
-from .cloud_analytics import cloud_analytics, CloudAnalytics, UserInteractionData
+from .supabase_analytics import supabase_analytics, SupabaseAnalytics, UserInteractionData
 
-__all__ = ["cloud_analytics", "CloudAnalytics", "UserInteractionData"]
+__all__ = ["supabase_analytics", "SupabaseAnalytics", "UserInteractionData"]
