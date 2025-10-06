@@ -270,7 +270,7 @@ class AnalyticsPanel:
             health_metrics = {
                 'Response Time': f"{health['response_time']:.2f}s",
                 'Code Index Version': health['code_index_version'],
-                'Vector Store Active': health['has_vector_store'],
+                'pgvector Active': health.get('has_pgvector', False),
                 'Degraded Mode': health.get('degraded_mode', False)
             }
             

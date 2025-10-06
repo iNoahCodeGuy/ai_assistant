@@ -137,7 +137,7 @@ class TestCodeDisplayHealthChecks:
         health_status = {
             'rag_engine': False,
             'code_index': False,
-            'vector_store': False,
+            'pgvector': False,
             'response_generation': False
         }
         
@@ -151,9 +151,9 @@ class TestCodeDisplayHealthChecks:
             if version != "none":
                 health_status['code_index'] = True
             
-            # Test vector store
-            if engine.vector_store is not None:
-                health_status['vector_store'] = True
+            # Test pgvector retriever
+            if engine.pgvector_retriever is not None:
+                health_status['pgvector'] = True
             
             # Test response generation
             result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)

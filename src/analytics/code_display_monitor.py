@@ -214,7 +214,7 @@ def health_check() -> Dict[str, Any]:
             "status": "healthy",
             "response_time": response_time,
             "code_index_version": engine.code_index_version(),
-            "has_vector_store": bool(engine.vector_store),
+            "has_pgvector": bool(engine.pgvector_retriever),
             "degraded_mode": getattr(engine, 'degraded_mode', False),
             "timestamp": datetime.now().isoformat()
         }

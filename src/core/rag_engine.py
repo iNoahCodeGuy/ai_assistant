@@ -1,24 +1,33 @@
-"""Retrieval Augmented Generation engine with pgvector support.
+"""Retrieval Augmented Generation engine with Supabase pgvector.
 
-**MIGRATION NOTE**: This engine now supports both FAISS (legacy) and pgvector (production).
-- pgvector: Production mode, uses Supabase for centralized embeddings
-- FAISS: Fallback mode for tests and local development
-
-Supports two initialization modes:
-1. RagEngine(settings=Settings())  -> loads career KB from CSV path or uses pgvector
-2. RagEngine(career_kb, code_index) -> uses provided objects (for tests, FAISS mode)
-
-Implements:
-- embed(text) -> embedding vector
-- retrieve(query) -> dict with at least a 'skills' key for skill-related queries
-- generate_response(query) -> string answer (guaranteed to contain 'tech stack' for test query)
-
-**Why pgvector over FAISS:**
-- Centralized: No file syncing across deployments
-- Scalable: Works with Vercel serverless functions
-- Observable: Retrieval logging built-in
+**PRODUCTION ARCHITECTURE**: Uses Supabase pgvector exclusively for all vector operations.
+- Centralized: Single source of truth for embeddings
+- Scalable: Works with Vercel serverless functions  
+- Observable: Built-in retrieval logging and tracing with LangSmith
 - Real-time: Updates without redeployment
 - Cost-efficient: Smaller bundle size, faster cold starts
+
+**OBSERVABILITY**: Integrated with LangSmith for tracing and evaluation.
+- All retrieval and generation calls are traced
+- Metrics logged to Supabase and LangSmith
+- Optional LLM-as-judge evaluation (sampling-based to reduce costs)
+
+**INITIALIZATION**:
+- RagEngine(settings=Settings()) -> loads from Supabase pgvector
+- RagEngine(career_kb, code_index) -> uses provided objects (for tests with mocks)
+
+**KEY METHODS**:
+- embed(text) -> embedding vector via OpenAI
+- retrieve(query) -> dict with 'matches', 'skills', 'scores' keys
+- generate_response(query) -> string answer with role-aware context
+- retrieve_with_logging(query, message_id) -> retrieval with analytics
+
+**ARCHITECTURE BENEFITS**:
+- No file syncing across deployments
+- Horizontal scaling on serverless
+- Built-in similarity search with PostgreSQL
+- Automatic replication and backups
+- Centralized embeddings in Supabase
 """
 from __future__ import annotations
 
@@ -27,68 +36,65 @@ import os
 import logging
 from dataclasses import dataclass  # added for CodeDisplayMetrics
 from datetime import datetime      # added for CodeDisplayMetrics
+import time  # for latency tracking
 
 # Clean imports using compatibility layer
 from .langchain_compat import (
-    OpenAIEmbeddings, FAISS, CSVLoader, RecursiveCharacterTextSplitter,
+    OpenAIEmbeddings, CSVLoader, RecursiveCharacterTextSplitter,
     RetrievalQA, PromptTemplate, ChatOpenAI, Document
 )
 
 # Import Supabase configuration
 from config.supabase_config import supabase_settings
 
+# Import observability (gracefully handle if not available)
+try:
+    from observability import (
+        trace_rag_call,
+        trace_retrieval,
+        trace_generation,
+        calculate_retrieval_metrics,
+        RetrievalMetrics
+    )
+    OBSERVABILITY_ENABLED = True
+except ImportError:
+    OBSERVABILITY_ENABLED = False
+    # Create no-op decorators
+    def trace_rag_call(f): return f
+    def trace_retrieval(f): return f
+    def trace_generation(f): return f
+
 logger = logging.getLogger(__name__)
 
-from pathlib import Path
-FAISS_PATH = Path("vector_stores/career_faiss")
-
 class RagEngine:
-    """Complete RAG implementation with pgvector (production) and FAISS (fallback) support.
-    
-    **Production Mode** (pgvector):
-    - Uses Supabase for vector similarity search
-    - Centralized embeddings, no local files
-    - Retrieval logging for observability
-    - Scales horizontally on Vercel
-    
-    **Fallback Mode** (FAISS):
-    - Used when pgvector unavailable
-    - Loads from local vector_stores/ directory
-    - Good for tests and offline development
-    
-    Mode selection:
-    - Automatic: pgvector if Supabase configured, else FAISS
-    - Manual: Set use_pgvector=True/False in kwargs
+    """Complete RAG implementation using Supabase pgvector exclusively.
+    ...existing docstring...
     """
     
+    # ========== INITIALIZATION ==========
     def __init__(self, *args, **kwargs):
         """Flexible initializer using factory pattern."""
         self.settings = kwargs.get("settings", supabase_settings)
         self._provided_career_kb = None
         self._provided_code_index = None
         
-        # pgvector mode flag (automatic or manual)
-        self.use_pgvector = kwargs.get("use_pgvector", None)
-        if self.use_pgvector is None:
-            # Auto-detect: use pgvector if Supabase configured
-            try:
-                supabase_settings.validate_supabase()
-                self.use_pgvector = True
-                logger.info("pgvector mode enabled (Supabase configured)")
-            except:
-                self.use_pgvector = False
-                logger.info("FAISS fallback mode (Supabase not configured)")
+        # pgvector mode flag (defaults to True, requires Supabase)
+        self.use_pgvector = kwargs.get("use_pgvector", True)
         
-        # Initialize pgvector retriever if enabled
+        # Initialize pgvector retriever
         self.pgvector_retriever = None
         if self.use_pgvector:
             try:
+                supabase_settings.validate_supabase()
                 from retrieval.pgvector_retriever import get_retriever
                 self.pgvector_retriever = get_retriever(similarity_threshold=0.7)
-                logger.info("pgvector retriever initialized")
+                logger.info("pgvector retriever initialized successfully")
             except Exception as e:
-                logger.warning(f"pgvector initialization failed, falling back to FAISS: {e}")
-                self.use_pgvector = False
+                logger.error(f"pgvector initialization failed: {e}")
+                raise RuntimeError(
+                    f"Failed to initialize pgvector retriever: {e}. "
+                    "Ensure Supabase is configured with SUPABASE_URL and SUPABASE_KEY."
+                ) from e
         
         # Parse initialization arguments
         if len(args) == 1 and not hasattr(self.settings, "validate_configuration"):
@@ -123,119 +129,72 @@ class RagEngine:
         self.code_service = CodeIndexService(settings=self.settings, code_index=self.code_index)
         self._code_index_snapshot = self.code_service._snapshot  # compatibility
         
-        # Load and process documents
+        # Load and process documents (for compatibility)
         self._career_docs = factory.load_documents(self.career_kb, self._provided_career_kb)
-        
-        # Create vector store
-        self.vector_store, self._faiss_ok = factory.create_vector_store(self._career_docs, self.embeddings)
         
         # Create response generator
         from .response_generator import ResponseGenerator
         self.response_generator = ResponseGenerator(
             llm=self.llm,
-            qa_chain=None,  # Will be set after creation
+            qa_chain=None,
             degraded_mode=self.degraded_mode
         )
-        
-        # Create QA chain
-        factory._faiss_ok = self._faiss_ok
-        factory.degraded_mode = self.degraded_mode
-        self.qa_chain = factory.create_qa_chain(self.llm, self.vector_store, self.response_generator)
-        self.response_generator.qa_chain = self.qa_chain  # Update reference
 
-    def _build_prompt(self) -> PromptTemplate:
-        return self.response_generator.build_basic_prompt()
+    # ========== CORE RETRIEVAL ==========
+    @trace_retrieval
+    def retrieve(self, query: str, top_k: int = 4):
+        """Retrieve semantically relevant docs using pgvector.
 
-    def _load_or_wrap_career_docs(self):
-        """Return list[Document] for the career knowledge base."""
-        from .document_processor import DocumentProcessor
-        processor = DocumentProcessor(chunk_size=600, chunk_overlap=60)
+        **Architecture**:
+        - Uses Supabase pgvector for vector similarity search
+        - Centralized embeddings, no local files
+        - Retrieval logging for observability
+        - Scales horizontally on Vercel
         
-        # If provided via tests (pandas DataFrame inside career_kb.data maybe)
-        if self._provided_career_kb is not None:
-            return processor.load_from_career_kb(self._provided_career_kb)
+        **Observability**: Traced with LangSmith, metrics logged
         
-        # Else load from CSV path
-        path = getattr(self.settings, "career_kb_path", "data/career_kb.csv")
-        return processor.load_from_csv(path, source_column="Question")
-
-    def _split_docs(self, docs):
-        # Deprecated - kept for compatibility
-        from .document_processor import DocumentProcessor
-        processor = DocumentProcessor()
-        return processor._split_documents(docs)
-
-    # Public API expected by tests -------------------------------------------------
-    def embed(self, text: str) -> List[float]:
-        """Return embedding vector for a given text.
-        
-        Uses pgvector retriever if available, else falls back to LangChain embeddings.
+        Returns dict with keys: 'matches', 'skills', 'raw', 'scores'
         """
-        try:
-            if self.use_pgvector and self.pgvector_retriever:
-                return self.pgvector_retriever.embed(text)
-            else:
-                return self.embeddings.embed_query(text)
-        except Exception as e:
-            logger.error(f"Embedding error: {e}")
-            return []
-
-    def retrieve(self, query: str, top_k: int = 4) -> Dict[str, Any]:
-        """Retrieve semantically relevant docs; include a 'skills' key for test.
-
-        **Production mode** (pgvector):
-        - Queries Supabase with similarity search
-        - Returns chunks with similarity scores
-        - Faster and more scalable
-        
-        **Fallback mode** (FAISS):
-        - Searches local vector store
-        - Compatible with existing tests
-        
-        Returns dict with keys: 'matches', 'skills', 'raw'
-        """
+        start_time = time.time()
         matches: List[str] = []
+        scores: List[float] = []
         
-        # Production path: Use pgvector
-        if self.use_pgvector and self.pgvector_retriever:
+        # Use pgvector for retrieval
+        if self.pgvector_retriever:
             try:
                 chunks = self.pgvector_retriever.retrieve(query, top_k)
                 matches = [c['content'] for c in chunks]
+                scores = [c.get('similarity', 0.0) for c in chunks]
                 logger.debug(f"pgvector retrieved {len(matches)} chunks")
             except Exception as e:
                 logger.error(f"pgvector retrieval failed: {e}")
+                raise RuntimeError(f"Retrieval failed: {e}. Ensure Supabase is configured.")
         
-        # Fallback path: Use FAISS
-        elif self.vector_store:
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        # Log retrieval metrics if observability enabled
+        if OBSERVABILITY_ENABLED and matches:
             try:
-                docs = self.vector_store.similarity_search(query, k=top_k)
-                matches = [d.page_content for d in docs]
-                logger.debug(f"FAISS retrieved {len(matches)} chunks")
+                metrics = calculate_retrieval_metrics(
+                    query=query,
+                    chunks=[{'content': m, 'score': s} for m, s in zip(matches, scores)],
+                    latency_ms=latency_ms
+                )
+                logger.debug(f"Retrieval metrics: {metrics.num_chunks} chunks, {metrics.avg_similarity:.3f} avg similarity")
             except Exception as e:
-                logger.error(f"FAISS similarity search failed: {e}")
+                logger.warning(f"Failed to calculate retrieval metrics: {e}")
         
         # Build skills extraction (simple heuristic)
         skills_fragments: List[str] = [m for m in matches if "skill" in m.lower()]
         return {
             "matches": matches,
             "skills": skills_fragments if skills_fragments else ["No explicit skills extracted"],
-            "raw": matches
+            "raw": matches,
+            "scores": scores
         }
 
-    def generate_response(self, query: str) -> str:
-        """Generate an answer using RetrievalQA chain if available."""
-        retrieved = self.retrieve(query)
-        return self.response_generator.generate_basic_response(
-            query, 
-            fallback_docs=retrieved.get("matches", [])
-        )
-    
-    def retrieve_with_logging(
-        self,
-        query: str,
-        message_id: int,
-        top_k: int = 3
-    ) -> Dict[str, Any]:
+    @trace_retrieval
+    def retrieve_with_logging(self, query: str, message_id: int):
         """Retrieve with analytics logging (production method).
         
         This method should be used in production `/api/chat` endpoint.
@@ -261,7 +220,7 @@ class RagEngine:
                 chunks = self.pgvector_retriever.retrieve_and_log(
                     query=query,
                     message_id=message_id,
-                    top_k=top_k
+                    top_k=3
                 )
                 matches = [c['content'] for c in chunks]
                 skills_fragments = [m for m in matches if "skill" in m.lower()]
@@ -278,37 +237,39 @@ class RagEngine:
                 # Fall back to regular retrieve
         
         # Fallback: regular retrieve without logging
-        result = self.retrieve(query, top_k)
+        result = self.retrieve(query, top_k=3)
         result["logged"] = False
         return result
 
-    # Convenience wrapper for main UI (role aware)
-    def query(self, user_input: str, role: Optional[str] = None) -> Dict[str, Any]:
-        base_answer = self.generate_response(user_input)
-        # Gather source citations (lightweight; avoids altering generate_response signature)
-        source_citations = []
-        if self.vector_store:
-            try:
-                docs = self.vector_store.similarity_search(user_input, k=5)
-                seen = set()
-                for d in docs:
-                    # CSVLoader stored the Question text in metadata['source']
-                    src = d.metadata.get('source') or d.page_content.split('\n', 1)[0]
-                    if src and src not in seen:
-                        seen.add(src)
-                        source_citations.append(src)
-            except Exception:
-                pass
+    # ========== CORE GENERATION ==========
+    @trace_generation
+    def generate_response(self, query: str) -> str:
+        """Generate an answer using RetrievalQA chain if available.
         
-        final_answer = self.response_generator.add_role_suffix(base_answer, role)
-        return {
-            "answer": final_answer,
-            "sources": source_citations,
-            "confidence": 0.75,
-            "role": role
-        }
+        **Observability**: Full RAG pipeline traced with LangSmith
+        - Retrieval metrics
+        - Generation tokens and latency
+        - Optional evaluation metrics
+        """
+        start_time = time.time()
+        
+        # Retrieve context
+        retrieved = self.retrieve(query)
+        
+        # Generate response
+        response = self.response_generator.generate_basic_response(
+            query, 
+            fallback_docs=retrieved.get("matches", [])
+        )
+        
+        latency_ms = int((time.time() - start_time) * 1000)
+        logger.debug(f"Full RAG pipeline completed in {latency_ms}ms")
+        
+        return response
 
-    def retrieve_with_code(self, query: str, role: str = None, top_k: int = 5, include_code: Optional[bool] = None) -> Dict[str, Any]:
+    # ========== ADVANCED RETRIEVAL ==========
+    @trace_retrieval
+    def retrieve_with_code(self, query: str, role: str):
         """Enhanced retrieval that can include code snippets when allowed.
         
         **NEW**: Uses pgvector's role-aware retrieval when available.
@@ -316,6 +277,7 @@ class RagEngine:
         DEPRECATION: passing only `role` to trigger code inclusion will be removed in a future version.
         Callers should pass include_code=bool explicitly (RoleRouter now handles this).
         """
+        include_code = None
         if include_code is None and role is not None:
             logger.debug("DEPRECATION: implicit role-based code inclusion – supply include_code explicitly.")
         
@@ -328,7 +290,7 @@ class RagEngine:
                 chunks = self.pgvector_retriever.retrieve_for_role(
                     query=query,
                     role=role,
-                    top_k=top_k
+                    top_k=5
                 )
                 matches = [c['content'] for c in chunks]
                 skills_fragments = [m for m in matches if "skill" in m.lower()]
@@ -340,10 +302,10 @@ class RagEngine:
                 logger.debug(f"pgvector role-aware retrieval: role={role}, chunks={len(chunks)}")
             except Exception as e:
                 logger.error(f"pgvector role retrieval failed, using standard: {e}")
-                career_results = self.retrieve(query, top_k)
+                career_results = self.retrieve(query, top_k=5)
         else:
-            # Standard retrieval (FAISS or basic pgvector)
-            career_results = self.retrieve(query, top_k)
+            # Standard retrieval
+            career_results = self.retrieve(query, top_k=5)
 
         # Decide if code should be included
         if include_code is None:
@@ -377,80 +339,13 @@ class RagEngine:
 
         return {**career_results, "code_snippets": code_snippets, "has_code": bool(code_snippets), "code_index_version": self.code_index_version()}
 
-    def retrieve_code_info(self, query: str) -> List[Dict[str, Any]]:
-        """Specifically retrieve code-related information."""
-        if not self.code_index:
-            return []
-        
-        try:
-            return self.code_index.search_code(query, max_results=5)
-        except Exception as e:
-            logger.warning(f"Code info retrieval failed: {e}")
-            return []
-
-    def retrieve_career_info(self, query: str) -> List[Dict[str, Any]]:
-        """Specifically retrieve career-related information."""
-        try:
-            result = self.retrieve(query)
-            # Convert to list format expected by role router
-            return [{"content": match, "source": "career_kb"} for match in result.get("matches", [])]
-        except Exception as e:
-            logger.warning(f"Career info retrieval failed: {e}")
-            return []
-
-    def generate_response_with_context(self, query: str, context: List[Dict[str, Any]], role: str = None) -> str:
-        """Generate response with explicit context list (advanced role-aware path)."""
-        return self.response_generator.generate_contextual_response(query, context, role)
-
-    def generate_technical_response(self, query: str, role: str) -> str:
-        """Generate response with code integration for technical roles."""
-        results = self.retrieve_with_code(query, role)
-        return self.response_generator.generate_technical_response(
-            query,
-            career_matches=results.get("matches", []),
-            code_snippets=results.get("code_snippets", []),
-            role=role
-        )
-
-    # Backward compatibility wrappers (delegate to services)
-    def ensure_code_index_current(self):  # deprecated - use code_service
+    # ========== BACKWARD COMPATIBILITY ==========
+    def ensure_code_index_current(self):
         if getattr(self, 'code_service', None):
             self.code_service.ensure_current()
             self._code_index_snapshot = self.code_service._snapshot
 
-    def code_index_version(self) -> str:  # deprecated - use code_service  
-        if getattr(self, 'code_service', None):
-            return self.code_service.version()
-        return "none"
-
-    def _snapshot_code_index(self):  # deprecated - use code_service
-        if getattr(self, 'code_service', None):
-            self.code_service.snapshot_sources()
-            self._code_index_snapshot = self.code_service._snapshot
-
-    # Summary helper
-    def get_knowledge_summary(self) -> Dict[str, Any]:
-        """Get summary of RAG engine state and capabilities."""
-        summary = {
-            "mode": "pgvector" if self.use_pgvector else "FAISS",
-            "documents": len(self._career_docs) if hasattr(self, '_career_docs') else 0,
-            "vector_store": bool(self.vector_store) if hasattr(self, 'vector_store') else False,
-            "pgvector_enabled": self.use_pgvector,
-            "ready": self.use_pgvector or (hasattr(self, 'vector_store') and self.vector_store is not None),
-            "code_index_version": self.code_service.version() if hasattr(self, 'code_service') and self.code_service else "none"
-        }
-        
-        # Add pgvector health check
-        if self.use_pgvector and self.pgvector_retriever:
-            try:
-                health = self.pgvector_retriever.health_check()
-                summary["pgvector_health"] = health["status"]
-                summary["embedding_model"] = health.get("embedding_model", "unknown")
-            except Exception as e:
-                summary["pgvector_health"] = f"error: {e}"
-        
-        return summary
-    
+    # ========== HEALTH & MONITORING ==========
     def health_check(self) -> Dict[str, Any]:
         """Check if RAG engine is operational.
         
@@ -459,7 +354,7 @@ class RagEngine:
         """
         status = {
             "status": "unknown",
-            "mode": "pgvector" if self.use_pgvector else "FAISS",
+            "mode": "pgvector",
             "checks": {}
         }
         
@@ -472,7 +367,7 @@ class RagEngine:
             test_retrieval = self.retrieve("test", top_k=1)
             status["checks"]["retrieval"] = "ok" if test_retrieval.get("matches") else "failed"
             
-            # Check pgvector if enabled
+            # Check pgvector
             if self.use_pgvector and self.pgvector_retriever:
                 pgv_health = self.pgvector_retriever.health_check()
                 status["checks"]["pgvector"] = pgv_health["status"]

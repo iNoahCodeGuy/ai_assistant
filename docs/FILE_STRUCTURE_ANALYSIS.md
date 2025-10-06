@@ -431,7 +431,7 @@ noahs-ai-assistant/
 ### **During Phase 3**
 10. ✅ Add `frontend/` directory with Next.js structure
 11. ✅ Update root README with dual setup (Python backend + Next.js frontend)
-12. ✅ Create `docs/PHASE_3_COMPLETE.md` documenting frontend integration
+12. ✅ Create `docs/EXTERNAL_SERVICES_COMPLETE.md` documenting frontend integration
 
 ---
 

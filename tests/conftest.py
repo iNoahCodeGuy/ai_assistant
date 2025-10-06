@@ -53,7 +53,12 @@ def mock_rag_engine():
         'has_code': True
     }
     mock.code_index_version.return_value = "test_version_123"
-    mock.vector_store = Mock()
+    # Mock pgvector retriever instead of vector_store
+    mock.pgvector_retriever = Mock()
+    mock.pgvector_retriever.retrieve.return_value = [
+        {'content': 'Test career chunk', 'similarity': 0.85}
+    ]
+    mock.pgvector_retriever.health_check.return_value = {'status': 'healthy'}
     return mock
 
 
@@ -147,7 +152,7 @@ def sample_code_snippets():
             'file_path': 'src/core/rag_engine.py',
             'content': '''def retrieve_with_code(self, query: str, role: str = None):
     """Retrieve documents and code snippets based on query."""
-    results = self.vector_store.similarity_search(query)
+    results = self.pgvector_retriever.retrieve(query)
     return self._format_results(results)''',
             'citation': 'src/core/rag_engine.py:25-28',
             'line_start': 25,

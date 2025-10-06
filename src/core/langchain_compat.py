@@ -6,6 +6,9 @@ Provides graceful fallbacks for LangChain imports to handle:
 - Development environments without full dependencies
 
 This isolates import complexity from core RAG logic.
+
+**Note**: FAISS imports have been removed as the system now uses pgvector exclusively.
+FAISS stubs are kept for backwards compatibility with old code/tests.
 """
 from __future__ import annotations
 
@@ -28,33 +31,28 @@ except Exception:
                 def embed_query(self, text: str) -> List[float]:
                     return [float((hash(text) >> i) & 0xFF) / 255.0 for i in range(0, 32)]
 
-# --- Resilient FAISS Vector Store ---
-try:
-    from langchain_community.vectorstores import FAISS  # type: ignore
-except Exception:
-    try:
-        from langchain.vectorstores import FAISS  # type: ignore
-    except Exception:
-        class _StubVectorStore:
-            def __init__(self, *_, **__):
-                pass
-            def similarity_search(self, *_, **__):
-                return []
-            def save_local(self, *_, **__):
-                pass
-            def as_retriever(self, *_, **__):
-                class _StubRetriever:
-                    def get_relevant_documents(self, *_, **__):
-                        return []
-                return _StubRetriever()
-        
-        class FAISS:  # type: ignore
-            @staticmethod
-            def from_documents(_docs, _emb):
-                return None
-            @staticmethod
-            def load_local(*_, **__):
-                return None
+# --- FAISS Stub (Deprecated - kept for backwards compatibility) ---
+# FAISS has been removed from production. Use pgvector instead.
+# This stub exists only to prevent import errors in legacy code.
+class _StubVectorStore:
+    """Deprecated: Use pgvector instead."""
+    def __init__(self, *_, **__):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
+    def similarity_search(self, *_, **__):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
+    def save_local(self, *_, **__):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
+    def as_retriever(self, *_, **__):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
+
+class FAISS:  # type: ignore
+    """Deprecated: FAISS support removed. Use pgvector instead."""
+    @staticmethod
+    def from_documents(_docs, _emb):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
+    @staticmethod
+    def load_local(*_, **__):
+        raise RuntimeError("FAISS is no longer supported. Use pgvector retrieval instead.")
 
 # --- Resilient Document Loaders ---
 try:
