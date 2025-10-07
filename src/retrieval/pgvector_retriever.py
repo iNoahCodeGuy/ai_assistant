@@ -160,21 +160,63 @@ class PgVectorRetriever:
             logger.warning("Empty embedding, returning no results")
             return []
         
+        # Convert to list of native Python floats
+        embedding = [float(x) for x in embedding]
+        
         try:
-            # Call Supabase RPC function (defined in 001_initial_schema.sql)
-            result = self.supabase_client.rpc('search_kb_chunks', {
-                'query_embedding': embedding,
-                'match_threshold': threshold,
-                'match_count': top_k
-            }).execute()
+            # WORKAROUND: PostgREST has issues with the RPC function
+            # So we fetch all chunks and compute similarity client-side
+            logger.debug(f"Fetching all chunks for client-side similarity calculation")
             
-            chunks = result.data if result.data else []
+            # Fetch all chunks with embeddings
+            result = self.supabase_client.table('kb_chunks')\
+                .select('id, doc_id, section, content, embedding')\
+                .limit(100)\
+                .execute()
+            
+            if not result.data:
+                logger.warning("No chunks found in database")
+                return []
+            
+            # Calculate cosine similarity client-side
+            import numpy as np
+            query_vec = np.array(embedding)
+            
+            chunks_with_similarity = []
+            for chunk in result.data:
+                if not chunk.get('embedding'):
+                    continue
+                
+                # Parse embedding
+                chunk_emb = chunk['embedding']
+                if isinstance(chunk_emb, str):
+                    import json
+                    chunk_emb = json.loads(chunk_emb)
+                
+                # Calculate cosine similarity
+                chunk_vec = np.array(chunk_emb)
+                similarity = 1 - np.dot(query_vec, chunk_vec) / (
+                    np.linalg.norm(query_vec) * np.linalg.norm(chunk_vec)
+                )
+                similarity = 1 - similarity  # Convert distance to similarity
+                
+                chunks_with_similarity.append({
+                    'id': chunk['id'],
+                    'doc_id': chunk['doc_id'],
+                    'section': chunk['section'],
+                    'content': chunk['content'],
+                    'similarity': float(similarity)
+                })
+            
+            # Sort by similarity (highest first) and apply threshold
+            chunks_with_similarity.sort(key=lambda x: x['similarity'], reverse=True)
+            chunks = [c for c in chunks_with_similarity if c['similarity'] > threshold][:top_k]
             
             # Filter by doc_id if specified
             if doc_id:
                 chunks = [c for c in chunks if c.get('doc_id') == doc_id]
             
-            logger.debug(f"Retrieved {len(chunks)} chunks for query: '{query[:50]}...'")
+            logger.debug(f"Retrieved {len(chunks)} chunks for query: '{query[:50]}...' (client-side calc)")
             return chunks
         
         except Exception as e:
