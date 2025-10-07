@@ -45,7 +45,7 @@ from .langchain_compat import (
 )
 
 # Import Supabase configuration
-from config.supabase_config import supabase_settings
+from src.config.supabase_config import supabase_settings
 
 # Import observability (gracefully handle if not available)
 try:
@@ -86,8 +86,8 @@ class RagEngine:
         if self.use_pgvector:
             try:
                 supabase_settings.validate_supabase()
-                from retrieval.pgvector_retriever import get_retriever
-                self.pgvector_retriever = get_retriever(similarity_threshold=0.7)
+                from src.retrieval.pgvector_retriever import get_retriever
+                self.pgvector_retriever = get_retriever(similarity_threshold=0.3)  # Very low threshold for better recall
                 logger.info("pgvector retriever initialized successfully")
             except Exception as e:
                 logger.error(f"pgvector initialization failed: {e}")
@@ -243,23 +243,28 @@ class RagEngine:
 
     # ========== CORE GENERATION ==========
     @trace_generation
-    def generate_response(self, query: str) -> str:
+    def generate_response(self, query: str, chat_history: Optional[List[Dict[str, str]]] = None) -> str:
         """Generate an answer using RetrievalQA chain if available.
         
         **Observability**: Full RAG pipeline traced with LangSmith
         - Retrieval metrics
         - Generation tokens and latency
         - Optional evaluation metrics
+        
+        Args:
+            query: The user's question
+            chat_history: Previous conversation messages for context
         """
         start_time = time.time()
         
         # Retrieve context
         retrieved = self.retrieve(query)
         
-        # Generate response
+        # Generate response with context and chat history
         response = self.response_generator.generate_basic_response(
             query, 
-            fallback_docs=retrieved.get("matches", [])
+            fallback_docs=retrieved.get("matches", []),
+            chat_history=chat_history
         )
         
         latency_ms = int((time.time() - start_time) * 1000)

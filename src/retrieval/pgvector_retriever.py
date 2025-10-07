@@ -28,8 +28,8 @@ import logging
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
 
-from config.supabase_config import get_supabase_client, supabase_settings
-from analytics.supabase_analytics import supabase_analytics, RetrievalLogData
+from src.config.supabase_config import get_supabase_client, supabase_settings
+from src.analytics.supabase_analytics import supabase_analytics, RetrievalLogData
 
 logger = logging.getLogger(__name__)
 

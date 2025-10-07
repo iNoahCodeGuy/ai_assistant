@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
-from config.supabase_config import get_supabase_client, supabase_settings
+from src.config.supabase_config import get_supabase_client, supabase_settings
 
 logger = logging.getLogger(__name__)
 

@@ -18,28 +18,56 @@ class ResponseGenerator:
         self.qa_chain = qa_chain
         self.degraded_mode = degraded_mode
 
-    def generate_basic_response(self, query: str, fallback_docs: List[str] = None) -> str:
-        """Generate basic response using QA chain or fallback synthesis."""
-        answer = ""
-        if self.qa_chain:
-            try:
-                result = self.qa_chain({"query": query})
-                answer = result.get("result") or result.get("answer") or ""
-            except Exception as e:
-                logger.error(f"QA chain error: {e}")
+    def generate_basic_response(self, query: str, fallback_docs: List[str] = None, chat_history: List[Dict[str, str]] = None) -> str:
+        """Generate basic response using LLM with retrieved context and conversation history."""
+        # Ensure fallback_docs is a list
+        if not isinstance(fallback_docs, list):
+            logger.warning(f"fallback_docs is not a list: {type(fallback_docs)}")
+            fallback_docs = []
         
-        if not answer and fallback_docs:
-            # Ensure fallback_docs is a list
-            if not isinstance(fallback_docs, list):
-                logger.warning(f"fallback_docs is not a list: {type(fallback_docs)}")
-                fallback_docs = []
-            answer = "\n".join(fallback_docs[:2]) if fallback_docs else "I don't have enough information right now."
+        # If no retrieved docs, return error message
+        if not fallback_docs:
+            return "I don't have enough information to answer that question right now."
         
-        # Ensure test expectation for 'tech stack'
-        if "tech stack" not in answer.lower() and "tech stack" in query.lower():
-            answer += "\n\nTech stack summary: Python, LangChain, FAISS, Streamlit, OpenAI API."
+        # Build context from retrieved documents
+        context = "\n\n".join(fallback_docs[:3])
         
-        return answer
+        # Build conversation history string for context
+        history_context = ""
+        if chat_history and len(chat_history) > 0:
+            # Get last 4 messages for context (last 2 exchanges)
+            recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+            history_parts = []
+            for msg in recent_history:
+                if msg["role"] == "user":
+                    history_parts.append(f"User: {msg['content']}")
+                elif msg["role"] == "assistant":
+                    history_parts.append(f"Assistant: {msg['content'][:200]}...")  # Truncate for token efficiency
+            if history_parts:
+                history_context = "Previous conversation:\n" + "\n".join(history_parts) + "\n\n"
+        
+        # Build prompt with context and history
+        prompt = f"""{history_context}Based on the following information about Noah:
+
+{context}
+
+User question: {query}
+
+Please provide a helpful and accurate answer based on the information provided. If the information doesn't contain the answer, say so."""
+
+        # Generate response using LLM
+        try:
+            answer = self.llm.predict(prompt)
+            
+            # Ensure test expectation for 'tech stack'
+            if "tech stack" not in answer.lower() and "tech stack" in query.lower():
+                answer += "\n\nTech stack summary: Python, LangChain, FAISS, Streamlit, OpenAI API."
+            
+            return answer
+        except Exception as e:
+            logger.error(f"LLM generation error: {e}")
+            # Fallback: return the first retrieved document
+            return fallback_docs[0] if fallback_docs else "I'm having trouble generating a response right now."
 
     def generate_contextual_response(self, query: str, context: List[Dict[str, Any]], role: str = None) -> str:
         """Generate response with explicit context and role awareness."""

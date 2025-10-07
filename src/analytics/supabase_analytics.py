@@ -19,7 +19,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 import uuid
 
-from config.supabase_config import get_supabase_client, supabase_settings
+from src.config.supabase_config import get_supabase_client, supabase_settings
 
 logger = logging.getLogger(__name__)
 

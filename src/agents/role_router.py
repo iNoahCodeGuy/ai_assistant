@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
-from core.rag_engine import RagEngine
-from core.memory import Memory
-from config.supabase_config import supabase_settings
+from src.core.rag_engine import RagEngine
+from src.core.memory import Memory
+from src.config.supabase_config import supabase_settings
 from .roles import role_include_code  # NEW import
 
 class RoleRouter:
@@ -25,13 +25,13 @@ class RoleRouter:
         query_type = self._classify_query(query)
 
         if role == "Hiring Manager (nontechnical)":
-            return self._handle_hiring_manager(query, query_type, rag_engine, technical=False)
+            return self._handle_hiring_manager(query, query_type, rag_engine, technical=False, chat_history=chat_history)
         if role == "Hiring Manager (technical)":
-            return self._handle_hiring_manager(query, query_type, rag_engine, technical=True)
+            return self._handle_hiring_manager(query, query_type, rag_engine, technical=True, chat_history=chat_history)
         if role == "Software Developer":
-            return self._handle_developer(query, query_type, rag_engine)
+            return self._handle_developer(query, query_type, rag_engine, chat_history=chat_history)
         if role == "Just looking around":
-            return self._handle_casual(query, query_type, rag_engine)
+            return self._handle_casual(query, query_type, rag_engine, chat_history=chat_history)
         if role == "Looking to confess crush":
             return self._handle_confession(query)
         return {"response": "Please select a valid role to continue.", "type": "error"}
@@ -48,23 +48,23 @@ class RoleRouter:
             return "career"
         return "general"
 
-    def _handle_hiring_manager(self, query: str, query_type: str, rag_engine: RagEngine, technical: bool) -> Dict[str, Any]:
+    def _handle_hiring_manager(self, query: str, query_type: str, rag_engine: RagEngine, technical: bool, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         if technical and query_type == "technical":
             ctx = rag_engine.retrieve(query)
-            resp = self._handle_technical_manager(query, ctx, rag_engine)
+            resp = self._handle_technical_manager(query, ctx, rag_engine, chat_history)
             return {"response": resp, "type": "technical", "context": ctx}
         # Default to career-focused for nontechnical or non-technical query
         ctx = rag_engine.retrieve(query)
-        resp = rag_engine.generate_response(query)
+        resp = rag_engine.generate_response(query, chat_history=chat_history)
         return {"response": resp, "type": "career", "context": ctx}
 
-    def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> str:
         """Enhanced technical manager handling with code snippets."""
         include_code = True  # technical manager always gets code for technical queries
         results = rag_engine.retrieve_with_code(user_input, role="Hiring Manager (technical)")
         
-        # Use basic generate_response method
-        response = rag_engine.generate_response(user_input)
+        # Use basic generate_response method with chat history
+        response = rag_engine.generate_response(user_input, chat_history=chat_history)
         
         # Add code snippets to response
         if results.get("code_snippets"):
@@ -74,22 +74,22 @@ class RoleRouter:
         
         return response
 
-    def _handle_developer(self, query: str, query_type: str, rag_engine: RagEngine) -> Dict[str, Any]:
+    def _handle_developer(self, query: str, query_type: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         if query_type == "technical":
             ctx = rag_engine.retrieve(query)
-            resp = self._handle_developer_with_code(query, ctx, rag_engine)
+            resp = self._handle_developer_with_code(query, ctx, rag_engine, chat_history)
             return {"response": resp, "type": "technical", "context": ctx}
         ctx = rag_engine.retrieve(query)
-        resp = rag_engine.generate_response(query)
+        resp = rag_engine.generate_response(query, chat_history=chat_history)
         return {"response": resp, "type": query_type, "context": ctx}
 
-    def _handle_developer_with_code(self, user_input: str, context: str, rag_engine: RagEngine) -> str:
+    def _handle_developer_with_code(self, user_input: str, context: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> str:
         """Enhanced developer handling with detailed code integration."""
         include_code = True
         results = rag_engine.retrieve_with_code(user_input, role="Software Developer")
         
-        # Use basic generate_response method
-        response = rag_engine.generate_response(user_input)
+        # Use basic generate_response method with chat history
+        response = rag_engine.generate_response(user_input, chat_history=chat_history)
         
         if results.get("code_snippets"):
             response += "\n\n## Code Implementation\n"
@@ -99,7 +99,7 @@ class RoleRouter:
         
         return response
 
-    def _handle_casual(self, query: str, query_type: str, rag_engine: RagEngine) -> Dict[str, Any]:
+    def _handle_casual(self, query: str, query_type: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         if query_type == "mma":
             return {
                 "response": "Noah's MMA fight link:",
@@ -109,10 +109,10 @@ class RoleRouter:
         if query_type == "fun":
             # Temporary reuse of career KB – replace with dedicated fun facts store later
             ctx = rag_engine.retrieve("fun facts about Noah")
-            synthesized = rag_engine.generate_response("List 3 short fun facts about Noah. Keep total under 60 words.")
+            synthesized = rag_engine.generate_response("List 3 short fun facts about Noah. Keep total under 60 words.", chat_history=chat_history)
             return {"response": synthesized, "type": "fun", "context": ctx}
         ctx = rag_engine.retrieve(query)
-        resp = rag_engine.generate_response(query)
+        resp = rag_engine.generate_response(query, chat_history=chat_history)
         return {"response": resp, "type": "general", "context": ctx}
 
     def _handle_confession(self, query: str) -> Dict[str, Any]:
