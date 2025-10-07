@@ -10,6 +10,13 @@ class ResponseFormatter:
         response = response_data.get("response", "")
         rtype = response_data.get("type", "general")
         context = response_data.get("context", [])
+        
+        # Convert context dict to list if needed
+        if isinstance(context, dict):
+            # Extract matches from the dict returned by retrieve()
+            context = context.get("matches", [])
+        elif context is None:
+            context = []
 
         if rtype == "technical":
             return self._format_technical_response(response, context)
@@ -31,6 +38,10 @@ class ResponseFormatter:
         sections.append("## 🔧 Engineer Detail")
         sections.append(response)
         
+        # Ensure context is a list
+        if not isinstance(context, list):
+            context = []
+        
         # Code Examples Section (if context contains code snippets)
         code_snippets = [doc for doc in context if hasattr(doc, 'metadata') and doc.metadata.get('type') == 'code']
         if code_snippets:
@@ -48,7 +59,7 @@ class ResponseFormatter:
         sections.append(self._generate_summary(response))
         
         # Citations Section
-        if context:
+        if context and isinstance(context, list):
             sections.append("\n## 📚 Citations")
             for i, doc in enumerate(context[:5], 1):
                 if hasattr(doc, 'metadata'):
@@ -91,7 +102,11 @@ class ResponseFormatter:
         return base
 
     def _format_career_response(self, response: str, context: List[Document]) -> str:
-        sources = "\n".join(f"- {d.metadata.get('source','unknown')}" for d in context[:3]) or "- (no sources)"
+        # Ensure context is a list
+        if not isinstance(context, list):
+            context = []
+        
+        sources = "\n".join(f"- {d.metadata.get('source','unknown')}" for d in context[:3] if hasattr(d, 'metadata')) or "- (no sources)"
         return f"## Career Overview\n{response}\n\n### Notable Outcomes\n(Derived from grounded data.)\n\n### Sources\n{sources}"
 
     def _format_fun_response(self, response: str) -> str:

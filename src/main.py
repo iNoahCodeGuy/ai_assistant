@@ -55,16 +55,24 @@ Environment Variables Required:
     SUPABASE_URL: Your Supabase project URL
     SUPABASE_SERVICE_KEY: Service role key (bypasses RLS)
 """
+import sys
+from pathlib import Path
+
+# Add parent directory to Python path for imports
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import streamlit as st
 import time
 import uuid
 from datetime import datetime
-from core.rag_engine import RagEngine
-from core.memory import Memory
-from agents.role_router import RoleRouter
-from agents.response_formatter import ResponseFormatter
-from analytics.supabase_analytics import supabase_analytics, UserInteractionData
-from config.supabase_config import supabase_settings
+from src.core.rag_engine import RagEngine
+from src.core.memory import Memory
+from src.agents.role_router import RoleRouter
+from src.agents.response_formatter import ResponseFormatter
+from src.analytics.supabase_analytics import supabase_analytics, UserInteractionData
+from src.config.supabase_config import supabase_settings
 
 ROLE_OPTIONS = [
     "Hiring Manager (nontechnical)",  # Business-focused, career KB only

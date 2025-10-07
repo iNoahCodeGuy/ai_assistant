@@ -29,7 +29,11 @@ class ResponseGenerator:
                 logger.error(f"QA chain error: {e}")
         
         if not answer and fallback_docs:
-            answer = "\n".join(fallback_docs[:2]) or "I don't have enough information right now."
+            # Ensure fallback_docs is a list
+            if not isinstance(fallback_docs, list):
+                logger.warning(f"fallback_docs is not a list: {type(fallback_docs)}")
+                fallback_docs = []
+            answer = "\n".join(fallback_docs[:2]) if fallback_docs else "I don't have enough information right now."
         
         # Ensure test expectation for 'tech stack'
         if "tech stack" not in answer.lower() and "tech stack" in query.lower():
@@ -61,6 +65,13 @@ class ResponseGenerator:
     def generate_technical_response(self, query: str, career_matches: List[str], code_snippets: List[Dict[str, Any]], role: str) -> str:
         """Generate technical response with code integration."""
         context_parts = []
+        
+        # Ensure career_matches is a list
+        if career_matches is None:
+            career_matches = []
+        elif not isinstance(career_matches, list):
+            logger.warning(f"career_matches is not a list: {type(career_matches)}")
+            career_matches = []
         
         if career_matches:
             context_parts.append("Career Knowledge:")
