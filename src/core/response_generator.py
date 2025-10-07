@@ -137,6 +137,12 @@ Please provide a helpful and accurate answer based on the information provided. 
             2. Business value and impact
             3. Relevant experience and skills
             
+            IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
+            - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
+            - Keep Mermaid diagrams intact within ```mermaid``` blocks
+            - Keep code blocks intact within ``` code ``` blocks
+            - Do not summarize or paraphrase code/diagrams - show them in full
+            
             Keep it professional and focused on hiring assessment.
             """
         elif role == "Software Developer":
@@ -152,6 +158,14 @@ Please provide a helpful and accurate answer based on the information provided. 
             2. Code architecture and patterns
             3. Development approach and methodology
             
+            IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
+            - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
+            - Keep Mermaid diagrams intact within ```mermaid``` blocks
+            - Keep code blocks intact within ``` code ``` blocks
+            - Keep ASCII diagrams with exact spacing and characters
+            - Do not summarize or paraphrase code/diagrams - show them in full
+            - Add brief explanations AFTER showing the code/diagram
+            
             Be technical and specific about implementation.
             """
         else:
@@ -161,6 +175,10 @@ Please provide a helpful and accurate answer based on the information provided. 
             Context: {context_str}
             
             Question: {query}
+            
+            IMPORTANT: If the context contains code, diagrams, or formatted content:
+            - Preserve ALL formatting exactly (markdown, code blocks, diagrams)
+            - Do not summarize technical content - show it in full
             
             Provide a helpful and informative response about Noah's background and experience.
             """

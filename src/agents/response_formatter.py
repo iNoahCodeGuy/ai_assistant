@@ -102,12 +102,32 @@ class ResponseFormatter:
         return base
 
     def _format_career_response(self, response: str, context: List[Document]) -> str:
+        """Format career/technical responses with sources."""
         # Ensure context is a list
         if not isinstance(context, list):
             context = []
         
-        sources = "\n".join(f"- {d.metadata.get('source','unknown')}" for d in context[:3] if hasattr(d, 'metadata')) or "- (no sources)"
-        return f"## Career Overview\n{response}\n\n### Notable Outcomes\n(Derived from grounded data.)\n\n### Sources\n{sources}"
+        # Build better source citations
+        if context:
+            sources_list = []
+            for i, doc in enumerate(context[:3], 1):
+                if hasattr(doc, 'metadata'):
+                    source = doc.metadata.get('source', 'unknown')
+                    doc_id = doc.metadata.get('doc_id', '')
+                    section = doc.metadata.get('section', '')[:80] if doc.metadata.get('section') else ''
+                    similarity = doc.metadata.get('similarity', 0)
+                    
+                    # Format source with more detail
+                    if section:
+                        sources_list.append(f"{i}. **{doc_id}** - {section} (similarity: {similarity:.2f})")
+                    else:
+                        sources_list.append(f"{i}. **{source}** (similarity: {similarity:.2f})")
+            
+            sources_text = "\n".join(sources_list) if sources_list else "- (no sources)"
+        else:
+            sources_text = "- (no sources)"
+        
+        return f"{response}\n\n---\n\n### 📚 Sources\n{sources_text}"
 
     def _format_fun_response(self, response: str) -> str:
         return f"### Fun Facts\n{response}"
