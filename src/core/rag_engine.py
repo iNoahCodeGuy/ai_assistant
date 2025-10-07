@@ -349,6 +349,12 @@ class RagEngine:
         if getattr(self, 'code_service', None):
             self.code_service.ensure_current()
             self._code_index_snapshot = self.code_service._snapshot
+    
+    def code_index_version(self) -> str:
+        """Return code index version hash for tracking changes."""
+        if getattr(self, 'code_service', None):
+            return getattr(self.code_service, '_snapshot', 'none')
+        return "none"
 
     # ========== HEALTH & MONITORING ==========
     def health_check(self) -> Dict[str, Any]:

@@ -38,13 +38,18 @@ class RoleRouter:
 
     def _classify_query(self, query: str) -> str:
         q = query.lower()
-        if any(k in q for k in ["mma", "fight", "ufc", "bout"]):
+        # Check for specific MMA keywords (use word boundaries to avoid false matches)
+        import re
+        if any(re.search(r'\b' + k + r'\b', q) for k in ["mma", "fight", "ufc", "bout", "cage"]):
             return "mma"
-        if any(k in q for k in ["fun fact", "fun", "fact", "hobby"]):
+        # Check for fun fact requests (be more specific)
+        if any(k in q for k in ["fun fact", "hobby", "hobbies", "interesting fact"]):
             return "fun"
-        if any(k in q for k in ["code", "technical", "stack", "function", "architecture", "retrieval"]):
+        # Check for technical queries
+        if any(k in q for k in ["code", "technical", "stack", "function", "architecture", "retrieval", "implementation"]):
             return "technical"
-        if any(k in q for k in ["career", "resume", "cv", "experience", "achievement", "role history"]):
+        # Check for career queries
+        if any(k in q for k in ["career", "resume", "cv", "experience", "achievement", "role history", "work"]):
             return "career"
         return "general"
 
