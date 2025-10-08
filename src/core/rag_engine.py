@@ -153,11 +153,12 @@ class RagEngine:
         
         **Observability**: Traced with LangSmith, metrics logged
         
-        Returns dict with keys: 'matches', 'skills', 'raw', 'scores'
+        Returns dict with keys: 'matches', 'skills', 'raw', 'scores', 'chunks'
         """
         start_time = time.time()
         matches: List[str] = []
         scores: List[float] = []
+        chunks: List[Dict] = []  # ← PRESERVE full chunk data
         
         # Use pgvector for retrieval
         if self.pgvector_retriever:
@@ -190,7 +191,8 @@ class RagEngine:
             "matches": matches,
             "skills": skills_fragments if skills_fragments else ["No explicit skills extracted"],
             "raw": matches,
-            "scores": scores
+            "scores": scores,
+            "chunks": chunks  # ← INCLUDE full chunks with metadata for source citations
         }
 
     @trace_retrieval

@@ -1,48 +1,52 @@
-"""Test architecture KB retrieval"""
+"""Test architecture KB retrieval and source formatting"""
 
-from config.supabase_config import get_supabase_client
+from src.config.supabase_config import get_supabase_client, supabase_settings
 from openai import OpenAI
-from config.supabase_config import supabase_settings
 
 # Initialize
 openai_client = OpenAI(api_key=supabase_settings.api_key)
 supabase = get_supabase_client()
 
-# Test query
-query = "can you display or reference code?"
+# Test queries
+test_queries = [
+    "show me the system architecture",
+    "can you display or reference code?",
+    "what is the tech stack?",
+    "display the database schema"
+]
 
-print(f"Testing query: {query}")
-print("=" * 70)
+print("=" * 80)
+print("ARCHITECTURE RETRIEVAL TEST")
+print("=" * 80)
 
-# Generate embedding
-print("\n1. Generating embedding...")
-response = openai_client.embeddings.create(
-    model='text-embedding-3-small',
-    input=query
-)
-embedding = response.data[0].embedding
-print(f"✅ Generated {len(embedding)}-dim embedding")
-
-# Search with different thresholds
-thresholds = [0.5, 0.6, 0.7]
-
-for threshold in thresholds:
-    print(f"\n2. Searching with threshold={threshold}...")
+for query in test_queries:
+    print(f"\n🔍 Query: {query}")
+    print("-" * 80)
     
+    # Generate embedding
+    response = openai_client.embeddings.create(
+        model='text-embedding-3-small',
+        input=query
+    )
+    embedding = response.data[0].embedding
+    
+    # Search using the correct function name
     results = supabase.rpc(
-        'match_kb_chunks',
+        'search_kb_chunks',  # ← Correct function name
         {
             'query_embedding': embedding,
-            'match_threshold': threshold,
-            'match_count': 5
+            'match_threshold': 0.5,
+            'match_count': 3
         }
     ).execute()
     
-    print(f"\n📊 Found {len(results.data)} results:")
-    for i, row in enumerate(results.data[:5], 1):
-        print(f"\n  {i}. Doc: {row['doc_id']} | Similarity: {row['similarity']:.3f}")
-        print(f"     Section: {row['section'][:60]}...")
-        print(f"     Content preview: {row['content'][:100]}...")
+    print(f"\n📊 Found {len(results.data)} results:\n")
+    
+    for i, row in enumerate(results.data, 1):
+        print(f"  {i}. 📄 **{row['doc_id']}** (similarity: {row.get('similarity', 0):.3f})")
+        print(f"     Section: {row['section'][:70]}...")
+        print(f"     Content: {row['content'][:120]}...\n")
 
-print("\n" + "=" * 70)
+print("=" * 80)
 print("✅ Test complete!")
+print("=" * 80)

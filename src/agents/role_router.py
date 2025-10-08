@@ -34,7 +34,7 @@ class RoleRouter:
             return self._handle_casual(query, query_type, rag_engine, chat_history=chat_history)
         if role == "Looking to confess crush":
             return self._handle_confession(query)
-        return {"response": "Please select a valid role to continue.", "type": "error"}
+        return {"response": "Please select a valid role to continue.", "type": "error", "context": []}
 
     def _classify_query(self, query: str) -> str:
         q = query.lower()
@@ -54,14 +54,29 @@ class RoleRouter:
         return "general"
 
     def _handle_hiring_manager(self, query: str, query_type: str, rag_engine: RagEngine, technical: bool, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+        # Check if this is a "show me" or "display" query - return raw content
+        if any(keyword in query.lower() for keyword in ["show me", "display", "show the", "diagram", "code example"]):
+            ctx = rag_engine.retrieve(query)
+            # Get the best match and return its content directly
+            if ctx and ctx.get("chunks"):
+                best_chunk = ctx["chunks"][0]
+                # Extract the answer part (after "Answer: ")
+                content = best_chunk.get('content', '')
+                if "Answer: " in content:
+                    resp = content.split("Answer: ", 1)[1]
+                else:
+                    resp = content
+                # Return with full chunks for source citations
+                return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
+        
         if technical and query_type == "technical":
             ctx = rag_engine.retrieve(query)
             resp = self._handle_technical_manager(query, ctx, rag_engine, chat_history)
-            return {"response": resp, "type": "technical", "context": ctx}
+            return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
         # Default to career-focused for nontechnical or non-technical query
         ctx = rag_engine.retrieve(query)
         resp = rag_engine.generate_response(query, chat_history=chat_history)
-        return {"response": resp, "type": "career", "context": ctx}
+        return {"response": resp, "type": "career", "context": ctx.get("chunks", [])}
 
     def _handle_technical_manager(self, user_input: str, context: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> str:
         """Enhanced technical manager handling with code snippets."""
@@ -80,13 +95,28 @@ class RoleRouter:
         return response
 
     def _handle_developer(self, query: str, query_type: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
+        # Check if this is a "show me" or "display" query - return raw content
+        if any(keyword in query.lower() for keyword in ["show me", "display", "show the", "diagram", "code example", "file structure"]):
+            ctx = rag_engine.retrieve(query)
+            # Get the best match and return its content directly
+            if ctx and ctx.get("chunks"):
+                best_chunk = ctx["chunks"][0]
+                # Extract the answer part (after "Answer: ")
+                content = best_chunk.get('content', '')
+                if "Answer: " in content:
+                    resp = content.split("Answer: ", 1)[1]
+                else:
+                    resp = content
+                # Return with full chunks for source citations
+                return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
+        
         if query_type == "technical":
             ctx = rag_engine.retrieve(query)
             resp = self._handle_developer_with_code(query, ctx, rag_engine, chat_history)
-            return {"response": resp, "type": "technical", "context": ctx}
+            return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
         ctx = rag_engine.retrieve(query)
         resp = rag_engine.generate_response(query, chat_history=chat_history)
-        return {"response": resp, "type": query_type, "context": ctx}
+        return {"response": resp, "type": query_type, "context": ctx.get("chunks", [])}
 
     def _handle_developer_with_code(self, user_input: str, context: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> str:
         """Enhanced developer handling with detailed code integration."""
@@ -123,6 +153,7 @@ class RoleRouter:
     def _handle_confession(self, query: str) -> Dict[str, Any]:
         # No retrieval or LLM call for privacy / simplicity
         return {
-            "response": "Your message is noted. Use the form for new confessions. 💌",
-            "type": "confession"
+            "response": "Your message is noted. Use the form below to submit confessions. 💌",
+            "type": "confession",
+            "context": []  # ← Add empty context to prevent formatter errors
         }

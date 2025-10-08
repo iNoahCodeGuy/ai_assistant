@@ -111,17 +111,32 @@ class ResponseFormatter:
         if context:
             sources_list = []
             for i, doc in enumerate(context[:3], 1):
+                # Handle both Document objects and dicts
                 if hasattr(doc, 'metadata'):
-                    source = doc.metadata.get('source', 'unknown')
-                    doc_id = doc.metadata.get('doc_id', '')
-                    section = doc.metadata.get('section', '')[:80] if doc.metadata.get('section') else ''
-                    similarity = doc.metadata.get('similarity', 0)
-                    
-                    # Format source with more detail
-                    if section:
-                        sources_list.append(f"{i}. **{doc_id}** - {section} (similarity: {similarity:.2f})")
-                    else:
-                        sources_list.append(f"{i}. **{source}** (similarity: {similarity:.2f})")
+                    # Document object - extract from metadata
+                    metadata = doc.metadata
+                    source = metadata.get('source', 'unknown')
+                    doc_id = metadata.get('doc_id', '')
+                    section = metadata.get('section', '')[:80] if metadata.get('section') else ''
+                    similarity = metadata.get('similarity', 0)
+                    if not similarity and hasattr(doc, 'similarity'):
+                        similarity = doc.similarity
+                elif isinstance(doc, dict):
+                    # Dict from pgvector_retriever - fields are at top level
+                    source = doc.get('source', 'unknown')
+                    doc_id = doc.get('doc_id', '')
+                    section = doc.get('section', '')[:80] if doc.get('section') else ''
+                    similarity = doc.get('similarity', 0)
+                else:
+                    continue
+                
+                # Format source with more detail
+                if section and doc_id:
+                    sources_list.append(f"{i}. **{doc_id}** - {section} (similarity: {similarity:.2f})")
+                elif doc_id:
+                    sources_list.append(f"{i}. **{doc_id}** (similarity: {similarity:.2f})")
+                else:
+                    sources_list.append(f"{i}. **{source}** (similarity: {similarity:.2f})")
             
             sources_text = "\n".join(sources_list) if sources_list else "- (no sources)"
         else:
