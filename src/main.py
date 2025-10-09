@@ -55,6 +55,7 @@ Environment Variables Required:
     SUPABASE_URL: Your Supabase project URL
     SUPABASE_SERVICE_KEY: Service role key (bypasses RLS)
 """
+import os
 import sys
 from pathlib import Path
 
@@ -73,6 +74,8 @@ from src.agents.role_router import RoleRouter
 from src.agents.response_formatter import ResponseFormatter
 from src.analytics.supabase_analytics import supabase_analytics, UserInteractionData
 from src.config.supabase_config import supabase_settings
+from src.flows.conversation_state import ConversationState
+from src.flows.conversation_flow import run_conversation_flow
 
 ROLE_OPTIONS = [
     "Hiring Manager (nontechnical)",  # Business-focused, career KB only
@@ -81,6 +84,8 @@ ROLE_OPTIONS = [
     "Just looking around",             # Casual visitor, lightweight retrieval
     "Looking to confess crush"         # Fun mode, guarded PII handling
 ]
+
+USE_LANGGRAPH_FLOW = os.getenv("LANGGRAPH_FLOW_ENABLED", "true").lower() == "true"
 
 def init_state():
     """Initialize Streamlit session state variables.
@@ -189,50 +194,63 @@ def main():
             st.markdown(user_input)
 
         try:
-            # Route + format
-            raw_response = role_router.route(
-                st.session_state.role,
-                user_input,
-                memory,
-                rag_engine,
-                chat_history=st.session_state.chat_history
-            )
+            if USE_LANGGRAPH_FLOW:
+                state = ConversationState(
+                    role=st.session_state.role,
+                    query=user_input,
+                    chat_history=st.session_state.chat_history.copy(),
+                )
+                state = run_conversation_flow(
+                    state,
+                    rag_engine,
+                    session_id=st.session_state.session_id,
+                )
+                raw_response = {
+                    "response": state.answer or "I need a moment to find that info.",
+                    "type": state.fetch("query_type", "general"),
+                    "context": state.retrieved_chunks,
+                }
+                latency_ms = int((time.time() - start_time) * 1000)
+            else:
+                raw_response = role_router.route(
+                    st.session_state.role,
+                    user_input,
+                    memory,
+                    rag_engine,
+                    chat_history=st.session_state.chat_history
+                )
+                formatted_latency = time.time() - start_time
+                latency_ms = int(formatted_latency * 1000)
+
+                query_type = "general"
+                lowered = user_input.lower()
+                if any(keyword in lowered for keyword in ["code", "implementation", "architecture"]):
+                    query_type = "technical"
+                elif any(keyword in lowered for keyword in ["career", "experience", "background"]):
+                    query_type = "career"
+                elif any(keyword in lowered for keyword in ["mma", "fight", "fighting"]):
+                    query_type = "mma"
+
+                interaction_data = UserInteractionData(
+                    session_id=st.session_state.session_id,
+                    role_mode=st.session_state.role,
+                    query=user_input,
+                    answer=response_formatter.format(raw_response),
+                    query_type=query_type,
+                    latency_ms=latency_ms,
+                    tokens_prompt=None,
+                    tokens_completion=None,
+                    success=True
+                )
+                supabase_analytics.log_interaction(interaction_data)
+
             formatted = response_formatter.format(raw_response)
-            
-            # Calculate response time and token usage
-            response_time = time.time() - start_time
-            latency_ms = int(response_time * 1000)
-            
-            # Determine query type
-            query_type = "general"
-            if any(keyword in user_input.lower() for keyword in ["code", "implementation", "architecture"]):
-                query_type = "technical"
-            elif any(keyword in user_input.lower() for keyword in ["career", "experience", "background"]):
-                query_type = "career"
-            elif any(keyword in user_input.lower() for keyword in ["mma", "fight", "fighting"]):
-                query_type = "mma"
-            
-            # Log interaction to Supabase analytics
-            interaction_data = UserInteractionData(
-                session_id=st.session_state.session_id,
-                role_mode=st.session_state.role,
-                query=user_input,
-                answer=formatted,
-                query_type=query_type,
-                latency_ms=latency_ms,
-                tokens_prompt=None,  # TODO: Extract from OpenAI response
-                tokens_completion=None,  # TODO: Extract from OpenAI response
-                success=True
-            )
-            
-            supabase_analytics.log_interaction(interaction_data)
-            
-            # Append assistant message
+
             st.session_state.chat_history.append({"role": "assistant", "content": formatted})
 
             with st.chat_message("assistant"):
                 st.markdown(formatted)
-                
+
         except Exception as e:
             # Log failed interaction
             response_time = time.time() - start_time

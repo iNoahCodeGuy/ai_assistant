@@ -9,6 +9,7 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 - [Role-Specific Behaviors](#role-specific-behaviors)
 - [Installation](#installation)
 - [Usage](#usage)
+- [LangGraph Flow](#langgraph-flow)
 - [File Structure](#file-structure)
 - [Contributing](#contributing)
 - [License](#license)
@@ -76,7 +77,7 @@ streamlit run src/main.py
 - **Confession Mode**: Lightweight, guarded input path with no unintended PII retention.
 - **Analytics Tracking**: Interaction logging, retrieval tracking, user feedback with Supabase.
 - **Contact Requests**: Email delivery via Resend, SMS notifications via Twilio.
-- **Extensible Orchestration**: Designed to plug into LangGraph for future routing graphs.
+- **Extensible Orchestration**: LangGraph-style node pipeline now powers the default flow.
 - **Observability Ready**: LangSmith integration hooks (traces/evals).
 
 ## Tech Stack
@@ -190,6 +191,8 @@ Run the Streamlit application locally:
 streamlit run src/main.py
 ```
 
+By default the LangGraph-inspired node pipeline runs. Set `LANGGRAPH_FLOW_ENABLED=false` only if you need the legacy `RoleRouter` path for troubleshooting (deprecated and scheduled for removal).
+
 ### Production Deployment
 
 **Option 1: Streamlit Community Cloud**
@@ -218,6 +221,13 @@ User → Streamlit UI → RagEngine (pgvector search) → OpenAI GPT → Respons
                 ↓
         Feedback → Email (Resend) / SMS (Twilio)
 ```
+
+## LangGraph Flow
+
+- **Preferred Runtime:** `LANGGRAPH_FLOW_ENABLED=true` (default) executes `run_conversation_flow`, which chains `classify_query → retrieve_chunks → generate_answer → plan_actions → apply_role_context → execute_actions → log_and_notify` using `ConversationState`.
+- **Legacy Path:** When the flag is `false`, the legacy `RoleRouter` handles requests. This path is frozen and will be removed once downstream integrations are migrated.
+- **Service Initialization:** Conversation nodes lazily resolve Resend, Twilio, and Supabase Storage through shared helpers so both runtime and tests rely on the same singleton instances.
+- **Inventory:** See `docs/runtime_dependencies.md` for the authoritative list of modules referenced at runtime.
 
 ## File Structure
 ```

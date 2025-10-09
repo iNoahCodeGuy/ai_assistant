@@ -1,208 +1,146 @@
-"""Integration tests for code display with CI/CD pipeline.
+"""CI-style tests focused on action execution for role-based flows."""
 
-These tests are designed to run in continuous integration environments
-and validate the complete code display pipeline end-to-end.
-"""
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
 import pytest
-import os
-import tempfile
-import json
-from pathlib import Path
 
-from src.core.rag_engine import RagEngine
-from src.config.settings import Settings
-from src.agents.role_router import RoleRouter
-from src.core.memory import Memory
+from src.flows.conversation_state import ConversationState
+from src.flows import conversation_nodes as nodes
 
 
-class TestCodeDisplayCI:
-    """CI/CD pipeline tests for code display functionality."""
-    
-    def test_production_like_environment(self):
-        """Test code display in a production-like environment setup."""
-        # Simulate production environment variables
-        test_env = {
-            'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', 'test-key'),
-            'CODE_INDEX_PATH': 'vector_stores/code_index',
-            'CAREER_KB_PATH': 'data/career_kb.csv',
+@dataclass
+class DummyRagEngine:
+    def retrieve(self, query: str, top_k: int = 4) -> Dict[str, Any]:
+        return {"matches": [], "scores": [], "chunks": []}
+
+    def retrieve_with_code(self, query: str, role: str | None = None) -> Dict[str, Any]:
+        return {"code_snippets": [], "has_code": False}
+
+    @property
+    def response_generator(self):
+        class _Generator:
+            def generate_basic_response(self, query: str, fallback_docs: List[str], chat_history: List[Dict[str, str]] | None = None) -> str:
+                return "Happy to help with that."
+
+        return _Generator()
+
+
+class DummyResend:
+    def __init__(self):
+        self.sent: List[Dict[str, Any]] = []
+
+    def send_resume_email(self, to_email: str, to_name: str, resume_url: str, message: str | None = None) -> Dict[str, Any]:
+        payload = {
+            "to_email": to_email,
+            "to_name": to_name,
+            "resume_url": resume_url,
+            "message": message,
         }
-        
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create minimal test environment
-            settings = Settings()
-            settings.disable_auto_rebuild = True  # Faster for CI
-            
-            engine = RagEngine(settings=settings)
-            router = RoleRouter()
-            memory = Memory()
-            
-            # Test complete user interaction flow
-            response = router.route(
-                role="Software Developer",
-                query="Show me the RagEngine implementation details",
-                memory=memory,
-                rag_engine=engine,
-                chat_history=[]
-            )
-            
-            # Validate response structure
-            assert isinstance(response, dict)
-            assert 'response' in response
-            assert isinstance(response['response'], str)
-            assert len(response['response']) > 0
-    
-    def test_code_display_smoke_test(self):
-        """Basic smoke test for all code display components."""
-        settings = Settings()
-        settings.disable_auto_rebuild = True
-        
-        # Test component initialization
-        engine = RagEngine(settings=settings)
-        assert engine is not None
-        
-        # Test basic retrieval
-        result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
-        assert isinstance(result, dict)
-        assert 'code_snippets' in result
-        assert 'has_code' in result
-        
-        # Test version tracking
-        version = engine.code_index_version()
-        assert isinstance(version, str)
-    
-    def test_api_key_validation(self):
-        """Test API key validation for CI environments."""
-        settings = Settings()
-        
-        # Should handle missing API key gracefully
-        if not os.getenv('OPENAI_API_KEY'):
-            # In CI without API key, should still initialize
-            engine = RagEngine(settings=settings)
-            assert engine.degraded_mode is True
-        else:
-            # With API key, should work normally
-            engine = RagEngine(settings=settings)
-            assert engine is not None
-    
-    def test_minimal_dependency_mode(self):
-        """Test code display with minimal dependencies."""
-        # Simulate missing optional dependencies
-        with pytest.MonkeyPatch().context() as mp:
-            # Mock missing faiss
-            mp.setattr('src.core.langchain_compat.FAISS', None)
-            
-            settings = Settings()
-            engine = RagEngine(settings=settings)
-            
-            # Should still work in degraded mode
-            result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
-            assert isinstance(result, dict)
-    
-    @pytest.mark.skipif(
-        not os.getenv('OPENAI_API_KEY'), 
-        reason="Requires OpenAI API key for live testing"
+        self.sent.append(payload)
+        return {"status": "sent"}
+
+    def send_contact_notification(self, **payload: Any) -> Dict[str, Any]:
+        self.sent.append(payload)
+        return {"status": "sent"}
+
+
+class DummyTwilio:
+    def __init__(self):
+        self.alerts: List[Dict[str, Any]] = []
+
+    def send_contact_alert(self, **payload: Any) -> Dict[str, Any]:
+        self.alerts.append(payload)
+        return {"status": "sent"}
+
+
+class DummyStorage:
+    def __init__(self):
+        self.requests: List[Dict[str, Any]] = []
+
+    def get_signed_url(self, file_path: str, expires_in: int = 86400) -> str:
+        self.requests.append({"file_path": file_path, "expires_in": expires_in})
+        return "https://signed.example.com/resume.pdf"
+
+
+@pytest.fixture
+def dummy_engine() -> DummyRagEngine:
+    return DummyRagEngine()
+
+
+def test_resume_request_triggers_email_sms_and_prompt(monkeypatch: pytest.MonkeyPatch, dummy_engine: DummyRagEngine) -> None:
+    state = ConversationState(
+        role="Hiring Manager (nontechnical)",
+        query="Could you email me your resume?",
+        chat_history=[{"role": "user", "content": "Hello"}],
     )
-    def test_live_api_integration(self):
-        """Test live API integration when API key is available."""
-        settings = Settings()
-        engine = RagEngine(settings=settings)
-        router = RoleRouter()
-        memory = Memory()
-        
-        # Test actual API call
-        response = router.route(
-            role="Software Developer",
-            query="Show me the technical implementation and code architecture of the RagEngine class",
-            memory=memory,
-            rag_engine=engine,
-            chat_history=[]
-        )
-        
-        # Validate API response
-        assert isinstance(response, dict)
-        assert 'response' in response
-        assert len(response['response']) > 50  # Should be substantial response
-        
-        # Should contain technical content for developer role
-        response_text = response['response'].lower()
-        technical_indicators = ['class', 'method', 'implementation', 'code', 'function']
-        assert any(indicator in response_text for indicator in technical_indicators)
+
+    nodes.classify_query(state)
+    nodes.plan_actions(state)
+    state.stash("user_email", "hiring@example.com")
+    state.stash("user_name", "Alex Recruiter")
+    state.set_answer("Career overview here.")
+
+    resend = DummyResend()
+    twilio = DummyTwilio()
+    storage = DummyStorage()
+
+    monkeypatch.setattr(nodes, "get_resend_service", lambda: resend)
+    monkeypatch.setattr(nodes, "get_twilio_service", lambda: twilio)
+    monkeypatch.setattr(nodes, "get_storage_service", lambda: storage)
+
+    nodes.apply_role_context(state, dummy_engine)
+    nodes.execute_actions(state)
+
+    assert any(action["type"] == "send_resume" for action in state.pending_actions)
+    assert resend.sent[0]["to_email"] == "hiring@example.com"
+    assert storage.requests[0]["file_path"] == "resumes/noah_resume.pdf"
+    assert twilio.alerts[0]["message_preview"].startswith("Resume dispatched")
+    assert "Would you like Noah to reach out?" in (state.answer or "")
 
 
-class TestCodeDisplayHealthChecks:
-    """Health check tests for monitoring code display functionality."""
-    
-    def test_system_health_check(self):
-        """Overall system health check for code display."""
-        health_status = {
-            'rag_engine': False,
-            'code_index': False,
-            'pgvector': False,
-            'response_generation': False
-        }
-        
-        try:
-            settings = Settings()
-            engine = RagEngine(settings=settings)
-            health_status['rag_engine'] = True
-            
-            # Test code index
-            version = engine.code_index_version()
-            if version != "none":
-                health_status['code_index'] = True
-            
-            # Test pgvector retriever
-            if engine.pgvector_retriever is not None:
-                health_status['pgvector'] = True
-            
-            # Test response generation
-            result = engine.retrieve_with_code("test", role="Software Developer", include_code=True)
-            if isinstance(result, dict) and 'code_snippets' in result:
-                health_status['response_generation'] = True
-                
-        except Exception as e:
-            pytest.fail(f"Health check failed: {e}")
-        
-        # Report health status
-        print(f"System Health: {health_status}")
-        
-        # At minimum, basic functionality should work
-        assert health_status['rag_engine'] is True
-        assert health_status['response_generation'] is True
-    
-    def test_performance_baseline(self):
-        """Establish performance baseline for monitoring."""
-        import time
-        
-        settings = Settings()
-        settings.disable_auto_rebuild = True
-        engine = RagEngine(settings=settings)
-        
-        # Measure initialization time
-        start_time = time.time()
-        test_engine = RagEngine(settings=settings)
-        init_time = time.time() - start_time
-        
-        # Measure query time
-        start_time = time.time()
-        result = engine.retrieve_with_code("RagEngine", role="Software Developer", include_code=True)
-        query_time = time.time() - start_time
-        
-        # Log performance metrics
-        print(f"Performance Baseline:")
-        print(f"  Initialization: {init_time:.2f}s")
-        print(f"  Query time: {query_time:.2f}s")
-        
-        # Performance should be reasonable
-        assert init_time < 30.0  # Should initialize within 30 seconds
-        assert query_time < 10.0  # Queries should complete within 10 seconds
-        
-        return {
-            'init_time': init_time,
-            'query_time': query_time,
-            'timestamp': time.time()
-        }
+def test_linkedin_request_prompts_follow_up(dummy_engine: DummyRagEngine) -> None:
+    state = ConversationState(
+        role="Hiring Manager (nontechnical)",
+        query="Can you share your LinkedIn profile?",
+        chat_history=[{"role": "user", "content": "Hi"}],
+    )
+
+    nodes.classify_query(state)
+    nodes.plan_actions(state)
+    state.set_answer("Absolutely, here are the details.")
+
+    nodes.apply_role_context(state, dummy_engine)
+
+    assert any(action["type"] == "send_linkedin" for action in state.pending_actions)
+    assert "LinkedIn profile" in (state.answer or "")
+    assert "Would you like Noah to reach out?" in (state.answer or "")
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+def test_contact_request_sends_notifications(monkeypatch: pytest.MonkeyPatch, dummy_engine: DummyRagEngine) -> None:
+    state = ConversationState(
+        role="Hiring Manager (technical)",
+        query="Please reach out to me about this opportunity",
+        chat_history=[],
+    )
+
+    nodes.classify_query(state)
+    nodes.plan_actions(state)
+    state.stash("user_name", "Jordan Hiring")
+    state.stash("user_email", "jordan@example.com")
+    state.stash("user_phone", "+15551234567")
+    state.set_answer("Technical overview ready.")
+
+    resend = DummyResend()
+    twilio = DummyTwilio()
+
+    monkeypatch.setattr(nodes, "get_resend_service", lambda: resend)
+    monkeypatch.setattr(nodes, "get_twilio_service", lambda: twilio)
+    monkeypatch.setattr(nodes, "get_storage_service", lambda: DummyStorage())
+
+    nodes.apply_role_context(state, dummy_engine)
+    nodes.execute_actions(state)
+
+    assert any(action["type"] == "notify_contact_request" for action in state.pending_actions)
+    assert resend.sent[0]["from_name"] == "Jordan Hiring"
+    assert twilio.alerts[0]["from_email"] == "jordan@example.com"

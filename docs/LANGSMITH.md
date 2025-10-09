@@ -155,6 +155,8 @@ print(response)
    └─ Quality: 0.90
 ```
 
+When `LANGGRAPH_FLOW_ENABLED=true` (default) you’ll also see sub-runs for `classify_query`, `retrieve_chunks`, `generate_answer`, `plan_actions`, `apply_role_context`, and `execute_actions`, mirroring the conversation node order.
+
 ### Filter Traces
 
 - **By Date**: Last hour, today, this week

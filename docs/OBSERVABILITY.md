@@ -4,6 +4,8 @@
 
 Noah's AI Assistant includes comprehensive observability features for monitoring RAG (Retrieval Augmented Generation) performance, tracking metrics, and evaluating response quality.
 
+The default runtime executes the LangGraph-style `run_conversation_flow`, so traces often show nodes for classification, retrieval, generation, action planning, and notifications. Legacy RoleRouter traces appear only when `LANGGRAPH_FLOW_ENABLED=false` for troubleshooting.
+
 ## 📊 Features
 
 ### 1. **LangSmith Integration**
