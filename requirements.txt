@@ -1,11 +1,25 @@
 streamlit
 langchain
-faiss-cpu
 openai
-sqlite3
-postgresql
 langgraph
 langsmith
 pandas
 numpy
-dotenv
+python-dotenv
+matplotlib
+
+# Supabase Dependencies (replaces GCP services)
+supabase>=2.0.0
+postgrest-py
+httpx
+
+# Database
+psycopg2-binary
+sqlalchemy
+
+# External Services
+resend  # Email delivery (replaces SendGrid)
+twilio  # SMS notifications
+
+# Note: FAISS removed - using Supabase pgvector instead
+# Note: GCP packages removed - using Supabase instead

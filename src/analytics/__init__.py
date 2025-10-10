@@ -1,4 +1,3 @@
-from .metrics_collector import MetricsCollector
-from .database import Database
+from .supabase_analytics import supabase_analytics, SupabaseAnalytics, UserInteractionData
 
-__all__ = ["MetricsCollector", "Database"]
+__all__ = ["supabase_analytics", "SupabaseAnalytics", "UserInteractionData"]
