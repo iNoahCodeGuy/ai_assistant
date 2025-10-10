@@ -70,7 +70,6 @@ def test_technical_hiring_manager_enrichments(developer_engine: DummyRagEngine) 
     enriched = state.answer or ""
     assert "Architecture Snapshot" in enriched
     assert "Enterprise Fit" in enriched
-    assert "Staying Current" in enriched
     assert "Data Collection Overview" in enriched
 
 

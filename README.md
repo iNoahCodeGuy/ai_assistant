@@ -10,6 +10,7 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 - [Installation](#installation)
 - [Usage](#usage)
 - [LangGraph Flow](#langgraph-flow)
+- [Platform Operations](#platform-operations)
 - [File Structure](#file-structure)
 - [Contributing](#contributing)
 - [License](#license)
@@ -47,7 +48,7 @@ SUPABASE_SERVICE_KEY=eyJhbGc...
 
 ```bash
 # 4. Set up the database schema
-# Follow the step-by-step guide in docs/PHASE_1_SETUP.md
+# Follow the step-by-step guide in archive/docs/migrated_from_docs/PHASE_1_SETUP.md
 # This creates tables for knowledge base, messages, and analytics
 
 # 5. Run the data migration (one-time)
@@ -228,6 +229,12 @@ User → Streamlit UI → RagEngine (pgvector search) → OpenAI GPT → Respons
 - **Legacy Path:** When the flag is `false`, the legacy `RoleRouter` handles requests. This path is frozen and will be removed once downstream integrations are migrated.
 - **Service Initialization:** Conversation nodes lazily resolve Resend, Twilio, and Supabase Storage through shared helpers so both runtime and tests rely on the same singleton instances.
 - **Inventory:** See `docs/runtime_dependencies.md` for the authoritative list of modules referenced at runtime.
+
+## Platform Operations
+
+- Consolidated observability, tracing, and monitoring guidance lives in `docs/platform_operations.md`.
+- Contributor onboarding context (roles, architecture, data model) is captured in `docs/Copilot_Context_FullStack_LangGraph.md`.
+- Legacy setup notes remain in `archive/docs` for historical reference when needed.
 
 ## File Structure
 ```
