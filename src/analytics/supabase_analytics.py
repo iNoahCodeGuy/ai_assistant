@@ -176,15 +176,18 @@ class SupabaseAnalytics:
             logger.error(f"Failed to log retrieval: {e}")
     
     def log_feedback(self, message_id: int, rating: int, comment: str = "", 
-                    contact_requested: bool = False, email: str = ""):
+                    contact_requested: bool = False, user_email: str = "",
+                    user_name: str = "", user_phone: str = ""):
         """Log user feedback.
         
         Args:
             message_id: ID of the message being rated
-            rating: 1-5 star rating
+            rating: 1-5 star rating (or 0 if not rated)
             comment: Optional feedback text
             contact_requested: Whether user wants to be contacted
-            email: User's email (if contact requested)
+            user_email: User's email (if contact requested)
+            user_name: User's name (if provided)
+            user_phone: User's phone (if provided)
             
         Returns:
             Feedback ID if successful
@@ -199,16 +202,18 @@ class SupabaseAnalytics:
                 'rating': rating,
                 'comment': comment,
                 'contact_requested': contact_requested,
-                'email': email
+                'user_email': user_email,
+                'user_name': user_name,
+                'user_phone': user_phone
             }).execute()
             
             feedback_id = result.data[0]['id'] if result.data else None
             logger.info(f"Logged feedback for message {message_id}, feedback_id: {feedback_id}")
             
             # If contact requested, we should send notification
-            # This is handled by the /api/feedback Next.js route
+            # This is handled by the /api/feedback API route
             if contact_requested:
-                logger.info(f"Contact requested for message {message_id}, email: {email}")
+                logger.info(f"Contact requested for message {message_id}, email: {user_email}")
             
             return feedback_id
             

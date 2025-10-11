@@ -52,17 +52,15 @@ class handler(BaseHTTPRequestHandler):
                     return
             
             # Log feedback to Supabase
-            feedback_data = {
-                'message_id': message_id,
-                'rating': rating,
-                'comment': comment,
-                'contact_requested': contact_requested,
-                'user_email': user_email,
-                'user_name': user_name,
-                'user_phone': user_phone
-            }
-            
-            feedback_id = supabase_analytics.log_feedback(feedback_data)
+            feedback_id = supabase_analytics.log_feedback(
+                message_id=message_id,
+                rating=rating or 0,  # Default to 0 if no rating provided
+                comment=comment,
+                contact_requested=contact_requested,
+                user_email=user_email,
+                user_name=user_name,
+                user_phone=user_phone
+            )
             
             # Send SMS notification if contact requested
             if contact_requested:
