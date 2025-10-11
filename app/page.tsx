@@ -71,7 +71,7 @@ export default function Home() {
       
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response,
+        content: data.answer,
         sources: data.sources
       }
       
