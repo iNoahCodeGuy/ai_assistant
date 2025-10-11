@@ -80,7 +80,12 @@ class PgVectorRetriever:
         - Can be overridden per-query if needed
         """
         self.similarity_threshold = similarity_threshold
-        self.openai_client = OpenAI(api_key=supabase_settings.api_key)
+        
+        # Debug: Log API key presence (not the actual key)
+        api_key = supabase_settings.api_key
+        logger.info(f"OpenAI API key present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
+        
+        self.openai_client = OpenAI(api_key=api_key)
         self.supabase_client = get_supabase_client()
         
         # Embedding model configuration
