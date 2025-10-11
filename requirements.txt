@@ -12,22 +12,13 @@ pydantic>=2.0,<3.0
 postgrest-py>=0.10.0
 httpx>=0.26,<0.29
 
-# UI
-streamlit>=1.50.0
-
 # Data Processing
-pandas>=2.0.0
-numpy>=1.24.0
 python-dotenv>=1.0.0
-matplotlib>=3.7.0
-
-# Database
-psycopg2-binary>=2.9.0
-sqlalchemy>=2.0.0
 
 # External Services
 resend>=0.7.0
 twilio>=8.0.0
 
-# Note: Streamlit and matplotlib included for local development
-# Vercel will only install what's needed for serverless functions
+# Note: Removed streamlit, matplotlib, pandas, numpy, psycopg2, sqlalchemy
+# These are not needed for Vercel serverless API functions
+# Install locally with: pip install streamlit matplotlib pandas numpy
