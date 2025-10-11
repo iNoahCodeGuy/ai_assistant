@@ -1,25 +1,23 @@
-streamlit
-langchain
-openai
-langgraph
-langsmith
-pandas
-numpy
-python-dotenv
-matplotlib
+# Core AI/LLM
+openai>=1.0.0
+langchain>=0.1.0
+langgraph>=0.0.40
+langsmith>=0.1.0
 
-# Supabase Dependencies (replaces GCP services)
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Database & Storage
 supabase>=2.0.0
-postgrest-py
-httpx
-
-# Database
-psycopg2-binary
-sqlalchemy
+httpx>=0.24.0
 
 # External Services
-resend  # Email delivery (replaces SendGrid)
-twilio  # SMS notifications
+resend>=0.7.0
+twilio>=8.0.0
 
-# Note: FAISS removed - using Supabase pgvector instead
-# Note: GCP packages removed - using Supabase instead
+# Note: Streamlit and matplotlib removed for serverless deployment
+# Note: psycopg2-binary conflicts resolved by using supabase client
