@@ -23,17 +23,5 @@
       "src": "/api/confess",
       "dest": "/api/confess.py"
     }
-  ],
-  "env": {
-    "OPENAI_API_KEY": "@openai-api-key",
-    "SUPABASE_URL": "@supabase-url",
-    "SUPABASE_SERVICE_KEY": "@supabase-service-key",
-    "RESEND_API_KEY": "@resend-api-key",
-    "TWILIO_ACCOUNT_SID": "@twilio-account-sid",
-    "TWILIO_AUTH_TOKEN": "@twilio-auth-token",
-    "TWILIO_FROM": "@twilio-from",
-    "LANGCHAIN_TRACING_V2": "true",
-    "LANGCHAIN_API_KEY": "@langsmith-api-key",
-    "LANGCHAIN_PROJECT": "noahs-ai-assistant-prod"
-  }
+  ]
 }
