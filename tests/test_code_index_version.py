@@ -1,4 +1,4 @@
-# filepath: /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant-/tests/test_code_index_version.py
+# filepath: /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant/tests/test_code_index_version.py
 import time
 from pathlib import Path
 from src.core.rag_engine import RagEngine

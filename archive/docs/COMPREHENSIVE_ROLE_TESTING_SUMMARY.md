@@ -307,7 +307,7 @@ Now test in the Streamlit UI at **http://localhost:8501**:
 ## 📚 Documentation Structure
 
 ```
-NoahsAIAssistant-/
+NoahsAIAssistant/
 ├── ROLE_FEATURES.md              # User guide: What each role does
 ├── ROLE_TESTING_COMPLETE.md      # Test results + manual checklist
 ├── test_roles_quick.py            # Quick automated tests
