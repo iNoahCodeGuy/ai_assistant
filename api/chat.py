@@ -52,13 +52,13 @@ class handler(BaseHTTPRequestHandler):
             
             # Create conversation state
             state = ConversationState(
-                session_id=session_id,
                 role=role,
                 query=query,
                 chat_history=chat_history
             )
             
-            # Add user context if provided
+            # Add session_id and user context to extras
+            state.stash('session_id', session_id)
             if user_email:
                 state.stash('user_email', user_email)
             if user_name:
@@ -74,8 +74,8 @@ class handler(BaseHTTPRequestHandler):
                 'success': True,
                 'answer': result_state.answer,
                 'role': result_state.role,
-                'session_id': result_state.session_id,
-                'analytics': result_state.analytics,
+                'session_id': result_state.fetch('session_id', session_id),
+                'analytics': result_state.analytics_metadata,
                 'actions_taken': [
                     action.get('type') for action in result_state.pending_actions
                 ],
