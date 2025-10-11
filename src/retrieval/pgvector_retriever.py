@@ -85,7 +85,12 @@ class PgVectorRetriever:
         api_key = supabase_settings.api_key
         logger.info(f"OpenAI API key present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
         
-        self.openai_client = OpenAI(api_key=api_key)
+        # Configure OpenAI client with timeout for Vercel serverless
+        self.openai_client = OpenAI(
+            api_key=api_key,
+            timeout=5.0,  # 5 second timeout (Vercel functions have 10s limit)
+            max_retries=2  # Reduce retries to fail faster
+        )
         self.supabase_client = get_supabase_client()
         
         # Embedding model configuration
