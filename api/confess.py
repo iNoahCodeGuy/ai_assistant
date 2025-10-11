@@ -6,7 +6,12 @@ from http.server import BaseHTTPRequestHandler
 import json
 import sys
 import os
+import logging
 from typing import Dict, Any
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -60,20 +65,26 @@ class handler(BaseHTTPRequestHandler):
             result = supabase.table('confessions').insert(confession_data).execute()
             confession_id = result.data[0]['id'] if result.data else None
             
-            # Send SMS notification to Noah
-            twilio_service = get_twilio_service()
-            
-            if is_anonymous:
-                sms_preview = f"💌 Anonymous confession: {message[:100]}..."
-            else:
-                sms_preview = f"💌 Confession from {name or 'someone'}: {message[:80]}..."
-            
-            twilio_service.send_contact_alert(
-                from_name=name or 'Anonymous Admirer',
-                from_email=email or 'anonymous@confession.com',
-                message_preview=sms_preview,
-                is_urgent=False
-            )
+            # Send SMS notification to Noah (best effort)
+            try:
+                twilio_service = get_twilio_service()
+                if twilio_service and twilio_service.enabled:
+                    if is_anonymous:
+                        sms_preview = f"💌 Anonymous confession: {message[:100]}..."
+                    else:
+                        sms_preview = f"💌 Confession from {name or 'someone'}: {message[:80]}..."
+                    
+                    twilio_service.send_contact_alert(
+                        from_name=name or 'Anonymous Admirer',
+                        from_email=email or 'anonymous@confession.com',
+                        message_preview=sms_preview,
+                        is_urgent=False
+                    )
+                else:
+                    logger.warning("Twilio service not enabled, skipping SMS notification")
+            except Exception as e:
+                logger.error(f"Failed to send SMS notification: {e}")
+                # Don't fail the request if SMS fails
             
             # Build response
             response = {

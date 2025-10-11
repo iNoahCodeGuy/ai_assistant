@@ -78,23 +78,23 @@ class SupabaseSettings:
         self.is_production = os.getenv("VERCEL_ENV") == "production"
         self.is_vercel = os.getenv("VERCEL") == "1"
         
-        # Supabase configuration
+        # Supabase configuration (strip whitespace to prevent header issues)
         self.supabase_config = SupabaseConfig(
-            url=os.getenv("SUPABASE_URL", ""),
-            service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-            anon_key=os.getenv("SUPABASE_ANON_KEY")
+            url=os.getenv("SUPABASE_URL", "").strip(),
+            service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip(),
+            anon_key=os.getenv("SUPABASE_ANON_KEY", "").strip() if os.getenv("SUPABASE_ANON_KEY") else None
         )
         
-        # OpenAI configuration (unchanged from GCP version)
-        self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
-        self.openai_model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-        self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
+        # OpenAI configuration (strip to prevent "Illegal header value" errors)
+        self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        self.openai_model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo").strip()
+        self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002").strip()
         
         # External services (for Next.js API routes)
-        self.resend_api_key = os.getenv("RESEND_API_KEY", "")
-        self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
-        self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-        self.twilio_from_number = os.getenv("TWILIO_FROM", "")
+        self.resend_api_key = os.getenv("RESEND_API_KEY", "").strip()
+        self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+        self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+        self.twilio_from_number = os.getenv("TWILIO_FROM", "").strip()
         
         # Application settings
         self.youtube_fight_link = os.getenv(
@@ -108,23 +108,48 @@ class SupabaseSettings:
         self.vector_store_path = "vector_stores/"  # Deprecated but kept for compatibility
     
     def validate_api_key(self):
-        """Validate that OpenAI API key is set.
+        """Validate that OpenAI API key is present and properly formatted.
         
-        This method exists for backward compatibility with the existing codebase.
+        This replaces cloud_settings.validate_api_key() from GCP version.
+        Also checks for common issues like trailing newlines that cause HTTP header errors.
         """
         if not self.openai_api_key:
             raise ValueError(
                 "OpenAI API key not found. Please set OPENAI_API_KEY in your .env file."
             )
+        
+        # Check for newlines that cause "Illegal header value" errors
+        if '\n' in self.openai_api_key or '\r' in self.openai_api_key:
+            raise ValueError(
+                "OpenAI API key contains newline characters. "
+                "This causes 'Illegal header value' errors in HTTP requests. "
+                "Check your environment variables for trailing newlines."
+            )
+        
         return True
     
     def validate_supabase(self):
         """Validate that Supabase configuration is complete.
         
         Call this before any Supabase operations to ensure proper setup.
+        Also checks for common issues like trailing newlines.
         """
         try:
+            # Check if config exists and is valid
             self.supabase_config  # This will raise ValueError if invalid
+            
+            # Check for newlines or other non-printable characters
+            if '\n' in self.supabase_config.url or '\r' in self.supabase_config.url:
+                raise ValueError(
+                    "Supabase URL contains newline characters. "
+                    "Check your environment variables for trailing newlines."
+                )
+            if '\n' in self.supabase_config.service_role_key or '\r' in self.supabase_config.service_role_key:
+                raise ValueError(
+                    "Supabase service role key contains newline characters. "
+                    "Check your environment variables for trailing newlines."
+                )
+            
             return True
         except ValueError as e:
             raise ValueError(

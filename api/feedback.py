@@ -6,7 +6,12 @@ from http.server import BaseHTTPRequestHandler
 import json
 import sys
 import os
+import logging
 from typing import Dict, Any
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -61,13 +66,20 @@ class handler(BaseHTTPRequestHandler):
             
             # Send SMS notification if contact requested
             if contact_requested:
-                twilio_service = get_twilio_service()
-                twilio_service.send_contact_alert(
-                    from_name=user_name or 'Anonymous',
-                    from_email=user_email or 'no-email',
-                    message_preview=f"Contact request: {comment[:100] if comment else 'No message'}",
-                    is_urgent=True
-                )
+                try:
+                    twilio_service = get_twilio_service()
+                    if twilio_service and twilio_service.enabled:
+                        twilio_service.send_contact_alert(
+                            from_name=user_name or 'Anonymous',
+                            from_email=user_email or 'no-email',
+                            message_preview=f"Contact request: {comment[:100] if comment else 'No message'}",
+                            is_urgent=True
+                        )
+                    else:
+                        logger.warning("Twilio service not enabled, skipping SMS notification")
+                except Exception as e:
+                    logger.error(f"Failed to send SMS notification: {e}")
+                    # Don't fail the request if SMS fails
             
             # Build response
             response = {

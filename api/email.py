@@ -6,7 +6,12 @@ from http.server import BaseHTTPRequestHandler
 import json
 import sys
 import os
+import logging
 from typing import Dict, Any
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -46,11 +51,19 @@ class handler(BaseHTTPRequestHandler):
             
             # Get services
             resend_service = get_resend_service()
+            if not resend_service or not resend_service.enabled:
+                self._send_error(503, "Email service unavailable")
+                return
             
             if email_type == 'resume':
                 # Get signed URL for resume
-                storage_service = get_storage_service()
-                resume_url = storage_service.get_signed_url('resumes/noah_resume.pdf')
+                try:
+                    storage_service = get_storage_service()
+                    resume_url = storage_service.get_signed_url('resumes/noah_resume.pdf')
+                except Exception as e:
+                    logger.error(f"Failed to get resume URL: {e}")
+                    self._send_error(500, "Failed to retrieve resume")
+                    return
                 
                 # Send resume email
                 result = resend_service.send_resume_email(
@@ -60,13 +73,18 @@ class handler(BaseHTTPRequestHandler):
                     message=message
                 )
                 
-                # Send SMS notification to Noah
-                twilio_service = get_twilio_service()
-                twilio_service.send_contact_alert(
-                    from_name=to_name,
-                    from_email=to_email,
-                    message_preview=f"Resume sent to {to_email}"
-                )
+                # Send SMS notification to Noah (best effort)
+                try:
+                    twilio_service = get_twilio_service()
+                    if twilio_service and twilio_service.enabled:
+                        twilio_service.send_contact_alert(
+                            from_name=to_name,
+                            from_email=to_email,
+                            message_preview=f"Resume sent to {to_email}"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send SMS notification: {e}")
+                    # Don't fail the request if SMS fails
                 
                 response = {
                     'success': True,
