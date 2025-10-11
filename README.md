@@ -1,6 +1,6 @@
 # Noah's AI Assistant
 
-Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
+Noah's AI Assistant (repo: NoahsAIAssistant) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
 
 ## Table of Contents
 - [🚀 Quickstart](#-quickstart)
@@ -155,8 +155,8 @@ streamlit run src/main.py
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant-.git
-cd NoahsAIAssistant-
+git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant.git
+cd NoahsAIAssistant
 ```
 
 2. **Install Python dependencies**

@@ -30,7 +30,7 @@
 
 3. **Verify Database Setup**
    ```bash
-   cd /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant-
+   cd /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant
    python scripts/migrate_data_to_supabase.py
    ```
 
@@ -124,7 +124,7 @@ This script will:
 
 **Run the setup:**
 ```bash
-cd /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant-
+cd /Users/noahdelacalzada/NoahsAIAssistant/NoahsAIAssistant
 python scripts/setup_external_services.py
 ```
 

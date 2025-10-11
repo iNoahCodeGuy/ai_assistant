@@ -102,8 +102,8 @@ def test_confession_role_bypasses_llm():
 Below was an accidental paste of shell setup commands causing a SyntaxError in test collection.
 Keeping them here (inside a string literal) for developer reference only.
 
-git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant-.git
-cd NoahsAIAssistant-
+git clone https://github.com/iNoahCodeGuy/NoahsAIAssistant.git
+cd NoahsAIAssistant
 git checkout feature/role-specific-behaviors
 python -m venv .venv
 Activate venv (PowerShell):
