@@ -1,25 +1,33 @@
-streamlit
-langchain
-openai
-langgraph
-langsmith
-pandas
-numpy
-python-dotenv
-matplotlib
+# Core ML/AI - Version locked for compatibility
+openai>=1.40,<2.0.0  # CRITICAL: langchain-openai requires <2.0
+langchain>=0.3.0
+langchain-openai>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.6.0
+langsmith>=0.4.0
 
-# Supabase Dependencies (replaces GCP services)
-supabase>=2.0.0
-postgrest-py
-httpx
+# Supabase (Database + Vector Store)
+supabase>=2.20.0
+pydantic>=2.0,<3.0  # CRITICAL: Required for Supabase realtime
+postgrest-py>=0.17.0
+httpx>=0.26,<0.29
+
+# UI
+streamlit>=1.50.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+matplotlib>=3.7.0
 
 # Database
-psycopg2-binary
-sqlalchemy
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
 
-# External Services
-resend  # Email delivery (replaces SendGrid)
-twilio  # SMS notifications
+# External Services (Optional)
+resend>=0.7.0  # Email delivery (replaces SendGrid)
+twilio>=8.0.0  # SMS notifications
 
 # Note: FAISS removed - using Supabase pgvector instead
 # Note: GCP packages removed - using Supabase instead
