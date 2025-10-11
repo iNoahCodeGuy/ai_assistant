@@ -1,56 +1,57 @@
-<<<<<<< HEAD
-# Core ML/AI - Version locked for compatibility
-openai>=1.40,<2.0.0  # CRITICAL: langchain-openai requires <2.0
-langchain>=0.3.0
-langchain-openai>=0.3.0
-langchain-community>=0.3.0
-langgraph>=0.6.0
-langsmith>=0.4.0
+# Core ML/AI - Version locked for compatibilitystreamlit
 
-# Supabase (Database + Vector Store)
+openai>=1.40,<2.0.0  # CRITICAL: langchain-openai requires <2.0langchain
+
+langchain>=0.3.0openai
+
+langchain-openai>=0.3.0langgraph
+
+langchain-community>=0.3.0langsmith
+
+langgraph>=0.6.0pandas
+
+langsmith>=0.4.0numpy
+
+python-dotenv
+
+# Supabase (Database + Vector Store)matplotlib
+
 supabase>=2.20.0
-pydantic>=2.0,<3.0  # CRITICAL: Required for Supabase realtime
-postgrest-py>=0.17.0
-httpx>=0.26,<0.29
+
+pydantic>=2.0,<3.0  # CRITICAL: Required for Supabase realtime# Supabase Dependencies (replaces GCP services)
+
+postgrest-py>=0.17.0supabase>=2.0.0
+
+httpx>=0.26,<0.29postgrest-py
+
+httpx
 
 # UI
-streamlit>=1.50.0
 
-# Data Processing
+streamlit>=1.50.0# Database
+
+psycopg2-binary
+
+# Data Processingsqlalchemy
+
 pandas>=2.0.0
-numpy>=1.24.0
-python-dotenv>=1.0.0
-matplotlib>=3.7.0
 
-# Database
-psycopg2-binary>=2.9.0
+numpy>=1.24.0# External Services
+
+python-dotenv>=1.0.0resend  # Email delivery (replaces SendGrid)
+
+matplotlib>=3.7.0twilio  # SMS notifications
+
+
+
+# Database# Note: FAISS removed - using Supabase pgvector instead
+
+psycopg2-binary>=2.9.0# Note: GCP packages removed - using Supabase instead
 sqlalchemy>=2.0.0
 
 # External Services (Optional)
 resend>=0.7.0  # Email delivery (replaces SendGrid)
 twilio>=8.0.0  # SMS notifications
-=======
-# Core AI/LLM
-openai>=1.0.0
-langchain>=0.1.0
-langgraph>=0.0.40
-langsmith>=0.1.0
 
-# Data Processing
-pandas>=2.0.0
-numpy>=1.24.0
-
-# Configuration
-python-dotenv>=1.0.0
-
-# Database & Storage
-supabase>=2.0.0
-httpx>=0.24.0
-
-# External Services
-resend>=0.7.0
-twilio>=8.0.0
->>>>>>> 7e017479c702087a847d1d0c6d53a39797db41c8
-
-# Note: Streamlit and matplotlib removed for serverless deployment
-# Note: psycopg2-binary conflicts resolved by using supabase client
+# Note: Streamlit and matplotlib included for local development
+# Vercel will only install what's needed for serverless functions
