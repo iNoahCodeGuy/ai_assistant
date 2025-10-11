@@ -67,7 +67,7 @@ class handler(BaseHTTPRequestHandler):
                 state.stash('user_phone', user_phone)
             
             # Run conversation flow
-            result_state = run_conversation_flow(state, rag_engine)
+            result_state = run_conversation_flow(state, rag_engine, session_id=session_id)
             
             # Build response
             response = {
