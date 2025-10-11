@@ -395,3 +395,8 @@ def get_twilio_service() -> TwilioService:
     if _twilio_service is None:
         _twilio_service = TwilioService()
     return _twilio_service
+
+# Check if tables exist
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' 
+AND table_name IN ('confessions', 'feedback');

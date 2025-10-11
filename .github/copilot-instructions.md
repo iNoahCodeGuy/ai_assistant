@@ -119,14 +119,25 @@ OPENAI_API_KEY=sk-...
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
-# 3. Run data migration (idempotent, safe to re-run)
+# 3. Run database migrations in Supabase SQL Editor
+# Go to Supabase Dashboard → SQL Editor → New Query
+# Copy/paste and run each migration file in order:
+- supabase/migrations/001_initial_schema.sql
+- supabase/migrations/002_add_confessions_and_sms.sql
+
+# 4. Run data migration (idempotent, safe to re-run)
 python scripts/migrate_data_to_supabase.py
 
-# 4. Start local Streamlit
+# 5. Start local Streamlit
 streamlit run src/main.py
 ```
 
 **Schema lives in** `supabase/migrations/` (apply via Supabase dashboard SQL editor).
+
+**Common migration issues**:
+- `404 Not Found` on API calls → Table doesn't exist, run migrations
+- `FUNCTION_INVOCATION_FAILED` → Check Vercel logs for specific table name
+- Missing columns → Run migration 002 to add `confessions`, `sms_logs` tables
 
 ## Vercel Deployment
 
