@@ -128,8 +128,8 @@ class handler(BaseHTTPRequestHandler):
     
     def _send_json(self, status_code: int, data: Dict[str, Any]):
         """Send JSON response with CORS headers."""
-        self._send_cors_headers()
         self.send_response(status_code)
+        self._send_cors_headers()
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
