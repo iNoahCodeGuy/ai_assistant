@@ -1,14 +1,11 @@
 {
-  "version": 2,
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": ".next",
-  "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.12"
     }
-  ]
+  }
 }
