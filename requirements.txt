@@ -1,19 +1,10 @@
-﻿# Core ML/AI - Let pip resolve compatible versions
-openai>=1.40,<2.0
-langchain>=0.3.0,<0.4.0
-langchain-openai>=0.2.0,<0.3.0
-langgraph>=0.2.0,<0.3.0
-langsmith>=0.1.0,<0.2.0
-
-# Supabase
-supabase>=2.0.0,<3.0.0
-pydantic>=2.0,<3.0
-postgrest-py>=0.10.0,<0.11.0
-httpx>=0.26.0,<0.28.0
-
-# Config
+﻿# Minimal core dependencies - let pip auto-resolve transitive deps
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+supabase>=2.0.0
 python-dotenv>=1.0.0
-
-# External Services
 resend>=2.0.0
 twilio>=9.0.0
+
+# Note: langchain, openai, httpx, pydantic will be installed as dependencies
+# This avoids version conflicts by letting pip resolve the dependency tree
