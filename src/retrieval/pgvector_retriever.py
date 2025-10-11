@@ -127,7 +127,10 @@ class PgVectorRetriever:
             return response.data[0].embedding
         
         except Exception as e:
-            logger.error(f"Embedding generation failed: {e}")
+            logger.error(f"Embedding generation failed: {type(e).__name__}: {str(e)}")
+            logger.error(f"Full error details: {repr(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def retrieve(
