@@ -6,7 +6,13 @@ from http.server import BaseHTTPRequestHandler
 import json
 import sys
 import os
+import traceback
+import logging
 from typing import Dict, Any
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -79,9 +85,12 @@ class handler(BaseHTTPRequestHandler):
             # Send success response
             self._send_json(200, response)
             
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
             self._send_error(400, "Invalid JSON in request body")
         except Exception as e:
+            logger.error(f"Error processing request: {str(e)}")
+            logger.error(traceback.format_exc())
             self._send_error(500, f"Internal server error: {str(e)}")
     
     def do_OPTIONS(self):
