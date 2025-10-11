@@ -80,7 +80,17 @@ class PgVectorRetriever:
         - Can be overridden per-query if needed
         """
         self.similarity_threshold = similarity_threshold
-        self.openai_client = OpenAI(api_key=supabase_settings.api_key)
+        
+        # Debug: Log API key presence (not the actual key)
+        api_key = supabase_settings.api_key
+        logger.info(f"OpenAI API key present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
+        
+        # Configure OpenAI client with timeout for Vercel serverless
+        self.openai_client = OpenAI(
+            api_key=api_key,
+            timeout=5.0,  # 5 second timeout (Vercel functions have 10s limit)
+            max_retries=2  # Reduce retries to fail faster
+        )
         self.supabase_client = get_supabase_client()
         
         # Embedding model configuration
@@ -117,7 +127,10 @@ class PgVectorRetriever:
             return response.data[0].embedding
         
         except Exception as e:
-            logger.error(f"Embedding generation failed: {e}")
+            logger.error(f"Embedding generation failed: {type(e).__name__}: {str(e)}")
+            logger.error(f"Full error details: {repr(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def retrieve(

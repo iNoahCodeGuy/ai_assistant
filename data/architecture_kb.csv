@@ -852,7 +852,7 @@ noahs-ai-assistant/
 │   └── migrations/
 │       ├── CLEAN_MIGRATION.sql     # Idempotent schema setup (200 lines)
 │       ├── SIMPLE_MIGRATION.sql    # Basic schema (180 lines)
-│       └── fix_search_function.sql # pgvector search optimization
+│       └── archive/sql/fix_search_function.sql # pgvector search optimization
 │
 ├── 📁 tests/                        # Unit & integration tests
 │   ├── test_role_functionality.py  # Role-based response testing (546 lines)

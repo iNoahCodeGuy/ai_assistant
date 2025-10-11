@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Core ML/AI - Version locked for compatibility
 openai>=1.40,<2.0.0  # CRITICAL: langchain-openai requires <2.0
 langchain>=0.3.0
@@ -28,6 +29,28 @@ sqlalchemy>=2.0.0
 # External Services (Optional)
 resend>=0.7.0  # Email delivery (replaces SendGrid)
 twilio>=8.0.0  # SMS notifications
+=======
+# Core AI/LLM
+openai>=1.0.0
+langchain>=0.1.0
+langgraph>=0.0.40
+langsmith>=0.1.0
 
-# Note: FAISS removed - using Supabase pgvector instead
-# Note: GCP packages removed - using Supabase instead
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Database & Storage
+supabase>=2.0.0
+httpx>=0.24.0
+
+# External Services
+resend>=0.7.0
+twilio>=8.0.0
+>>>>>>> 7e017479c702087a847d1d0c6d53a39797db41c8
+
+# Note: Streamlit and matplotlib removed for serverless deployment
+# Note: psycopg2-binary conflicts resolved by using supabase client
