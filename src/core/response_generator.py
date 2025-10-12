@@ -90,6 +90,11 @@ Please provide a helpful and accurate answer based on the information provided. 
             
             # Enforce third-person language
             response = self._enforce_third_person(response)
+            
+            # Add follow-up question for technical roles
+            if role in ["Hiring Manager (technical)", "Software Developer"]:
+                response = self._add_technical_followup(response, query, role)
+            
             return response
         except Exception as e:
             logger.error(f"Response generation (context) failed: {e}")
@@ -122,7 +127,12 @@ Please provide a helpful and accurate answer based on the information provided. 
         prompt = self._build_technical_prompt(query, context)
         
         try:
-            return self.llm.predict(prompt)
+            response = self.llm.predict(prompt)
+            
+            # Add follow-up question suggestion
+            response = self._add_technical_followup(response, query, role)
+            
+            return response
         except Exception as e:
             logger.error(f"Technical response generation failed: {e}")
             return "Technical details are temporarily unavailable. Please try again."
@@ -281,3 +291,80 @@ Please provide a helpful and accurate answer based on the information provided. 
             text = text.replace(first_person, third_person)
         
         return text
+
+    def _add_technical_followup(self, response: str, query: str, role: str) -> str:
+        """Add suggested follow-up technical question based on the current query and response."""
+        
+        # Keywords to detect technical topics and suggest deeper questions
+        technical_topics = {
+            "rag": [
+                "Can you show me the code for Noah's vector database implementation?",
+                "How does Noah handle embedding generation and storage?",
+                "What's Noah's approach to chunking and retrieval optimization?"
+            ],
+            "langgraph": [
+                "Can you display Noah's LangGraph workflow diagram?",
+                "How does Noah orchestrate multi-step conversations?",
+                "What are the specific nodes in Noah's conversation flow?"
+            ],
+            "langchain": [
+                "Can you show me how Noah uses LangChain for prompt management?",
+                "What LangChain components does Noah use for retrieval?",
+                "How does Noah integrate LangChain with OpenAI?"
+            ],
+            "architecture": [
+                "Can you show me Noah's system architecture diagram?",
+                "How does Noah's frontend communicate with the backend?",
+                "What's Noah's deployment strategy on Vercel?"
+            ],
+            "database": [
+                "Can you show me Noah's database schema?",
+                "How does Noah handle analytics logging?",
+                "What tables does Noah use for data collection?"
+            ],
+            "api": [
+                "Can you show me Noah's API endpoint implementations?",
+                "How does Noah structure his serverless functions?",
+                "What's Noah's approach to error handling in APIs?"
+            ],
+            "python": [
+                "Can you show me examples of Noah's Python code?",
+                "What design patterns does Noah use in his Python code?",
+                "How does Noah structure his Python modules?"
+            ],
+            "next.js": [
+                "Can you show me Noah's Next.js frontend code?",
+                "How does Noah handle state management in React?",
+                "What's Noah's approach to styling with Tailwind?"
+            ],
+            "supabase": [
+                "How does Noah use pgvector for embeddings?",
+                "Can you show me Noah's Supabase integration code?",
+                "What analytics does Noah collect in Supabase?"
+            ],
+            "deployment": [
+                "Can you explain Noah's CI/CD pipeline?",
+                "How does Noah handle environment variables?",
+                "What's Noah's approach to serverless deployment?"
+            ]
+        }
+        
+        # Check if the query or response contains technical keywords
+        query_lower = query.lower()
+        response_lower = response.lower()
+        
+        for topic, questions in technical_topics.items():
+            if topic in query_lower or topic in response_lower:
+                # Pick a relevant follow-up question
+                import random
+                followup = random.choice(questions)
+                
+                # Add the follow-up suggestion
+                if role == "Software Developer":
+                    response += f"\n\n💡 **Dive Deeper:** {followup}"
+                elif role == "Hiring Manager (technical)":
+                    response += f"\n\n🔍 **Technical Follow-up:** {followup}"
+                
+                break  # Only add one follow-up
+        
+        return response
