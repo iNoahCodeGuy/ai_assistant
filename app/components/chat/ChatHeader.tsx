@@ -8,7 +8,7 @@ const ROLES: Role[] = [
   'Hiring Manager (technical)',
   'Software Developer',
   'Just looking around',
-  'Looking to confess crush',
+  "Looking to confess I've had a crush on Noah for years"
 ]
 
 interface ChatHeaderProps {
@@ -24,10 +24,13 @@ export function ChatHeader({ role, onRoleChange }: ChatHeaderProps) {
     <header className="border-b border-chat-border bg-chat-surface/80 backdrop-blur-lg">
       <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-chat-primary to-purple-600 flex items-center justify-center">
-            <Sparkles size={20} className="text-white" />
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-chat-primary to-chat-secondary flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold gradient-text">Noah's AI Assistant</h1>
+          <div>
+            <h1 className="text-xl font-bold gradient-text">Noah's AI Assistant</h1>
+            <p className="text-xs text-gray-400">Interactive Resume & Career Assistant</p>
+          </div>
         </div>
         
         <div className="relative">

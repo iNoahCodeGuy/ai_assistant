@@ -7,12 +7,16 @@ export type Role =
   | 'Hiring Manager (technical)'
   | 'Software Developer'
   | 'Just looking around'
-  | 'Looking to confess crush'
+  | "Looking to confess I've had a crush on Noah for years"
 
 export interface Message {
   role: 'user' | 'assistant'
   content: string
-  sources?: { title: string; score: number }[]
+  sources?: Array<{
+    doc_id: string
+    section: string
+    similarity: number
+  }>
 }
 
 /**

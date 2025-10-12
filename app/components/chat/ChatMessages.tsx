@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { Sparkles, Bot } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 import type { Message } from '../hooks/useChat'
 
@@ -27,9 +28,16 @@ export function ChatMessages({ messages, loading }: ChatMessagesProps) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {messages.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg mb-2">👋 Hi! I'm Noah's AI assistant.</p>
-            <p className="text-gray-500">Ask me anything about Noah's experience, skills, or projects!</p>
+          <div className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-chat-primary to-chat-secondary mb-6">
+              <Sparkles className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 gradient-text">
+              Welcome! How can I help you today?
+            </h2>
+            <p className="text-gray-400">
+              Ask me about Noah's background, experience, or technical skills
+            </p>
           </div>
         )}
         
@@ -38,9 +46,9 @@ export function ChatMessages({ messages, loading }: ChatMessagesProps) {
         ))}
         
         {loading && (
-          <div className="flex gap-4 justify-start">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-chat-primary to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm">🤔</span>
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-chat-primary to-chat-secondary flex items-center justify-center flex-shrink-0">
+              <Bot className="w-5 h-5 text-white" />
             </div>
             <div className="bg-chat-surface border border-chat-border rounded-2xl px-6 py-4">
               <div className="flex gap-2">
