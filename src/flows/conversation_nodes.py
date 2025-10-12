@@ -28,7 +28,10 @@ def classify_query(state: ConversationState) -> ConversationState:
         state.stash("query_type", "mma")
     elif any(term in lowered for term in ["fun fact", "hobby", "interesting fact", "hot dog"]):
         state.stash("query_type", "fun")
-    elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]):
+    # Detect "how does [product/system/chatbot] work" queries as technical
+    elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
+         or (("how does" in lowered or "how did" in lowered or "explain how" in lowered) 
+             and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "rag", "pipeline", "work", "built"])):
         state.stash("query_type", "technical")
     elif any(term in lowered for term in ["career", "resume", "cv", "experience", "achievement", "work"]):
         state.stash("query_type", "career")
