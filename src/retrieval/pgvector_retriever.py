@@ -64,33 +64,23 @@ class PgVectorRetriever:
         )
     """
     
-    def __init__(self, similarity_threshold: float = 0.7):
+    def __init__(self, similarity_threshold: float = 0.60):
         """Initialize retriever with OpenAI and Supabase clients.
         
         Args:
             similarity_threshold: Minimum cosine similarity (0-1) for results.
-                Default 0.7 is good for most use cases.
-                Lower (0.5-0.6) for broader results.
-                Higher (0.8+) for strict matching.
+                Default 0.60 balances precision and recall for diverse queries.
+                Lower (0.5-0.55) for broader results.
+                Higher (0.70+) for strict matching.
         
-        Why 0.7:
-        - Empirically tested sweet spot
-        - Filters out irrelevant chunks
-        - Still returns results for most queries
-        - Can be overridden per-query if needed
+        Why 0.60:
+        - Lowered from 0.7 to 0.60 to improve recall on technical queries
+        - "How does this product work?" has embedding variations (0.53-0.70 depending on wording)
+        - Captures semantically similar queries without requiring exact phrasing
+        - Trade-off: Slight increase in false positives, but better user experience
         """
         self.similarity_threshold = similarity_threshold
-        
-        # Debug: Log API key presence (not the actual key)
-        api_key = supabase_settings.api_key
-        logger.info(f"OpenAI API key present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
-        
-        # Configure OpenAI client with timeout for Vercel serverless
-        self.openai_client = OpenAI(
-            api_key=api_key,
-            timeout=5.0,  # 5 second timeout (Vercel functions have 10s limit)
-            max_retries=2  # Reduce retries to fail faster
-        )
+        self.openai_client = OpenAI(api_key=supabase_settings.api_key)
         self.supabase_client = get_supabase_client()
         
         # Embedding model configuration
@@ -127,10 +117,7 @@ class PgVectorRetriever:
             return response.data[0].embedding
         
         except Exception as e:
-            logger.error(f"Embedding generation failed: {type(e).__name__}: {str(e)}")
-            logger.error(f"Full error details: {repr(e)}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"Embedding generation failed: {e}")
             return []
     
     def retrieve(
@@ -182,9 +169,10 @@ class PgVectorRetriever:
             logger.debug(f"Fetching all chunks for client-side similarity calculation")
             
             # Fetch all chunks with embeddings
+            # Increased limit to accommodate all KBs: career_kb (20) + technical_kb (13) + architecture_kb (245) = 278 total
             result = self.supabase_client.table('kb_chunks')\
                 .select('id, doc_id, section, content, embedding')\
-                .limit(100)\
+                .limit(500)\
                 .execute()
             
             if not result.data:
