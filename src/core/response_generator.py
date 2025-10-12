@@ -293,99 +293,77 @@ Please provide a helpful and accurate answer based on the information provided. 
         return text
 
     def _add_technical_followup(self, response: str, query: str, role: str) -> str:
-        """Add suggested follow-up technical question for technical roles.
+        """Add suggested follow-up with actionable choices for technical roles.
         
-        Strategy: For technical roles (Software Developer, Hiring Manager technical),
-        always suggest a relevant follow-up based on the conversation topic.
-        
-        This creates a guided exploration experience without relying on fragile
-        keyword matching in responses.
+        Strategy: Offer specific, actionable next steps as multiple-choice options
+        rather than open-ended questions. This guides exploration more effectively.
         """
         
         # Only add follow-ups for technical roles
         if role not in ["Software Developer", "Hiring Manager (technical)"]:
             return response
         
-        # Categorized follow-up questions by technical domain
-        followup_categories = {
-            "architecture": [
-                "Can you show me Noah's system architecture diagram?",
-                "How does Noah's frontend communicate with the backend?",
-                "What's Noah's deployment strategy on Vercel?"
-            ],
-            "rag_system": [
-                "Can you show me the code for Noah's vector database implementation?",
-                "How does Noah handle embedding generation and storage?",
-                "What's Noah's approach to chunking and retrieval optimization?"
-            ],
-            "code_examples": [
-                "Can you show me examples of Noah's Python code?",
-                "Can you display Noah's LangGraph workflow code?",
-                "How does Noah structure his Python modules?"
-            ],
-            "database": [
-                "Can you show me Noah's database schema?",
-                "How does Noah use pgvector for embeddings?",
-                "What analytics does Noah collect in Supabase?"
-            ],
-            "frontend": [
-                "Can you show me Noah's Next.js frontend code?",
-                "How does Noah handle state management in React?",
-                "What's Noah's approach to styling with Tailwind?"
-            ],
-            "backend": [
-                "Can you show me Noah's API endpoint implementations?",
-                "How does Noah structure his serverless functions?",
-                "What's Noah's approach to error handling?"
-            ],
-            "orchestration": [
-                "Can you display Noah's LangGraph workflow diagram?",
-                "How does Noah orchestrate multi-step conversations?",
-                "What are the specific nodes in Noah's conversation flow?"
-            ],
-            "deployment": [
-                "Can you explain Noah's CI/CD pipeline?",
-                "How does Noah handle environment variables?",
-                "What's Noah's monitoring and observability setup?"
-            ]
-        }
-        
-        # Try to pick a contextually relevant category based on query content
+        # Determine conversation context for smart suggestions
         query_lower = query.lower()
         response_lower = response.lower()
         
-        # Map keywords to categories (for smart selection, not requirement)
-        category_hints = {
-            "architecture": ["architecture", "system", "design", "structure", "how does", "how did"],
-            "rag_system": ["rag", "retrieval", "embedding", "vector", "search", "similarity"],
-            "code_examples": ["code", "implementation", "example", "show me", "display"],
-            "database": ["database", "supabase", "postgres", "pgvector", "table", "schema"],
-            "frontend": ["frontend", "next.js", "react", "ui", "interface", "tailwind"],
-            "backend": ["backend", "api", "serverless", "python", "function", "endpoint"],
-            "orchestration": ["langgraph", "langchain", "workflow", "pipeline", "flow", "orchestrat"],
-            "deployment": ["deploy", "vercel", "production", "ci/cd", "environment"]
-        }
+        # Multi-choice follow-up suggestions based on context
+        followup_text = ""
         
-        # Find best matching category
-        selected_category = None
-        for category, hints in category_hints.items():
-            if any(hint in query_lower or hint in response_lower for hint in hints):
-                selected_category = category
-                break
+        # For "how does this work" or system overview queries
+        if any(term in query_lower for term in ["how does", "how did", "work", "built", "product", "system", "chatbot"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **What would you like to explore next?**\n- Display the data analytics Noah collects\n- Show me the RAG system code\n- Display Noah's LangGraph workflow diagram"
+            else:
+                followup_text = "\n\n🔍 **Would you like Noah to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- Technical implementation details"
         
-        # Fallback to architecture if no match (good default for technical discussions)
-        if not selected_category:
-            selected_category = "architecture"
+        # For data/analytics queries
+        elif any(term in query_lower or term in response_lower for term in ["data", "analytics", "collect", "metrics", "logs"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Dive deeper into:**\n- Database schema and tables\n- Data collection pipeline code\n- Analytics query examples"
+            else:
+                followup_text = "\n\n🔍 **Related topics:**\n- Query distribution by role\n- Retrieval quality metrics\n- User engagement insights"
         
-        # Pick a random question from the selected category
-        import random
-        followup_questions = followup_categories[selected_category]
-        followup = random.choice(followup_questions)
+        # For RAG/retrieval queries
+        elif any(term in query_lower or term in response_lower for term in ["rag", "retrieval", "vector", "embedding", "search"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Next steps:**\n- Show me the pgvector retrieval code\n- Display embedding generation logic\n- Explain similarity scoring approach"
+            else:
+                followup_text = "\n\n🔍 **Learn more about:**\n- How semantic search works\n- Knowledge base organization\n- Retrieval optimization strategies"
         
-        # Add the follow-up with role-specific formatting
-        if role == "Software Developer":
-            response += f"\n\n💡 **Dive Deeper:** {followup}"
-        elif role == "Hiring Manager (technical)":
-            response += f"\n\n🔍 **Technical Follow-up:** {followup}"
+        # For architecture queries
+        elif any(term in query_lower or term in response_lower for term in ["architecture", "design", "structure", "stack"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Explore components:**\n- Frontend Next.js code\n- Backend API implementations\n- LangGraph orchestration workflow"
+            else:
+                followup_text = "\n\n🔍 **System deep-dive options:**\n- Frontend/backend communication flow\n- Deployment strategy on Vercel\n- Scalability and monitoring approach"
         
-        return response
+        # For code/implementation queries
+        elif any(term in query_lower or term in response_lower for term in ["code", "implementation", "python", "typescript"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Code examples available:**\n- RAG pipeline implementation\n- Conversation flow nodes\n- Frontend React components"
+            else:
+                followup_text = "\n\n🔍 **Technical details:**\n- Key modules and their purposes\n- Code organization strategy\n- Best practices applied"
+        
+        # For database queries
+        elif any(term in query_lower or term in response_lower for term in ["database", "supabase", "postgres", "storage"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Database exploration:**\n- Show me the schema SQL\n- pgvector implementation code\n- Migration scripts and strategy"
+            else:
+                followup_text = "\n\n🔍 **Data infrastructure:**\n- Table structure and relationships\n- Vector storage approach\n- Data retention policies"
+        
+        # For frontend queries
+        elif any(term in query_lower or term in response_lower for term in ["frontend", "ui", "next.js", "react"]):
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Frontend code:**\n- Show me React components\n- State management approach\n- Tailwind styling examples"
+            else:
+                followup_text = "\n\n🔍 **Frontend architecture:**\n- Component organization\n- User interaction flow\n- Responsive design strategy"
+        
+        # Default fallback for any technical conversation
+        else:
+            if role == "Software Developer":
+                followup_text = "\n\n💡 **Explore Noah's work:**\n- System architecture diagram\n- RAG implementation code\n- Data analytics dashboard"
+            else:
+                followup_text = "\n\n🔍 **Next steps:**\n- View system architecture\n- See data collection metrics\n- Learn about deployment strategy"
+        
+        return response + followup_text
