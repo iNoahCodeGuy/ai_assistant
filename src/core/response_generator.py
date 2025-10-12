@@ -84,8 +84,13 @@ Please provide a helpful and accurate answer based on the information provided. 
         
         try:
             if self.qa_chain and not self.degraded_mode:
-                return self.llm.predict(prompt)
-            return self._synthesize_fallback(query, context_str)
+                response = self.llm.predict(prompt)
+            else:
+                response = self._synthesize_fallback(query, context_str)
+            
+            # Enforce third-person language
+            response = self._enforce_third_person(response)
+            return response
         except Exception as e:
             logger.error(f"Response generation (context) failed: {e}")
             return "I'm having trouble generating a response right now. Please try again."
@@ -126,7 +131,7 @@ Please provide a helpful and accurate answer based on the information provided. 
         """Build role-specific prompt."""
         if role == "Hiring Manager (technical)":
             return f"""
-            Based on Noah's background and technical work:
+            Based on Noah de la Calzada's background and technical work:
             
             Context: {context_str}
             
@@ -136,6 +141,12 @@ Please provide a helpful and accurate answer based on the information provided. 
             1. Technical details with specific examples
             2. Business value and impact
             3. Relevant experience and skills
+            
+            CRITICAL RULES:
+            - ALWAYS speak in THIRD PERSON about Noah (use "Noah", "he", "his", "him")
+            - NEVER use first person ("I", "my", "me") when referring to Noah
+            - Example: "Noah has experience in..." NOT "I have experience in..."
+            - Example: "Would you like Noah to email you his resume?" NOT "Would you like me to email you my resume?"
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -147,7 +158,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             """
         elif role == "Software Developer":
             return f"""
-            Based on Noah's technical work and code:
+            Based on Noah de la Calzada's technical work and code:
             
             Context: {context_str}
             
@@ -157,6 +168,12 @@ Please provide a helpful and accurate answer based on the information provided. 
             1. Technical implementation details
             2. Code architecture and patterns
             3. Development approach and methodology
+            
+            CRITICAL RULES:
+            - ALWAYS speak in THIRD PERSON about Noah (use "Noah", "he", "his", "him")
+            - NEVER use first person ("I", "my", "me") when referring to Noah
+            - Example: "Noah built this using..." NOT "I built this using..."
+            - Example: "His approach to..." NOT "My approach to..."
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -170,11 +187,17 @@ Please provide a helpful and accurate answer based on the information provided. 
             """
         else:
             return f"""
-            Based on the following context about Noah:
+            Based on the following context about Noah de la Calzada:
             
             Context: {context_str}
             
             Question: {query}
+            
+            CRITICAL RULES:
+            - ALWAYS speak in THIRD PERSON about Noah (use "Noah", "he", "his", "him")
+            - NEVER use first person ("I", "my", "me") when referring to Noah
+            - Example: "Noah is skilled in..." NOT "I am skilled in..."
+            - Example: "Would you like Noah to share his LinkedIn?" NOT "Would you like me to share my LinkedIn?"
             
             IMPORTANT: If the context contains code, diagrams, or formatted content:
             - Preserve ALL formatting exactly (markdown, code blocks, diagrams)
@@ -229,3 +252,32 @@ Please provide a helpful and accurate answer based on the information provided. 
             "Looking to confess crush": "\n\n[Friendly Tone: Keeping this professional but personable.]",
         }
         return response + role_map.get(role, "")
+
+    def _enforce_third_person(self, text: str) -> str:
+        """Replace first-person references with third-person (Noah)."""
+        
+        # Common first-person patterns to replace
+        replacements = [
+            ("Would you like me to email you my resume", "Would you like Noah to email you his resume"),
+            ("Would you like me to share my LinkedIn", "Would you like Noah to share his LinkedIn"),
+            ("I have experience", "Noah has experience"),
+            ("I worked at", "Noah worked at"),
+            ("I built", "Noah built"),
+            ("I'm skilled in", "Noah is skilled in"),
+            ("I am skilled in", "Noah is skilled in"),
+            ("My background", "Noah's background"),
+            ("My experience", "Noah's experience"),
+            ("My projects", "Noah's projects"),
+            ("I can help", "Noah can help"),
+            ("I developed", "Noah developed"),
+            ("I created", "Noah created"),
+            ("I designed", "Noah designed"),
+            ("My work", "Noah's work"),
+            ("My GitHub", "Noah's GitHub"),
+            ("My portfolio", "Noah's portfolio"),
+        ]
+        
+        for first_person, third_person in replacements:
+            text = text.replace(first_person, third_person)
+        
+        return text
