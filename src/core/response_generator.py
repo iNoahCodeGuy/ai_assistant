@@ -293,109 +293,99 @@ Please provide a helpful and accurate answer based on the information provided. 
         return text
 
     def _add_technical_followup(self, response: str, query: str, role: str) -> str:
-        """Add suggested follow-up technical question based on the current query and response."""
+        """Add suggested follow-up technical question for technical roles.
         
-        # Keywords to detect technical topics and suggest deeper questions
-        technical_topics = {
-            "rag": [
-                "Can you show me the code for Noah's vector database implementation?",
-                "How does Noah handle embedding generation and storage?",
-                "What's Noah's approach to chunking and retrieval optimization?"
-            ],
-            "langgraph": [
-                "Can you display Noah's LangGraph workflow diagram?",
-                "How does Noah orchestrate multi-step conversations?",
-                "What are the specific nodes in Noah's conversation flow?"
-            ],
-            "langchain": [
-                "Can you show me how Noah uses LangChain for prompt management?",
-                "What LangChain components does Noah use for retrieval?",
-                "How does Noah integrate LangChain with OpenAI?"
-            ],
+        Strategy: For technical roles (Software Developer, Hiring Manager technical),
+        always suggest a relevant follow-up based on the conversation topic.
+        
+        This creates a guided exploration experience without relying on fragile
+        keyword matching in responses.
+        """
+        
+        # Only add follow-ups for technical roles
+        if role not in ["Software Developer", "Hiring Manager (technical)"]:
+            return response
+        
+        # Categorized follow-up questions by technical domain
+        followup_categories = {
             "architecture": [
                 "Can you show me Noah's system architecture diagram?",
                 "How does Noah's frontend communicate with the backend?",
                 "What's Noah's deployment strategy on Vercel?"
             ],
-            "database": [
-                "Can you show me Noah's database schema?",
-                "How does Noah handle analytics logging?",
-                "What tables does Noah use for data collection?"
+            "rag_system": [
+                "Can you show me the code for Noah's vector database implementation?",
+                "How does Noah handle embedding generation and storage?",
+                "What's Noah's approach to chunking and retrieval optimization?"
             ],
-            "api": [
-                "Can you show me Noah's API endpoint implementations?",
-                "How does Noah structure his serverless functions?",
-                "What's Noah's approach to error handling in APIs?"
-            ],
-            "python": [
+            "code_examples": [
                 "Can you show me examples of Noah's Python code?",
-                "What design patterns does Noah use in his Python code?",
+                "Can you display Noah's LangGraph workflow code?",
                 "How does Noah structure his Python modules?"
             ],
-            "next.js": [
+            "database": [
+                "Can you show me Noah's database schema?",
+                "How does Noah use pgvector for embeddings?",
+                "What analytics does Noah collect in Supabase?"
+            ],
+            "frontend": [
                 "Can you show me Noah's Next.js frontend code?",
                 "How does Noah handle state management in React?",
                 "What's Noah's approach to styling with Tailwind?"
             ],
-            "supabase": [
-                "How does Noah use pgvector for embeddings?",
-                "Can you show me Noah's Supabase integration code?",
-                "What analytics does Noah collect in Supabase?"
+            "backend": [
+                "Can you show me Noah's API endpoint implementations?",
+                "How does Noah structure his serverless functions?",
+                "What's Noah's approach to error handling?"
+            ],
+            "orchestration": [
+                "Can you display Noah's LangGraph workflow diagram?",
+                "How does Noah orchestrate multi-step conversations?",
+                "What are the specific nodes in Noah's conversation flow?"
             ],
             "deployment": [
                 "Can you explain Noah's CI/CD pipeline?",
                 "How does Noah handle environment variables?",
-                "What's Noah's approach to serverless deployment?"
-            ],
-            # Add more generic triggers that appear in common technical responses
-            "backend": [
-                "Can you show me the database schema Noah uses?",
-                "How does Noah handle API authentication?",
-                "What's Noah's approach to error handling in the backend?"
-            ],
-            "frontend": [
-                "Can you show me Noah's React component structure?",
-                "How does Noah manage state in the frontend?",
-                "What UI frameworks does Noah use?"
-            ],
-            "system": [
-                "Can you show me Noah's system architecture diagram?",
-                "How does Noah's system scale?",
-                "What monitoring does Noah have in place?"
-            ],
-            "tech stack": [
-                "Can you dive deeper into Noah's database choices?",
-                "How does Noah's deployment pipeline work?",
-                "What's Noah's approach to testing?"
-            ],
-            "chatbot": [
-                "Can you show me the code for Noah's conversation flow?",
-                "How does Noah handle multi-turn conversations?",
-                "What's Noah's approach to context management?"
-            ],
-            "product": [
-                "Can you show me Noah's system architecture?",
-                "How does Noah handle scaling and performance?",
-                "What's Noah's development workflow?"
+                "What's Noah's monitoring and observability setup?"
             ]
         }
         
-        # Check if the query or response contains technical keywords
+        # Try to pick a contextually relevant category based on query content
         query_lower = query.lower()
         response_lower = response.lower()
         
-        for topic, questions in technical_topics.items():
-            if topic in query_lower or topic in response_lower:
-                # Pick a relevant follow-up question
-                import random
-                followup = random.choice(questions)
-                
-                # Add the follow-up suggestion
-                if role == "Software Developer":
-                    response += f"\n\n💡 **Dive Deeper:** {followup}"
-                elif role == "Hiring Manager (technical)":
-                    response += f"\n\n🔍 **Technical Follow-up:** {followup}"
-                
-                break  # Only add one follow-up
+        # Map keywords to categories (for smart selection, not requirement)
+        category_hints = {
+            "architecture": ["architecture", "system", "design", "structure", "how does", "how did"],
+            "rag_system": ["rag", "retrieval", "embedding", "vector", "search", "similarity"],
+            "code_examples": ["code", "implementation", "example", "show me", "display"],
+            "database": ["database", "supabase", "postgres", "pgvector", "table", "schema"],
+            "frontend": ["frontend", "next.js", "react", "ui", "interface", "tailwind"],
+            "backend": ["backend", "api", "serverless", "python", "function", "endpoint"],
+            "orchestration": ["langgraph", "langchain", "workflow", "pipeline", "flow", "orchestrat"],
+            "deployment": ["deploy", "vercel", "production", "ci/cd", "environment"]
+        }
+        
+        # Find best matching category
+        selected_category = None
+        for category, hints in category_hints.items():
+            if any(hint in query_lower or hint in response_lower for hint in hints):
+                selected_category = category
+                break
+        
+        # Fallback to architecture if no match (good default for technical discussions)
+        if not selected_category:
+            selected_category = "architecture"
+        
+        # Pick a random question from the selected category
+        import random
+        followup_questions = followup_categories[selected_category]
+        followup = random.choice(followup_questions)
+        
+        # Add the follow-up with role-specific formatting
+        if role == "Software Developer":
+            response += f"\n\n💡 **Dive Deeper:** {followup}"
+        elif role == "Hiring Manager (technical)":
+            response += f"\n\n🔍 **Technical Follow-up:** {followup}"
         
         return response
