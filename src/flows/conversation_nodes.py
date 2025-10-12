@@ -50,12 +50,23 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
 
 
 def generate_answer(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
-    """Generate an assistant response using retrieved context."""
-    answer = rag_engine.response_generator.generate_basic_response(
-        state.query,
-        fallback_docs=state.fetch("retrieval_matches", []),
-        chat_history=state.chat_history
+    """Generate an assistant response using retrieved context.
+    
+    Uses contextual response generation which includes:
+    - Role-aware prompting
+    - Third-person language enforcement
+    - Technical follow-up questions (for technical roles)
+    """
+    # Get retrieved chunks for context
+    retrieved_chunks = state.retrieved_chunks or []
+    
+    # Use contextual response generator (includes follow-ups)
+    answer = rag_engine.response_generator.generate_contextual_response(
+        query=state.query,
+        context=retrieved_chunks,
+        role=state.role
     )
+    
     state.set_answer(answer)
     return state
 
