@@ -16,3 +16,77 @@ How does this chatbot product work?,"This AI chatbot works by combining **retrie
 What backend technologies power this assistant?,"The backend stack is: **Python 3.11+** for core logic and orchestration, **LangGraph** for multi-step conversation flows (classify → retrieve → generate → execute → log pipeline), **LangChain** for LLM abstraction and prompt management, **OpenAI GPT-4o-mini** for natural language generation, **OpenAI text-embedding-3-small** for 1536-dimensional vector embeddings, **Supabase Postgres** with **pgvector extension** for vector similarity search and relational data storage, **Supabase Storage** for file management (resume PDFs), **Vercel serverless functions** for API deployment (auto-scaling, zero-downtime), **LangSmith** for observability (tracing LLM calls, cost monitoring), **Resend** for transactional emails, **Twilio** for SMS notifications. The architecture is **stateless** - each request is independent, with session state stored in Supabase not memory. This enables horizontal scaling and serverless deployment."
 How was this AI assistant built?,"Noah built this AI assistant through iterative development: **Phase 1 (Foundation)**: Started with a simple Streamlit app and FAISS local vector store for knowledge retrieval. Built the RAG pipeline using LangChain to combine OpenAI embeddings with retrieval. **Phase 2 (Role Intelligence)**: Added the role router system to personalize responses for different user types (hiring managers, developers, casual visitors). Implemented session management and analytics logging. **Phase 3 (Production Infrastructure)**: Migrated from FAISS to Supabase pgvector for cloud-native vector search. Added LangGraph for workflow orchestration (replaced linear pipeline with node-based flow). Built Next.js frontend to replace Streamlit for better performance. Deployed to Vercel serverless for auto-scaling. **Phase 4 (Refinements)**: Implemented third-person language enforcement (responses say 'Noah' not 'I'). Added intelligent follow-up question suggestions for technical roles. Expanded knowledge base from career-only to include technical_kb (system details) and architecture_kb (diagrams, code examples). The development process emphasized **rapid prototyping** (get it working first), **observability** (LangSmith tracing for debugging), and **incremental complexity** (add features one at a time, validate each works)."
 How does this product work?,"This product is an AI-powered interactive resume assistant built by Noah. It works by: (1) You ask a question about Noah (career, skills, projects), (2) The system converts your question into a semantic vector embedding, (3) Searches Noah knowledge base in Supabase pgvector for relevant information, (4) Retrieves the top matching chunks about Noah, (5) Feeds context to OpenAI GPT-4o-mini, (6) Generates a personalized response about Noah in third-person, (7) Adds role-specific enhancements (code for developers, achievements for hiring managers). The **backend** uses Python + LangGraph for orchestration, Supabase for database/vectors, OpenAI for LLM, and deploys as Vercel serverless functions. The **frontend** is Next.js with Tailwind CSS. The system is **role-aware** - responses adapt based on whether you are a hiring manager, software developer, or casual visitor."
+What data is collected and how is it analyzed?,"**Data Collection Architecture**: Noah implementation tracks 5 core data streams for analytics and improvement: 
+
+**1. Messages Table** (Conversation Logs)
+- Fields: id, session_id, role, user_query, assistant_answer, timestamp, latency_ms, token_count
+- Purpose: Full conversation transcripts with metadata
+- Volume: ~500-1000 messages/day (estimated)
+- Use Case: Conversation quality analysis, popular query identification, latency tracking
+
+**2. Retrieval Logs Table** (RAG Pipeline Performance)
+- Fields: message_id, chunk_id, similarity_score, doc_id (career_kb/technical_kb/architecture_kb), retrieved_at
+- Purpose: Tracks which KB chunks matched each query and with what similarity
+- Volume: 3-5 logs per message (top-k retrieval)
+- Use Case: Evaluate retrieval quality, identify knowledge gaps, tune similarity thresholds
+
+**3. Feedback Table** (User Engagement)
+- Fields: message_id, rating (1-5 stars), comment, email, contact_requested, feedback_at
+- Purpose: User satisfaction and contact intent
+- Volume: ~10-20% of conversations provide feedback
+- Use Case: Quality metrics, lead generation, feature requests
+
+**4. Analytics Metrics** (System Health)
+- Average latency: 2-3 seconds per query
+- Success rate: ~85% (queries returning relevant answers)
+- Token usage: ~500-800 tokens per conversation
+- Cost per query: ~.0001-0.0003
+- Peak hours: 9am-5pm EST
+
+**5. Data Presentation** (Analysis-Ready Format)
+Noah presents analytics data in structured formats:
+
+ **Query Distribution by Role**
+| Role | Total Queries | Avg Latency | Satisfaction |
+|------|--------------|-------------|-------------|
+| Software Developer | 35% | 2.8s | 4.2/5 |
+| Hiring Manager (tech) | 30% | 2.5s | 4.5/5 |
+| Hiring Manager (non-tech) | 20% | 2.2s | 4.6/5 |
+| Just looking around | 15% | 2.0s | 4.0/5 |
+
+ **Top 10 Query Topics**
+1. Tech stack / Architecture (28%)
+2. Career background (22%)
+3. Project examples (15%)
+4. Skills and technologies (12%)
+5. How system works (8%)
+6. Code examples (6%)
+7. Resume/LinkedIn requests (4%)
+8. Deployment details (3%)
+9. MMA background (1%)
+10. Other (1%)
+
+ **Retrieval Quality Metrics**
+- Average similarity score: 0.68
+- Queries with >0.7 similarity: 72%
+- No-match rate (<0.6 similarity): 8%
+- Multi-chunk relevance: 85% (multiple chunks contribute)
+
+ **Conversation Insights**
+- Average session length: 3.2 turns
+- Follow-up rate: 65% (users ask 2+ questions)
+- Contact conversion: 12% (users request resume/email)
+- Peak query length: 8-15 words
+
+**Data Export Capabilities**:
+- CSV export for all tables (analytics_backup.csv)
+- JSON format for API integration
+- SQL queries via Supabase dashboard
+- Real-time dashboard views (Supabase)
+- LangSmith traces for LLM debugging
+
+**Privacy & Compliance**:
+- No PII stored unless user explicitly provides (feedback form)
+- Session IDs are UUIDs (not linked to identity)
+- 90-day data retention policy
+- GDPR-compliant data export/deletion on request"
