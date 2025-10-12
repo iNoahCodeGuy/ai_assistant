@@ -346,6 +346,37 @@ Please provide a helpful and accurate answer based on the information provided. 
                 "Can you explain Noah's CI/CD pipeline?",
                 "How does Noah handle environment variables?",
                 "What's Noah's approach to serverless deployment?"
+            ],
+            # Add more generic triggers that appear in common technical responses
+            "backend": [
+                "Can you show me the database schema Noah uses?",
+                "How does Noah handle API authentication?",
+                "What's Noah's approach to error handling in the backend?"
+            ],
+            "frontend": [
+                "Can you show me Noah's React component structure?",
+                "How does Noah manage state in the frontend?",
+                "What UI frameworks does Noah use?"
+            ],
+            "system": [
+                "Can you show me Noah's system architecture diagram?",
+                "How does Noah's system scale?",
+                "What monitoring does Noah have in place?"
+            ],
+            "tech stack": [
+                "Can you dive deeper into Noah's database choices?",
+                "How does Noah's deployment pipeline work?",
+                "What's Noah's approach to testing?"
+            ],
+            "chatbot": [
+                "Can you show me the code for Noah's conversation flow?",
+                "How does Noah handle multi-turn conversations?",
+                "What's Noah's approach to context management?"
+            ],
+            "product": [
+                "Can you show me Noah's system architecture?",
+                "How does Noah handle scaling and performance?",
+                "What's Noah's development workflow?"
             ]
         }
         
