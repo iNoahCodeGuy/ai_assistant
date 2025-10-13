@@ -308,66 +308,66 @@ Please provide a helpful and accurate answer based on the information provided. 
         
         # For enterprise/scale/business queries - NEW CATEGORY
         if any(term in query_lower for term in ["enterprise", "scale", "company", "business", "production", "large", "commercial"]):
-            followup_text = "\n\n🏢 **Enterprise Adaptation:**\n- How would Noah modify the stack for 10,000+ users?\n- What enterprise features would be added? (SSO, audit trails, SLA)\n- Show scalability roadmap (managed vector DBs, load balancing, Redis caching)"
+            followup_text = "\n\n🏢 **Would you like me to show you:**\n- How Noah would modify the stack for 10,000+ users\n- What enterprise features would be added (SSO, audit trails, SLA)\n- The scalability roadmap (managed vector DBs, load balancing, Redis caching)"
         
         # For "how does this work" or system overview queries
         elif any(term in query_lower for term in ["how does", "how did", "work", "built", "product", "system", "chatbot"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **What would you like to explore next?**\n- Display the data analytics Noah collects\n- Show me the RAG system code\n- Display Noah's LangGraph workflow diagram"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- The data analytics Noah collects\n- The RAG system code\n- Noah's LangGraph workflow diagram"
             elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
-                followup_text = "\n\n🔍 **Would you like Noah to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- How this would adapt for enterprise use (stack changes, scaling)"
+                followup_text = "\n\n🔍 **Would you like me to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- How this would adapt for enterprise use (stack changes, scaling)"
             else:  # Casual visitors
-                followup_text = "\n\n✨ **Want to explore more?**\n- See what data analytics Noah tracks\n- View the architecture stack in detail\n- Ask about Noah's background and experience"
+                followup_text = "\n\n✨ **Would you like me to show you:**\n- What data analytics Noah tracks\n- The architecture stack in detail\n- More about Noah's background and experience"
         
         # For data/analytics queries
         elif any(term in query_lower or term in response_lower for term in ["data", "analytics", "collect", "metrics", "logs"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Dive deeper into:**\n- Database schema and tables\n- Data collection pipeline code\n- Analytics query examples"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- The database schema and tables\n- Data collection pipeline code\n- Analytics query examples"
             else:
-                followup_text = "\n\n🔍 **Related topics:**\n- Query distribution by role\n- Retrieval quality metrics\n- User engagement insights"
+                followup_text = "\n\n🔍 **Would you like me to show you:**\n- Query distribution by role\n- Retrieval quality metrics\n- User engagement insights"
         
         # For RAG/retrieval queries
         elif any(term in query_lower or term in response_lower for term in ["rag", "retrieval", "vector", "embedding", "search"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Next steps:**\n- Show me the pgvector retrieval code\n- Display embedding generation logic\n- Explain similarity scoring approach"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- The pgvector retrieval code\n- Embedding generation logic\n- The similarity scoring approach"
             else:
-                followup_text = "\n\n🔍 **Learn more about:**\n- How semantic search works\n- Knowledge base organization\n- Retrieval optimization strategies"
+                followup_text = "\n\n🔍 **Would you like me to explain:**\n- How semantic search works\n- Knowledge base organization\n- Retrieval optimization strategies"
         
         # For architecture queries
         elif any(term in query_lower or term in response_lower for term in ["architecture", "design", "structure", "stack"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Explore components:**\n- Frontend Next.js code\n- Backend API implementations\n- LangGraph orchestration workflow"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- Frontend Next.js code\n- Backend API implementations\n- LangGraph orchestration workflow"
             else:
-                followup_text = "\n\n🔍 **System deep-dive options:**\n- Frontend/backend communication flow\n- Deployment strategy on Vercel\n- Scalability and monitoring approach"
+                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Frontend/backend communication flow\n- Deployment strategy on Vercel\n- Scalability and monitoring approach"
         
         # For code/implementation queries
         elif any(term in query_lower or term in response_lower for term in ["code", "implementation", "python", "typescript"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Code examples available:**\n- RAG pipeline implementation\n- Conversation flow nodes\n- Frontend React components"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- RAG pipeline implementation\n- Conversation flow nodes\n- Frontend React components"
             else:
-                followup_text = "\n\n🔍 **Technical details:**\n- Key modules and their purposes\n- Code organization strategy\n- Best practices applied"
+                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Key modules and their purposes\n- Code organization strategy\n- Best practices applied"
         
         # For database queries
         elif any(term in query_lower or term in response_lower for term in ["database", "supabase", "postgres", "storage"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Database exploration:**\n- Show me the schema SQL\n- pgvector implementation code\n- Migration scripts and strategy"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- The schema SQL\n- pgvector implementation code\n- Migration scripts and strategy"
             else:
-                followup_text = "\n\n🔍 **Data infrastructure:**\n- Table structure and relationships\n- Vector storage approach\n- Data retention policies"
+                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Table structure and relationships\n- Vector storage approach\n- Data retention policies"
         
         # For frontend queries
         elif any(term in query_lower or term in response_lower for term in ["frontend", "ui", "next.js", "react"]):
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Frontend code:**\n- Show me React components\n- State management approach\n- Tailwind styling examples"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- React components\n- State management approach\n- Tailwind styling examples"
             else:
-                followup_text = "\n\n🔍 **Frontend architecture:**\n- Component organization\n- User interaction flow\n- Responsive design strategy"
+                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Component organization\n- User interaction flow\n- Responsive design strategy"
         
         # Default fallback for any conversation - ALL roles get suggestions
         else:
             if role == "Software Developer":
-                followup_text = "\n\n💡 **Explore Noah's work:**\n- System architecture diagram\n- RAG implementation code\n- Data analytics dashboard"
+                followup_text = "\n\n💡 **Would you like me to show you:**\n- System architecture diagram\n- RAG implementation code\n- Data analytics dashboard"
             elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
-                followup_text = "\n\n🔍 **Next steps:**\n- Display data analytics collected\n- View architecture stack in detail\n- Learn how this adapts for enterprise use (stack modifications, scaling)"
+                followup_text = "\n\n🔍 **Would you like me to show you:**\n- Data analytics collected\n- Architecture stack in detail\n- How this adapts for enterprise use (stack modifications, scaling)"
             else:  # "Just looking around" or "Looking to confess crush"
-                followup_text = "\n\n✨ **Explore more about Noah:**\n- View the data analytics dashboard\n- See the architecture stack\n- Ask about Noah's projects and experience"
+                followup_text = "\n\n✨ **Would you like me to show you:**\n- The data analytics dashboard\n- The architecture stack\n- More about Noah's projects and experience"
         
         return response + followup_text
