@@ -91,9 +91,8 @@ Please provide a helpful and accurate answer based on the information provided. 
             # Enforce third-person language
             response = self._enforce_third_person(response)
             
-            # Add follow-up question for technical roles
-            if role in ["Hiring Manager (technical)", "Software Developer"]:
-                response = self._add_technical_followup(response, query, role)
+            # Add follow-up suggestions for ALL roles to promote interaction
+            response = self._add_technical_followup(response, query, role)
             
             return response
         except Exception as e:
@@ -293,29 +292,32 @@ Please provide a helpful and accurate answer based on the information provided. 
         return text
 
     def _add_technical_followup(self, response: str, query: str, role: str) -> str:
-        """Add suggested follow-up with actionable choices for technical roles.
+        """Add suggested follow-up with actionable choices for ALL roles.
         
         Strategy: Offer specific, actionable next steps as multiple-choice options
         rather than open-ended questions. This guides exploration more effectively.
+        Tailored to user's role for optimal engagement.
         """
-        
-        # Only add follow-ups for technical roles
-        if role not in ["Software Developer", "Hiring Manager (technical)"]:
-            return response
         
         # Determine conversation context for smart suggestions
         query_lower = query.lower()
         response_lower = response.lower()
         
-        # Multi-choice follow-up suggestions based on context
+        # Multi-choice follow-up suggestions based on context and role
         followup_text = ""
         
+        # For enterprise/scale/business queries - NEW CATEGORY
+        if any(term in query_lower for term in ["enterprise", "scale", "company", "business", "production", "large", "commercial"]):
+            followup_text = "\n\n🏢 **Enterprise Adaptation:**\n- How would Noah modify the stack for 10,000+ users?\n- What enterprise features would be added? (SSO, audit trails, SLA)\n- Show scalability roadmap (managed vector DBs, load balancing, Redis caching)"
+        
         # For "how does this work" or system overview queries
-        if any(term in query_lower for term in ["how does", "how did", "work", "built", "product", "system", "chatbot"]):
+        elif any(term in query_lower for term in ["how does", "how did", "work", "built", "product", "system", "chatbot"]):
             if role == "Software Developer":
                 followup_text = "\n\n💡 **What would you like to explore next?**\n- Display the data analytics Noah collects\n- Show me the RAG system code\n- Display Noah's LangGraph workflow diagram"
-            else:
-                followup_text = "\n\n🔍 **Would you like Noah to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- Technical implementation details"
+            elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
+                followup_text = "\n\n🔍 **Would you like Noah to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- How this would adapt for enterprise use (stack changes, scaling)"
+            else:  # Casual visitors
+                followup_text = "\n\n✨ **Want to explore more?**\n- See what data analytics Noah tracks\n- View the architecture stack in detail\n- Ask about Noah's background and experience"
         
         # For data/analytics queries
         elif any(term in query_lower or term in response_lower for term in ["data", "analytics", "collect", "metrics", "logs"]):
@@ -359,11 +361,13 @@ Please provide a helpful and accurate answer based on the information provided. 
             else:
                 followup_text = "\n\n🔍 **Frontend architecture:**\n- Component organization\n- User interaction flow\n- Responsive design strategy"
         
-        # Default fallback for any technical conversation
+        # Default fallback for any conversation - ALL roles get suggestions
         else:
             if role == "Software Developer":
                 followup_text = "\n\n💡 **Explore Noah's work:**\n- System architecture diagram\n- RAG implementation code\n- Data analytics dashboard"
-            else:
-                followup_text = "\n\n🔍 **Next steps:**\n- View system architecture\n- See data collection metrics\n- Learn about deployment strategy"
+            elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
+                followup_text = "\n\n🔍 **Next steps:**\n- Display data analytics collected\n- View architecture stack in detail\n- Learn how this adapts for enterprise use (stack modifications, scaling)"
+            else:  # "Just looking around" or "Looking to confess crush"
+                followup_text = "\n\n✨ **Explore more about Noah:**\n- View the data analytics dashboard\n- See the architecture stack\n- Ask about Noah's projects and experience"
         
         return response + followup_text

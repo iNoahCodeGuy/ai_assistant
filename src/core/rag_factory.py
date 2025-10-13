@@ -48,7 +48,8 @@ class RagEngineFactory:
             llm = ChatOpenAI(
                 openai_api_key=getattr(self.settings, "openai_api_key", None),
                 model_name=getattr(self.settings, "openai_model", "gpt-3.5-turbo"),
-                temperature=0.4
+                temperature=0.4,
+                max_tokens=4096  # Allow full analytics dashboard (11,772 chars ≈ 3,000 tokens)
             )
             return llm, False
         except Exception as e:
