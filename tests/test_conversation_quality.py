@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from src.flows.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
-    classify_query, generate_answer, apply_role_context, _is_valid_code_snippet
+    classify_query, generate_answer, apply_role_context, retrieve_chunks, _is_valid_code_snippet
 )
 from src.flows.data_reporting import render_full_data_report
 
@@ -194,6 +194,49 @@ class TestConversationFlowQuality:
             assert "Would you like me to show you:" not in method_source or \
                    method_source.count("\n") < 20, \
                    "add_followup_suggestions is generating prompts - should be deprecated"
+
+    def test_display_data_uses_canned_intro(self):
+        """Display data requests should bypass LLM noise and stay clean."""
+        mock_engine = MagicMock()
+        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "LLM output should be bypassed"
+
+        state = ConversationState(
+            role="Hiring Manager (technical)",
+            query="Please display data for the latest analytics"
+        )
+
+        state = classify_query(state)
+        state = retrieve_chunks(state, mock_engine)
+        state = generate_answer(state, mock_engine)
+
+        assert state.answer.startswith("Here's the live analytics snapshot")
+        assert not mock_engine.response_generator.generate_contextual_response.called
+        assert "}" not in state.answer[:5], "Canned intro should not leak braces"
+
+    def test_generated_answer_sanitizes_sql_artifacts(self):
+        """Strip retrieval artefacts like stray braces and SELECT lines."""
+        mock_engine = MagicMock()
+        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = (
+            "}\n\n})\n\nSELECT\n\nSELECT.\n\nClean content ready for review"
+        )
+
+        state = ConversationState(
+            role="Hiring Manager (technical)",
+            query="Walk me through the architecture overview"
+        )
+
+        state = classify_query(state)
+        state = retrieve_chunks(state, mock_engine)
+        state = generate_answer(state, mock_engine)
+
+        assert state.answer.startswith("Clean content ready for review")
+        assert not state.answer.startswith("}")
+        first_line = state.answer.splitlines()[0]
+        assert "SELECT" not in first_line, "Sanitized answer should not expose raw SELECT"
 
 
 class TestCodeDisplayQuality:

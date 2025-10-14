@@ -87,6 +87,40 @@ def _is_valid_code_snippet(code: str) -> bool:
     return True
 
 
+SANITIZE_PREFIX_PATTERNS = [
+    re.compile(r"^[\}\)\]\{\(\[]+$"),
+    re.compile(r"^SELECT\.?$", re.IGNORECASE),
+    re.compile(r"^FROM\.?$", re.IGNORECASE),
+]
+
+
+def _sanitize_generated_answer(answer: str) -> str:
+    """Strip leading SQL/artifact noise that can leak from retrieval context."""
+    if not answer:
+        return answer
+
+    lines = answer.splitlines()
+    sanitized_lines = []
+    dropping_prefix = True
+
+    for line in lines:
+        stripped = line.strip()
+
+        if dropping_prefix and (not stripped):
+            continue
+
+        if dropping_prefix and any(pattern.match(stripped) for pattern in SANITIZE_PREFIX_PATTERNS):
+            continue
+
+        dropping_prefix = False
+        sanitized_lines.append(line)
+
+    if not sanitized_lines:
+        return ""
+
+    return "\n".join(sanitized_lines).lstrip()
+
+
 RESUME_DOWNLOAD_URL = os.getenv("RESUME_DOWNLOAD_URL", "https://example.com/noah-resume.pdf")
 LINKEDIN_URL = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/noahdelacalzada")
 
@@ -159,6 +193,7 @@ def classify_query(state: ConversationState) -> ConversationState:
     elif any(term in lowered for term in ["fun fact", "hobby", "interesting fact", "hot dog"]):
         state.stash("query_type", "fun")
     elif _is_data_display_request(lowered):
+        state.stash("data_display_requested", True)
         state.stash("query_type", "data")
     # Detect "how does [product/system/chatbot] work" queries as technical
     elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
@@ -189,6 +224,12 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     - Third-person language enforcement
     - Technical follow-up questions (for technical roles)
     """
+    if state.fetch("data_display_requested", False):
+        # Avoid LLM noise for direct data display requests.
+        canned_intro = "Here's the live analytics snapshot you asked for."
+        state.set_answer(canned_intro)
+        return state
+
     # Get retrieved chunks for context
     retrieved_chunks = state.retrieved_chunks or []
     
@@ -199,7 +240,7 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
         role=state.role
     )
     
-    state.set_answer(answer)
+    state.set_answer(_sanitize_generated_answer(answer))
     return state
 
 
@@ -412,7 +453,6 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             code_content = snippet.get("content", "")
             citation = snippet.get("citation", "codebase")
             
-            # Validate code content is not empty or malformed
             if _is_valid_code_snippet(code_content):
                 # Use formatted code display with enterprise prompt
                 formatted_code = content_blocks.format_code_snippet(
