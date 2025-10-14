@@ -226,25 +226,17 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     - Role-aware prompting
     - Third-person language enforcement
     - Technical follow-up questions (for technical roles)
+    
+    For data display requests, fetches LIVE analytics from /api/analytics endpoint.
     """
     # Get retrieved chunks for context
     retrieved_chunks = state.retrieved_chunks or []
     
-    # For data display requests, still use RAG to get the enhanced analytics dashboard
-    # but use a simpler intro
+    # For data display requests, use LIVE analytics from API
     if state.fetch("data_display_requested", False):
-        # Simple intro for data requests
-        answer = "Here's the comprehensive analytics dashboard for Noah's AI Assistant:\n\n"
-        # Add the retrieved content (enhanced analytics from KB)
-        if retrieved_chunks:
-            # Extract content from chunks
-            for chunk in retrieved_chunks:
-                if isinstance(chunk, dict):
-                    content = chunk.get("content", "")
-                else:
-                    content = str(chunk)
-                answer += content + "\n\n"
-        state.set_answer(_sanitize_generated_answer(answer))
+        # Mark that we need to fetch live analytics
+        # This will be handled in apply_role_context
+        state.set_answer("Fetching live analytics data from Supabase...")
         return state
     
     # Use contextual response generator (includes follow-ups)
@@ -284,7 +276,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
     contact_requested = any(key in lowered for key in ["reach out", "contact me", "call me", "follow up"])
 
     if _is_data_display_request(lowered):
-        add_action("render_data_report")
+        add_action("render_live_analytics")  # Changed from render_data_report
         state.stash("data_display_requested", True)
 
     if resume_requested:
@@ -389,7 +381,45 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             "\n\n" + content_blocks.format_section("Quality Assurance", content_blocks.qa_strategy_block())
         )
 
-    if "render_data_report" in actions:
+    # NEW: Live analytics rendering from /api/analytics endpoint
+    if "render_live_analytics" in actions:
+        try:
+            import requests
+            from src.flows.analytics_renderer import render_live_analytics
+            from src.config.supabase_config import supabase_settings
+            
+            # Determine the analytics API URL
+            if supabase_settings.is_vercel:
+                # Production: use the deployed URL
+                analytics_url = "https://noahsaiassistant.vercel.app/api/analytics"
+            else:
+                # Local: use localhost
+                analytics_url = "http://localhost:3000/api/analytics"
+            
+            # Fetch live analytics
+            response = requests.get(analytics_url, timeout=3)
+            response.raise_for_status()
+            analytics_data = response.json()
+            
+            # Render with role-appropriate detail level
+            analytics_report = render_live_analytics(
+                analytics_data, 
+                state.role,
+                focus=None  # Could detect focus from query
+            )
+            
+            # Replace placeholder with actual analytics
+            components = [analytics_report]
+            
+        except Exception as e:
+            logger.error(f"Failed to fetch live analytics: {e}")
+            # Fallback to cached/KB version
+            components.append(
+                "\n\n⚠️ Live analytics temporarily unavailable. Would you like to see a cached summary?"
+            )
+
+    # Legacy: Old data report (keep for compatibility)
+    if "render_data_report" in actions and "render_live_analytics" not in actions:
         report = state.fetch("data_report")
         if not report:
             report = render_full_data_report()
