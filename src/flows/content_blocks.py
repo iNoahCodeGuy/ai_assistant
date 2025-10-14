@@ -9,6 +9,38 @@ and senior developers evaluating Noah's skills.
 from src.config.supabase_config import supabase_settings
 
 
+def format_section(title: str, body: str, *, include_divider: bool = True) -> str:
+    """Format a section with a divider and level-three heading.
+
+    Args:
+        title: Section title to render as heading
+        body: Markdown body content to follow the heading
+        include_divider: Whether to prefix the section with a horizontal divider
+
+    Returns:
+        Markdown string containing the formatted section
+    """
+    parts = []
+    if include_divider:
+        parts.append("---")
+    parts.append(f"### {title}")
+    parts.append(body.strip())
+    return "\n".join(parts)
+
+
+def format_callout(message: str, *, label: str = "TIP") -> str:
+    """Format a single-line callout block.
+
+    Args:
+        message: Main callout body text
+        label: Short uppercase label to prefix the message with
+
+    Returns:
+        Markdown blockquote callout
+    """
+    return f"> {label}: {message.strip()}"
+
+
 def data_collection_table() -> str:
     """Generate markdown table summarizing tracked datasets.
     
@@ -213,13 +245,13 @@ def qa_strategy_block() -> str:
         Markdown list explaining automated quality assurance approach.
     """
     return (
-        "- **Automated Regression Tests**: 14 test cases cover analytics display, prompt deduplication, "
+        "- Automated regression tests: 14 scenarios covering analytics display, prompt deduplication, "
         "professional formatting, and code validation (all passing in ~1.2s).\n"
-        "- **Pre-Commit Hooks**: Catch emoji headers, duplicate prompts, and raw data dumps before commit.\n"
-        "- **CI/CD Quality Gates**: GitHub Actions block merges if quality standards are violated.\n"
-        "- **Production Monitoring**: Daily checks track success rates, response times, and formatting compliance.\n"
-        "- **Documentation**: Comprehensive strategy (`docs/QUALITY_ASSURANCE_STRATEGY.md`) ensures team alignment.\n\n"
-        "This system prevents regression as the codebase grows—new features can't break conversation quality."
+        "- Pre-commit hooks block emoji headers, duplicate prompts, and raw data dumps before code lands.\n"
+        "- CI/CD quality gates: GitHub Actions stop merges that violate conversation standards.\n"
+        "- Production monitoring checks success rate, latency, and formatting compliance every day.\n"
+        "- Documentation in `docs/QUALITY_ASSURANCE_STRATEGY.md` keeps the team aligned on quality.\n\n"
+        "Net result: new features cannot break conversation quality without being caught immediately."
     )
 
 
@@ -232,8 +264,8 @@ def role_switch_suggestion(target_role: str) -> str:
     Returns:
         Markdown suggestion to switch roles.
     """
-    return (
-        f"\n\n💡 **Tip**: For more detailed technical insights, "
-        f"try switching to the **{target_role}** role. "
-        f"That role provides code snippets, architecture diagrams, and implementation details."
+    message = (
+        f"Switch to the {target_role} role for deeper technical context—"
+        "you'll see code snippets, architecture snapshots, and implementation details."
     )
+    return "\n" + format_callout(message)
