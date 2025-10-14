@@ -65,8 +65,9 @@ def render_full_data_report() -> str:
     This function:
     1. Fetches all records from messages, retrieval_logs, feedback, confessions, sms_logs
     2. Summarizes knowledge base coverage (kb_chunks)
-    3. Formats everything into analyst-grade markdown tables
-    4. Includes dataset inventory with record counts and last entry timestamps
+    3. Calculates key performance metrics and insights
+    4. Formats everything into analyst-grade markdown tables
+    5. Includes dataset inventory with record counts and last entry timestamps
     
     Returns:
         Markdown-formatted report with multiple sections and tables.
@@ -95,7 +96,7 @@ def render_full_data_report() -> str:
         try:
             selection = ",".join(columns)
             result = client.table(table_name).select(selection).order(
-                "created_at" if "created_at" in columns else "id"
+                "created_at" if "created_at" in columns else "id", desc=True
             ).execute()
             rows = result.data or []
             dataset_rows[table_name] = rows
@@ -103,7 +104,8 @@ def render_full_data_report() -> str:
             # Calculate last entry timestamp
             last_timestamp: Optional[str] = None
             if rows and "created_at" in columns:
-                last_timestamp = max(row.get("created_at") for row in rows if row.get("created_at"))
+                # Already ordered desc, so first is latest
+                last_timestamp = rows[0].get("created_at") if rows else None
             
             inventory.append({
                 "Dataset": table_name,
@@ -120,6 +122,7 @@ def render_full_data_report() -> str:
             })
 
     # Knowledge base summary (excluding embeddings for readability)
+    # Aggregate by SOURCE only (not every individual section entry)
     kb_summary_rows: List[Dict[str, Any]] = []
     try:
         kb_result = client.table("kb_chunks").select("doc_id, section").execute()
@@ -130,24 +133,21 @@ def render_full_data_report() -> str:
             "Last Entry": "—",
         })
         
-        # Aggregate chunks by document and section
-        aggregate: Dict[str, Dict[str, int]] = {}
+        # Aggregate chunks by SOURCE (doc_id) only - professional summary
+        source_aggregation: Dict[str, int] = {}
         for row in kb_data:
             doc_id = row.get("doc_id", "unknown")
-            section = row.get("section", "misc")
-            aggregate.setdefault(doc_id, {})[section] = aggregate.setdefault(doc_id, {}).get(section, 0) + 1
+            source_aggregation[doc_id] = source_aggregation.get(doc_id, 0) + 1
         
-        # Flatten aggregated data for table display
-        for doc_id, sections in aggregate.items():
-            for section, count in sections.items():
-                kb_summary_rows.append({
-                    "Source": doc_id,
-                    "Section": section,
-                    "Chunks": count,
-                })
+        # Create clean summary: 1 row per knowledge source
+        for doc_id, total_chunks in sorted(source_aggregation.items()):
+            kb_summary_rows.append({
+                "Knowledge Source": doc_id,
+                "Total Chunks": total_chunks,
+            })
     except Exception as exc:  # pragma: no cover - defensive guard
         logger.error("Failed to summarize kb_chunks: %s", exc)
-        kb_summary_rows = [{"Source": "kb_chunks", "Section": "Error", "Chunks": str(exc)}]
+        kb_summary_rows = [{"Knowledge Source": "kb_chunks", "Total Chunks": f"Error: {exc}"}]
 
     # Build report sections
     report_sections: List[str] = []
@@ -160,13 +160,65 @@ def render_full_data_report() -> str:
     # 2. Knowledge Base Coverage
     if kb_summary_rows:
         report_sections.append(
-            "#### Knowledge Base Coverage\n" + format_table(["Source", "Section", "Chunks"], kb_summary_rows)
+            "#### Knowledge Base Coverage\n" + format_table(["Knowledge Source", "Total Chunks"], kb_summary_rows)
+        )
+    
+    # 3. Key Performance Metrics (Analytics Insights)
+    messages = dataset_rows.get("messages", [])
+    if messages:
+        total_messages = len(messages)
+        successful = sum(1 for m in messages if m.get("success"))
+        avg_latency = sum(m.get("latency_ms", 0) for m in messages) / total_messages if total_messages > 0 else 0
+        
+        # Role distribution
+        role_counts: Dict[str, int] = {}
+        for m in messages:
+            role = m.get("role_mode", "unknown")
+            role_counts[role] = role_counts.get(role, 0) + 1
+        top_roles = sorted(role_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Query type distribution
+        query_counts: Dict[str, int] = {}
+        for m in messages:
+            qtype = m.get("query_type", "unknown")
+            query_counts[qtype] = query_counts.get(qtype, 0) + 1
+        top_query_types = sorted(query_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        metrics_rows = [
+            {"Metric": "Total Conversations", "Value": total_messages},
+            {"Metric": "Success Rate", "Value": f"{(successful/total_messages*100):.1f}%" if total_messages > 0 else "0%"},
+            {"Metric": "Avg Response Time", "Value": f"{avg_latency:.0f}ms"},
+            {"Metric": "Top Role", "Value": f"{top_roles[0][0]} ({top_roles[0][1]} queries)" if top_roles else "—"},
+            {"Metric": "Top Query Type", "Value": f"{top_query_types[0][0]} ({top_query_types[0][1]} queries)" if top_query_types else "—"},
+        ]
+        
+        report_sections.append(
+            "#### Key Performance Metrics\n" + format_table(["Metric", "Value"], metrics_rows)
         )
 
-    # 3. Detailed tables for each dataset
-    for table_name, rows in dataset_rows.items():
-        headers = table_configs[table_name]
-        section_title = f"#### {table_name.replace('_', ' ').title()}"
-        report_sections.append(section_title + "\n" + format_table(headers, rows))
+    # 4. Recent Activity (limit to last 10 messages for readability)
+    if messages:
+        recent_messages = messages[:10]  # Already sorted desc by created_at
+        headers = table_configs["messages"]
+        report_sections.append(
+            "#### Recent Conversations (Last 10)\n" + format_table(headers, recent_messages)
+        )
+    
+    # 5. Other detailed tables (only if they have data, and limit confessions for privacy)
+    for table_name in ["retrieval_logs", "feedback", "sms_logs"]:
+        rows = dataset_rows.get(table_name, [])
+        if rows:
+            headers = table_configs[table_name]
+            # Limit to 10 most recent for readability
+            display_rows = rows[:10]
+            section_title = f"#### {table_name.replace('_', ' ').title()} (Recent)"
+            report_sections.append(section_title + "\n" + format_table(headers, display_rows))
+    
+    # Confessions: Show count only for privacy, no details
+    confessions = dataset_rows.get("confessions", [])
+    if confessions:
+        report_sections.append(
+            f"#### Confessions\n**Total Received**: {len(confessions)} (details withheld for privacy)"
+        )
 
     return "\n\n".join(report_sections)
