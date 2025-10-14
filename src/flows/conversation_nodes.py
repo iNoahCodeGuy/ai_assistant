@@ -327,22 +327,46 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         try:
             results = rag_engine.retrieve_with_code(state.query, role=state.role)
             snippets = results.get("code_snippets", []) if results else []
-        except Exception:  # pragma: no cover - defensive guard
+        except Exception as e:  # pragma: no cover - defensive guard
+            logger.warning(f"Code retrieval failed: {e}")
             snippets = []
+        
         if snippets:
             snippet = snippets[0]
             code_content = snippet.get("content", "")
             citation = snippet.get("citation", "codebase")
             
-            # Use formatted code display with enterprise prompt
-            formatted_code = content_blocks.format_code_snippet(
-                code=code_content,
-                file_path=citation,
-                language="python",
-                description="Implementation showing the core logic referenced in your question"
-            )
-            components.append(f"\n\n**Code Implementation**\n{formatted_code}")
-            components.append(content_blocks.code_display_guardrails())
+            # Validate code content is not empty or malformed
+            if code_content and len(code_content.strip()) > 10 and not code_content.startswith("doc_id"):
+                # Use formatted code display with enterprise prompt
+                formatted_code = content_blocks.format_code_snippet(
+                    code=code_content,
+                    file_path=citation,
+                    language="python",
+                    description="Implementation showing the core logic referenced in your question"
+                )
+                components.append(f"\n\n**Code Implementation**\n{formatted_code}")
+                components.append(content_blocks.code_display_guardrails())
+            else:
+                # Code index is empty or malformed - provide helpful message
+                components.append(
+                    "\n\n**Code Display Unavailable**\n"
+                    "The code index is currently being rebuilt. In the meantime, you can:\n"
+                    "- View the complete codebase on GitHub: https://github.com/iNoahCodeGuy/ai_assistant\n"
+                    "- Ask about specific technical concepts or architecture patterns\n"
+                    "- Request explanations of how components work together"
+                )
+        else:
+            # No code found for query
+            if "display_code_snippet" in actions:
+                # User explicitly asked to see code
+                components.append(
+                    "\n\n**No Code Found**\n"
+                    "I couldn't find code matching your specific query. You can:\n"
+                    "- Browse the full codebase: https://github.com/iNoahCodeGuy/ai_assistant\n"
+                    "- Ask about architecture or design patterns instead\n"
+                    "- Request explanations of how specific features work"
+                )
     
     # Import explanations for stack questions
     if "explain_imports" in actions:
