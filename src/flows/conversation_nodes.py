@@ -49,12 +49,43 @@ except Exception as e:
     # Provide stub functions
     def search_import_explanations(*args, **kwargs):
         return []
+
     def detect_import_in_query(*args, **kwargs):
         return None
+
     def get_import_explanation(*args, **kwargs):
         return None
 
-logger = logging.getLogger(__name__)
+
+CODE_VALIDATION_KEYWORDS = [
+    "def ", "class ", "import ", "from ", "return ", "async ", "await ", "try:", "except ", "lambda "
+]
+
+
+def _is_valid_code_snippet(code: str) -> bool:
+    """Heuristic validation to ensure retrieved code looks like Python source."""
+    if not code:
+        return False
+
+    stripped = code.strip()
+
+    if len(stripped) < 20:
+        return False
+
+    if "doc_id" in stripped or "query=" in stripped or stripped.startswith("{'"):
+        return False
+
+    if stripped[0] in {"}", ")"} and stripped.count("\n") < 3:
+        return False
+
+    if "\n" not in stripped:
+        return False
+
+    if not any(keyword in stripped for keyword in CODE_VALIDATION_KEYWORDS):
+        return False
+
+    return True
+
 
 RESUME_DOWNLOAD_URL = os.getenv("RESUME_DOWNLOAD_URL", "https://example.com/noah-resume.pdf")
 LINKEDIN_URL = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/noahdelacalzada")
@@ -382,7 +413,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             citation = snippet.get("citation", "codebase")
             
             # Validate code content is not empty or malformed
-            if code_content and len(code_content.strip()) > 10 and not code_content.startswith("doc_id"):
+            if _is_valid_code_snippet(code_content):
                 # Use formatted code display with enterprise prompt
                 formatted_code = content_blocks.format_code_snippet(
                     code=code_content,
@@ -395,22 +426,28 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             else:
                 # Code index is empty or malformed - provide helpful message
                 components.append(
-                    "\n\n**Code Display Unavailable**\n"
-                    "The code index is currently being rebuilt. In the meantime, you can:\n"
-                    "- View the complete codebase on GitHub: https://github.com/iNoahCodeGuy/ai_assistant\n"
-                    "- Ask about specific technical concepts or architecture patterns\n"
-                    "- Request explanations of how components work together"
+                    "\n\n"
+                    + content_blocks.format_section(
+                        "Code Display Unavailable",
+                        "The code index is being refreshed right now. In the meantime you can:\n"
+                        "- Browse the codebase on GitHub: https://github.com/iNoahCodeGuy/ai_assistant\n"
+                        "- Ask for architecture explanations or design walkthroughs\n"
+                        "- Request high-level summaries of how components interact"
+                    )
                 )
         else:
             # No code found for query
             if "display_code_snippet" in actions:
                 # User explicitly asked to see code
                 components.append(
-                    "\n\n**No Code Found**\n"
-                    "I couldn't find code matching your specific query. You can:\n"
-                    "- Browse the full codebase: https://github.com/iNoahCodeGuy/ai_assistant\n"
-                    "- Ask about architecture or design patterns instead\n"
-                    "- Request explanations of how specific features work"
+                    "\n\n"
+                    + content_blocks.format_section(
+                        "No Matching Code",
+                        "I couldn't find code matching that request. You can:\n"
+                        "- Browse the full codebase: https://github.com/iNoahCodeGuy/ai_assistant\n"
+                        "- Ask for an architectural overview or diagram\n"
+                        "- Request insights into specific features or services"
+                    )
                 )
     
     # Import explanations for stack questions

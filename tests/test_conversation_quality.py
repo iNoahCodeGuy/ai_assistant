@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from src.flows.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
-    classify_query, generate_answer, apply_role_context
+    classify_query, generate_answer, apply_role_context, _is_valid_code_snippet
 )
 from src.flows.data_reporting import render_full_data_report
 
@@ -244,27 +244,26 @@ class TestCodeDisplayQuality:
     
     def test_code_content_validation_logic(self):
         """Code content should be validated before display."""
-        # Test the validation logic itself (not full integration)
-        
-        # Test cases for validation
+        # Test the validation helper directly
         test_cases = [
             ("", False, "Empty string should fail"),
             ("   ", False, "Whitespace only should fail"),
             ("short", False, "Too short (<10 chars) should fail"),
-            ("doc_id text query=", False, "Malformed metadata should fail"),
-            ("def hello():\n    print('world')\n    return True", True, "Valid code should pass"),
-            ("This is a valid code snippet that is long enough", True, "Valid long string should pass"),
+            ("doc_id text query=", False, "Metadata lines should fail"),
+            ("})\n\n}\n\nquery=\"Show me code examples\"", False, "Truncated metadata blob should fail"),
+            ("def hello():\n    print('world')\n    return True", True, "Valid function should pass"),
+            (
+                "class Example:\n    def run(self):\n        return 'ok'",
+                True,
+                "Class definition should pass"
+            ),
         ]
-        
+
         for code_content, should_pass, description in test_cases:
-            # Validation logic from conversation_nodes.py line ~334
-            is_valid = bool(
-                code_content and 
-                len(code_content.strip()) > 10 and 
-                not code_content.startswith("doc_id")
+            is_valid = _is_valid_code_snippet(code_content)
+            assert is_valid == should_pass, (
+                f"Validation failed: {description} (got {is_valid}, expected {should_pass})"
             )
-            
-            assert is_valid == should_pass, f"Validation failed: {description} (got {is_valid}, expected {should_pass})"
 
 
 class TestRegressionGuards:
