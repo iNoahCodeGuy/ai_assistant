@@ -204,3 +204,36 @@ def code_display_guardrails() -> str:
         "**Code Display Guardrails**: All sensitive values (API keys, tokens) are redacted. "
         "Snippets shown are 10-40 lines for clarity. Full implementation available on request."
     )
+
+
+def qa_strategy_block() -> str:
+    """Generate QA strategy overview for product/architecture questions.
+    
+    Returns:
+        Markdown list explaining automated quality assurance approach.
+    """
+    return (
+        "- **Automated Regression Tests**: 14 test cases cover analytics display, prompt deduplication, "
+        "professional formatting, and code validation (all passing in ~1.2s).\n"
+        "- **Pre-Commit Hooks**: Catch emoji headers, duplicate prompts, and raw data dumps before commit.\n"
+        "- **CI/CD Quality Gates**: GitHub Actions block merges if quality standards are violated.\n"
+        "- **Production Monitoring**: Daily checks track success rates, response times, and formatting compliance.\n"
+        "- **Documentation**: Comprehensive strategy (`docs/QUALITY_ASSURANCE_STRATEGY.md`) ensures team alignment.\n\n"
+        "This system prevents regression as the codebase grows—new features can't break conversation quality."
+    )
+
+
+def role_switch_suggestion(target_role: str) -> str:
+    """Generate suggestion to switch roles for better answers.
+    
+    Args:
+        target_role: Recommended role name (e.g., "Hiring Manager (technical)")
+        
+    Returns:
+        Markdown suggestion to switch roles.
+    """
+    return (
+        f"\n\n💡 **Tip**: For more detailed technical insights, "
+        f"try switching to the **{target_role}** role. "
+        f"That role provides code snippets, architecture diagrams, and implementation details."
+    )

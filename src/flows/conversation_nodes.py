@@ -182,6 +182,13 @@ def plan_actions(state: ConversationState) -> ConversationState:
     # Check for code/import request flags
     code_display_requested = state.fetch("code_display_requested", False)
     import_explanation_requested = state.fetch("import_explanation_requested", False)
+    
+    # Detect product/how-it-works questions
+    product_question = any(term in lowered for term in [
+        "how does this work", "how does it work", "how does", "how is this",
+        "what is this", "what does this", "explain this",
+        "how is this built", "tell me about this", "what's this"
+    ]) or ("product" in lowered and any(word in lowered for word in ["how", "what", "explain", "work"]))
 
     def add_action(action_type: str, **extras: Any) -> None:
         state.append_pending_action({"type": action_type, **extras})
@@ -215,7 +222,16 @@ def plan_actions(state: ConversationState) -> ConversationState:
     if import_explanation_requested:
         add_action("explain_imports")
 
+    # Add QA strategy for product questions (all technical roles)
+    if product_question and state.role in ["Hiring Manager (technical)", "Software Developer"]:
+        add_action("include_qa_strategy")
+
     if state.role == "Hiring Manager (nontechnical)":
+        # Suggest role switch for technical questions
+        if query_type == "technical" or code_display_requested or import_explanation_requested or product_question:
+            add_action("suggest_technical_role_switch")
+        if not resume_requested and not linkedin_requested and user_turns >= 2:
+            add_action("offer_resume_prompt")
         if not resume_requested and not linkedin_requested and user_turns >= 2:
             add_action("offer_resume_prompt")
     elif state.role == "Hiring Manager (technical)":
@@ -279,6 +295,9 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
     # Enterprise-focused content blocks
     if "include_purpose_overview" in actions:
         components.append("\n\n**Product Purpose**\n" + content_blocks.purpose_block())
+    
+    if "include_qa_strategy" in actions:
+        components.append("\n\n**Quality Assurance**\n" + content_blocks.qa_strategy_block())
 
     if "render_data_report" in actions:
         report = state.fetch("data_report")
@@ -301,6 +320,12 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
 
     if "explain_stack_currency" in actions:
         components.append("\n\n**Stack Importance**\n" + content_blocks.stack_importance_explanation())
+    
+    if "suggest_technical_role_switch" in actions:
+        components.append(content_blocks.role_switch_suggestion("Hiring Manager (technical)"))
+    
+    if "suggest_developer_role_switch" in actions:
+        components.append(content_blocks.role_switch_suggestion("Software Developer"))
 
     if "highlight_enterprise_adaptability" in actions:
         components.append("\n\n**Enterprise Adaptability**\n" + content_blocks.enterprise_adaptability_block())
