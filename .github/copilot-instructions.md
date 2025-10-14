@@ -5,7 +5,11 @@
 This is a **role-based RAG (Retrieval-Augmented Generation) application** serving as an interactive résumé assistant. The system uses:
 
 - **Hybrid deployment**: Streamlit UI (`src/main.py`) for local dev + Vercel serverless (`api/`) for production
-- **LangGraph-style orchestration**: Node-based conversation flow in `src/flows/conversation_flow.py` and `conversation_nodes.py`
+- **LangGraph-style orchestration**: Modular node-based conversation flow across 4 focused modules:
+  - `conversation_nodes.py` - Core pipeline (classify → retrieve → generate → plan → apply → execute → log)
+  - `content_blocks.py` - Reusable enterprise messaging blocks
+  - `data_reporting.py` - Analytics display with markdown tables
+  - `action_execution.py` - Side effects handler (email, SMS, storage)
 - **Supabase pgvector**: Centralized vector storage replacing any local FAISS (see `src/retrieval/pgvector_retriever.py`)
 - **Role-driven retrieval**: Each of 5 roles (technical/nontechnical hiring managers, developers, casual visitors, confessions) triggers different knowledge sources and formatting
 
@@ -176,6 +180,25 @@ Routes configured in `vercel.json` (no Next.js required, pure Python functions).
    ```
 3. Add tests in `tests/test_conversation_flow.py`
 
+### Adding Enterprise Content Blocks
+1. Add new function to `src/flows/content_blocks.py`:
+   ```python
+   def my_content_block() -> str:
+       return "- Bullet point content\n- More content"
+   ```
+2. Reference in `conversation_nodes.py` via `content_blocks.my_content_block()`
+3. Trigger via action in `plan_actions()` node
+
+### Adding New Action Types
+1. Add action handler to `src/flows/action_execution.py`:
+   ```python
+   def execute_my_action(self, state: ConversationState, action: Dict[str, Any]) -> None:
+       # Perform side effect
+       pass
+   ```
+2. Wire in `ActionExecutor.execute()` method
+3. Plan action in `plan_actions()` node
+
 ### Updating Knowledge Base
 ```bash
 # Edit CSV directly
@@ -315,7 +338,10 @@ else:
 | `src/main.py` | Streamlit entry point, role selection UI |
 | `api/chat.py` | Vercel serverless endpoint for chat |
 | `src/flows/conversation_flow.py` | LangGraph pipeline orchestrator |
-| `src/flows/conversation_nodes.py` | Individual node implementations |
+| `src/flows/conversation_nodes.py` | Core conversation nodes (311 lines) |
+| `src/flows/content_blocks.py` | Reusable enterprise messaging blocks (127 lines) |
+| `src/flows/data_reporting.py` | Analytics display with markdown tables (172 lines) |
+| `src/flows/action_execution.py` | Side effects handler with service management (222 lines) |
 | `src/core/rag_engine.py` | RAG logic, pgvector retrieval, LLM generation |
 | `src/agents/role_router.py` | Role-based query routing (legacy, migrating to nodes) |
 | `src/config/supabase_config.py` | All environment config, settings singleton |

@@ -31,11 +31,28 @@ from src.analytics.supabase_analytics import supabase_analytics, UserInteraction
 from src.flows import content_blocks
 from src.flows.data_reporting import render_full_data_report
 from src.flows.action_execution import execute_actions
-from src.retrieval.import_retriever import (
-    search_import_explanations,
-    detect_import_in_query,
-    get_import_explanation
-)
+
+# Setup logger
+logger = logging.getLogger(__name__)
+
+# Import retriever with graceful fallback
+try:
+    from src.retrieval.import_retriever import (
+        search_import_explanations,
+        detect_import_in_query,
+        get_import_explanation
+    )
+    IMPORT_RETRIEVER_AVAILABLE = True
+except Exception as e:
+    logger.warning(f"Import retriever not available: {e}")
+    IMPORT_RETRIEVER_AVAILABLE = False
+    # Provide stub functions
+    def search_import_explanations(*args, **kwargs):
+        return []
+    def detect_import_in_query(*args, **kwargs):
+        return None
+    def get_import_explanation(*args, **kwargs):
+        return None
 
 logger = logging.getLogger(__name__)
 

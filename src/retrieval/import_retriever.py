@@ -7,6 +7,7 @@ explanations with enterprise context.
 
 import csv
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -21,8 +22,30 @@ ROLE_TO_TIER = {
     "Looking to confess crush": "1",
 }
 
-# Path to imports knowledge base
-IMPORTS_KB_PATH = Path(__file__).parent.parent.parent / "data" / "imports_kb.csv"
+# Path to imports knowledge base - try multiple strategies for Vercel compatibility
+def _get_imports_kb_path() -> Path:
+    """Resolve path to imports_kb.csv for both local and Vercel environments."""
+    # Strategy 1: Relative from this file (local development)
+    local_path = Path(__file__).parent.parent.parent / "data" / "imports_kb.csv"
+    if local_path.exists():
+        return local_path
+    
+    # Strategy 2: Absolute from current working directory (Vercel)
+    cwd_path = Path.cwd() / "data" / "imports_kb.csv"
+    if cwd_path.exists():
+        return cwd_path
+    
+    # Strategy 3: From environment variable (explicit override)
+    if env_path := os.getenv("IMPORTS_KB_PATH"):
+        env_path_obj = Path(env_path)
+        if env_path_obj.exists():
+            return env_path_obj
+    
+    # Fallback: return local path and let FileNotFoundError be caught
+    logger.warning(f"Could not find imports_kb.csv, tried: {local_path}, {cwd_path}")
+    return local_path
+
+IMPORTS_KB_PATH = _get_imports_kb_path()
 
 
 def _load_imports_kb() -> List[Dict[str, str]]:
