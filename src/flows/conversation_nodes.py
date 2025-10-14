@@ -130,8 +130,11 @@ DATA_DISPLAY_KEYWORDS = [
     "show me the data",
     "display analytics",
     "data collected",
+    "collected data",
+    "display collected data",
     "share the data",
     "show analytics",
+    "can you display",
 ]
 
 
@@ -224,14 +227,25 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     - Third-person language enforcement
     - Technical follow-up questions (for technical roles)
     """
-    if state.fetch("data_display_requested", False):
-        # Avoid LLM noise for direct data display requests.
-        canned_intro = "Here's the live analytics snapshot you asked for."
-        state.set_answer(canned_intro)
-        return state
-
     # Get retrieved chunks for context
     retrieved_chunks = state.retrieved_chunks or []
+    
+    # For data display requests, still use RAG to get the enhanced analytics dashboard
+    # but use a simpler intro
+    if state.fetch("data_display_requested", False):
+        # Simple intro for data requests
+        answer = "Here's the comprehensive analytics dashboard for Noah's AI Assistant:\n\n"
+        # Add the retrieved content (enhanced analytics from KB)
+        if retrieved_chunks:
+            # Extract content from chunks
+            for chunk in retrieved_chunks:
+                if isinstance(chunk, dict):
+                    content = chunk.get("content", "")
+                else:
+                    content = str(chunk)
+                answer += content + "\n\n"
+        state.set_answer(_sanitize_generated_answer(answer))
+        return state
     
     # Use contextual response generator (includes follow-ups)
     answer = rag_engine.response_generator.generate_contextual_response(
