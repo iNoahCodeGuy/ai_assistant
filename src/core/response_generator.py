@@ -245,6 +245,8 @@ Please provide a helpful and accurate answer based on the information provided. 
         template = (
             "You are Noah's AI Assistant. Use the provided context about Noah to answer the question.\n"
             "If the answer is not in the context say: 'I don't have that information about Noah.'\n\n"
+            "IMPORTANT: Provide a complete, informative answer. Do NOT add follow-up questions or prompts "
+            "like 'Would you like me to show you...' at the end - the system handles those automatically.\n\n"
             "Context: {context}\n\nQuestion: {question}\n\nAnswer:"
         )
         return PromptTemplate(template=template, input_variables=["context", "question"])
@@ -299,75 +301,20 @@ Please provide a helpful and accurate answer based on the information provided. 
         Tailored to user's role for optimal engagement.
         """
         
-        # Determine conversation context for smart suggestions
-        query_lower = query.lower()
-        response_lower = response.lower()
+        """Add context-aware follow-up suggestions to engage the user.
         
-        # Multi-choice follow-up suggestions based on context and role
-        followup_text = ""
+        NOTE: This method is deprecated. Follow-up prompts are now handled by
+        conversation_nodes.apply_role_context() to avoid duplicates and provide
+        cleaner, more conversational interactions.
         
-        # For enterprise/scale/business queries - NEW CATEGORY
-        if any(term in query_lower for term in ["enterprise", "scale", "company", "business", "production", "large", "commercial"]):
-            followup_text = "\n\n🏢 **Would you like me to show you:**\n- How Noah would modify the stack for 10,000+ users\n- What enterprise features would be added (SSO, audit trails, SLA)\n- The scalability roadmap (managed vector DBs, load balancing, Redis caching)"
-        
-        # For "how does this work" or system overview queries
-        elif any(term in query_lower for term in ["how does", "how did", "work", "built", "product", "system", "chatbot"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- The data analytics Noah collects\n- The RAG system code\n- Noah's LangGraph workflow diagram"
-            elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
-                followup_text = "\n\n🔍 **Would you like me to show you:**\n- The data analytics and metrics collected\n- System architecture diagrams\n- How this would adapt for enterprise use (stack changes, scaling)"
-            else:  # Casual visitors
-                followup_text = "\n\n✨ **Would you like me to show you:**\n- What data analytics Noah tracks\n- The architecture stack in detail\n- More about Noah's background and experience"
-        
-        # For data/analytics queries
-        elif any(term in query_lower or term in response_lower for term in ["data", "analytics", "collect", "metrics", "logs"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- The database schema and tables\n- Data collection pipeline code\n- Analytics query examples"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to show you:**\n- Query distribution by role\n- Retrieval quality metrics\n- User engagement insights"
-        
-        # For RAG/retrieval queries
-        elif any(term in query_lower or term in response_lower for term in ["rag", "retrieval", "vector", "embedding", "search"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- The pgvector retrieval code\n- Embedding generation logic\n- The similarity scoring approach"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to explain:**\n- How semantic search works\n- Knowledge base organization\n- Retrieval optimization strategies"
-        
-        # For architecture queries
-        elif any(term in query_lower or term in response_lower for term in ["architecture", "design", "structure", "stack"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- Frontend Next.js code\n- Backend API implementations\n- LangGraph orchestration workflow"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Frontend/backend communication flow\n- Deployment strategy on Vercel\n- Scalability and monitoring approach"
-        
-        # For code/implementation queries
-        elif any(term in query_lower or term in response_lower for term in ["code", "implementation", "python", "typescript"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- RAG pipeline implementation\n- Conversation flow nodes\n- Frontend React components"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Key modules and their purposes\n- Code organization strategy\n- Best practices applied"
-        
-        # For database queries
-        elif any(term in query_lower or term in response_lower for term in ["database", "supabase", "postgres", "storage"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- The schema SQL\n- pgvector implementation code\n- Migration scripts and strategy"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Table structure and relationships\n- Vector storage approach\n- Data retention policies"
-        
-        # For frontend queries
-        elif any(term in query_lower or term in response_lower for term in ["frontend", "ui", "next.js", "react"]):
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- React components\n- State management approach\n- Tailwind styling examples"
-            else:
-                followup_text = "\n\n🔍 **Would you like me to explain:**\n- Component organization\n- User interaction flow\n- Responsive design strategy"
-        
-        # Default fallback for any conversation - ALL roles get suggestions
-        else:
-            if role == "Software Developer":
-                followup_text = "\n\n💡 **Would you like me to show you:**\n- System architecture diagram\n- RAG implementation code\n- Data analytics dashboard"
-            elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
-                followup_text = "\n\n🔍 **Would you like me to show you:**\n- Data analytics collected\n- Architecture stack in detail\n- How this adapts for enterprise use (stack modifications, scaling)"
-            else:  # "Just looking around" or "Looking to confess crush"
-                followup_text = "\n\n✨ **Would you like me to show you:**\n- The data analytics dashboard\n- The architecture stack\n- More about Noah's projects and experience"
-        
-        return response + followup_text
+        Args:
+            response: The generated response text
+            query: Original user query
+            role: User's current role
+            
+        Returns:
+            The response unchanged (follow-ups handled in conversation flow)
+        """
+        # Follow-up prompts now handled by conversation_nodes.apply_role_context()
+        # to prevent duplicate prompts and maintain clean conversation flow
+        return response

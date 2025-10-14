@@ -278,36 +278,36 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
 
     # Enterprise-focused content blocks
     if "include_purpose_overview" in actions:
-        components.append("\n\n### 🎯 Product Purpose\n" + content_blocks.purpose_block())
+        components.append("\n\n**Product Purpose**\n" + content_blocks.purpose_block())
 
     if "render_data_report" in actions:
         report = state.fetch("data_report")
         if not report:
             report = render_full_data_report()
             state.stash("data_report", report)
-        components.append("\n\n### 📈 Data Insights & Full Dataset\n" + report)
+        components.append("\n\n**Data Insights & Full Dataset**\n" + report)
 
     if "provide_data_tables" in actions:
-        components.append("\n\n### 📊 Data Collection Overview\n" + content_blocks.data_collection_table())
+        components.append("\n\n**Data Collection Overview**\n" + content_blocks.data_collection_table())
 
     if "include_architecture_overview" in actions:
-        components.append("\n\n### 🏗️ Architecture Snapshot\n" + content_blocks.architecture_snapshot())
+        components.append("\n\n**Architecture Snapshot**\n" + content_blocks.architecture_snapshot())
 
     if "summarize_data_strategy" in actions:
-        components.append("\n\n### 🗂️ Data Management Strategy\n" + content_blocks.data_strategy_block())
+        components.append("\n\n**Data Management Strategy**\n" + content_blocks.data_strategy_block())
 
     if "explain_enterprise_usage" in actions:
-        components.append("\n\n### 🏢 Enterprise Fit\n" + content_blocks.enterprise_fit_explanation())
+        components.append("\n\n**Enterprise Fit**\n" + content_blocks.enterprise_fit_explanation())
 
     if "explain_stack_currency" in actions:
-        components.append("\n\n### 🧱 Stack Importance\n" + content_blocks.stack_importance_explanation())
+        components.append("\n\n**Stack Importance**\n" + content_blocks.stack_importance_explanation())
 
     if "highlight_enterprise_adaptability" in actions:
-        components.append("\n\n### 🚀 Enterprise Adaptability\n" + content_blocks.enterprise_adaptability_block())
+        components.append("\n\n**Enterprise Adaptability**\n" + content_blocks.enterprise_adaptability_block())
 
     # Casual content blocks
     if "share_fun_facts" in actions:
-        components.append("\n\n### 🎉 Fun Facts\n" + content_blocks.fun_facts_block())
+        components.append("\n\n**Fun Facts About Noah**\n" + content_blocks.fun_facts_block())
 
     if "share_mma_link" in actions or query_type == "mma":
         components.append("\n\n" + content_blocks.mma_fight_link())
@@ -341,7 +341,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
                 language="python",
                 description="Implementation showing the core logic referenced in your question"
             )
-            components.append(f"\n\n### 💻 Code Implementation\n{formatted_code}")
+            components.append(f"\n\n**Code Implementation**\n{formatted_code}")
             components.append(content_blocks.code_display_guardrails())
     
     # Import explanations for stack questions
@@ -366,7 +366,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             # Search for relevant imports based on query
             relevant_imports = search_import_explanations(state.query, state.role, top_k=3)
             if relevant_imports:
-                components.append("\n\n### 📦 Stack Justifications\n")
+                components.append("\n\n**Stack Justifications**\n")
                 for imp_data in relevant_imports:
                     formatted = content_blocks.format_import_explanation(
                         import_name=imp_data["import"],
