@@ -9,8 +9,7 @@ Please read these short conventions before making changes.
 - 📘 Project Overview → `docs/context/PROJECT_REFERENCE_OVERVIEW.md`
 - 🧩 System Architecture → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`
 - 🧮 Data & Schema Reference → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`
-- 🎨 Tone/Creativity Policy → `docs/CREATIVE_AND_PROFESSIONAL_DELIVERY_POLICY.md` *(if present)*
-- 🧠 Depth/Explanation Policy → `docs/NARRATIVE_DEPTH_AND_COMPLEXITY_POLICY.md` *(if present)*
+- 💬 Conversation Personality → `docs/context/CONVERSATION_PERSONALITY.md`
 
 > **Tip:** Open these files side‑by‑side when prompting Copilot so it grounds suggestions in the intended architecture and tone.
 

@@ -14,6 +14,8 @@ Open these when implementing features or refactoring so changes stay aligned:
   *Control flow, RAG pipeline, data layer, presentation rules*
 - 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`  
   *Tables, queries, analytics, and grounding standards*
+- 💬 **Conversation Personality** → `docs/context/CONVERSATION_PERSONALITY.md`  
+  *Warmth, enthusiasm, invitation culture, and engagement style*
 
 ### 📚 Supplementary Guides
 - `docs/GLOSSARY.md` - Technical definitions

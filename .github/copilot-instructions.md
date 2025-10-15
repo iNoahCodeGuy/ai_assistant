@@ -7,12 +7,14 @@ Before implementing features or answering questions, open these master docs:
 1. 📘 **Project Overview** → `docs/context/PROJECT_REFERENCE_OVERVIEW.md` (purpose, roles, stack)
 2. 🧩 **System Architecture** → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md` (control flow, RAG pipeline, data layer)
 3. 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md` (tables, queries, presentation rules)
+4. 💬 **Conversation Personality** → `docs/context/CONVERSATION_PERSONALITY.md` (warmth, enthusiasm, engagement)
 
 These define:
 - What the assistant is and why it exists
 - Role-specific behaviors and conversation modes (narrative vs data)
 - When to show code, tables, or long explanations
 - Data contracts and grounding rules
+- Personality: warmth, excitement, invitation culture
 
 ## System Architecture Overview
 
