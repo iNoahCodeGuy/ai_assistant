@@ -53,4 +53,5 @@ Unified reference for observability, tracing, and monitoring across Noah's AI As
 ## Additional References
 - `docs/runtime_dependencies.md`: Comprehensive module inventory invoked at runtime.
 - `src/flows/conversation_nodes.py`: Action planning and execution hooks described above.
-- `Copilot_Context_FullStack_LangGraph.md`: Full project context for contributors.
+- `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`: Full system architecture and control flow.
+- `docs/context/PROJECT_REFERENCE_OVERVIEW.md`: Project purpose, roles, and stack overview.

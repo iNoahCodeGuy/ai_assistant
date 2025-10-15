@@ -7,9 +7,21 @@ Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generativ
 This project ships with **self-documenting context** for Copilot and contributors.  
 Open these when implementing features or refactoring so changes stay aligned:
 
-- 📘 **Project Overview** → `docs/context/PROJECT_REFERENCE_OVERVIEW.md`
-- 🧩 **System Architecture** → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`
-- 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`
+### 🎯 Master Documentation (Authoritative)
+- 📘 **Project Overview** → `docs/context/PROJECT_REFERENCE_OVERVIEW.md`  
+  *Purpose, roles, stack, and behavior contracts*
+- 🧩 **System Architecture** → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`  
+  *Control flow, RAG pipeline, data layer, presentation rules*
+- 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`  
+  *Tables, queries, analytics, and grounding standards*
+
+### 📚 Supplementary Guides
+- `docs/GLOSSARY.md` - Technical definitions
+- `docs/EXTERNAL_SERVICES.md` - Service setup (Resend, Twilio)
+- `docs/OBSERVABILITY.md` - Metrics and monitoring
+- `docs/LANGSMITH.md` - LangSmith tracing setup
+- `docs/QUALITY_ASSURANCE_STRATEGY.md` - Testing strategy
+- `docs/CONVERSATION_PIPELINE_MODULES.md` - Pipeline refactoring details
 
 **Why:** These files define the assistant's purpose, stack, data contracts, and presentation rules (when to show code, data, or narrative). They are optimized for Copilot prompt context and human review.
 
@@ -78,7 +90,7 @@ streamlit run src/main.py
 
 **Need help?** See [PHASE_1_SETUP.md](docs/PHASE_1_SETUP.md) for detailed setup instructions.
 
-**Next**: Learn about [architecture](docs/ARCHITECTURE.md) or explore the [glossary](docs/GLOSSARY.md) for technical terms.
+**Next**: Explore the master docs in `docs/context/` or check out the [glossary](docs/GLOSSARY.md) for technical terms.
 
 ## Features
 - **Role-Based Interaction**: Session-level role selection shapes retrieval + formatting.
@@ -244,7 +256,9 @@ User → Streamlit UI → RagEngine (pgvector search) → OpenAI GPT → Respons
 ## Platform Operations
 
 - Consolidated observability, tracing, and monitoring guidance lives in `docs/platform_operations.md`.
-- Contributor onboarding context (roles, architecture, data model) is captured in `docs/Copilot_Context_FullStack_LangGraph.md`.
+- See `CONTRIBUTING.md` for full instructions.
+
+- Contributor onboarding context (roles, architecture, data model) is captured in `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md` and `docs/context/PROJECT_REFERENCE_OVERVIEW.md`.
 - Legacy setup notes remain in `archive/docs` for historical reference when needed.
 
 ## File Structure

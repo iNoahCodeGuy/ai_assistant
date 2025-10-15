@@ -364,8 +364,9 @@ else:
 
 ## Additional Resources
 
-- **Full architecture**: `docs/ARCHITECTURE.md` (request flow diagrams)
+- **Master docs (authoritative)**: `docs/context/` - PROJECT_REFERENCE_OVERVIEW, SYSTEM_ARCHITECTURE_SUMMARY, DATA_COLLECTION_AND_SCHEMA_REFERENCE
 - **Role behavior specs**: `ROLE_FEATURES.md` and `ROLE_FUNCTIONALITY_CHECKLIST.md`
-- **LangGraph context**: `docs/Copilot_Context_FullStack_LangGraph.md`
 - **Supabase schema**: `supabase/migrations/*.sql`
 - **API contracts**: `api/README.md`
+- **Supplementary guides**: `docs/GLOSSARY.md`, `docs/EXTERNAL_SERVICES.md`, `docs/OBSERVABILITY.md`
+- **Legacy docs**: `docs/archive/legacy/` - archived for historical reference only
