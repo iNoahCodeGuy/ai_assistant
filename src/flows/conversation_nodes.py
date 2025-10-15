@@ -17,11 +17,22 @@ See docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md for the full conversation flow d
 See docs/CONVERSATION_PIPELINE_MODULES.md for implementation details.
 """
 
+from __future__ import annotations
+
 # Import all conversation nodes from their focused modules
 from src.flows.query_classification import classify_query
-from src.flows.core_nodes import retrieve_chunks, generate_answer, apply_role_context, log_and_notify
+from src.flows.core_nodes import (
+    retrieve_chunks,
+    generate_answer,
+    apply_role_context,
+    log_and_notify
+)
 from src.flows.action_planning import plan_actions
 from src.flows.action_execution import execute_actions
+from src.flows.code_validation import (
+    is_valid_code_snippet,
+    sanitize_generated_answer
+)
 from src.flows.greetings import get_role_greeting, should_show_greeting, is_first_turn
 
 
@@ -48,43 +59,16 @@ def handle_greeting(state, rag_engine):
 # Export all nodes for use in conversation_flow.py
 __all__ = [
     "classify_query",
-    "retrieve_chunks", 
-    "generate_answer",
-    "apply_role_context",
-    "log_and_notify",
-    "plan_actions",
-    "execute_actions",
-    "handle_greeting",
-    "get_role_greeting",
-    "is_first_turn",
-]
-
-from __future__ import annotations
-
-# Import all conversation nodes from their focused modules
-from src.flows.query_classification import classify_query
-from src.flows.core_nodes import (
-    retrieve_chunks,
-    generate_answer,
-    apply_role_context,
-    log_and_notify
-)
-from src.flows.action_planning import plan_actions
-from src.flows.action_execution import execute_actions
-from src.flows.code_validation import (
-    is_valid_code_snippet,
-    sanitize_generated_answer
-)
-
-# Re-export everything so existing code doesn't break
-__all__ = [
-    "classify_query",
     "retrieve_chunks",
     "generate_answer",
     "plan_actions",
     "apply_role_context",
     "execute_actions",
     "log_and_notify",
+    "handle_greeting",
+    "get_role_greeting",
+    "is_first_turn",
+    "should_show_greeting",
     "is_valid_code_snippet",
     "sanitize_generated_answer",
 ]
