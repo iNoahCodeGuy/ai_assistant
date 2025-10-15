@@ -1,31 +1,16 @@
 # Noah's AI Assistant
 
-Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
+Noah's AI Assistant is an **educational generative AI application** that teaches users how GenAI systems work and their enterprise value by **using itself as a hands-on case study**. 
 
-## Context Docs (Start Here)
+Through interactive conversation, it explains its own implementation—including RAG architecture, vector search, LLM orchestration, data pipelines, and system design—while demonstrating how these patterns can be adapted for enterprise use cases like customer support, internal documentation, and sales enablement.
 
-This project ships with **self-documenting context** for Copilot and contributors.  
-Open these when implementing features or refactoring so changes stay aligned:
+**🎓 The Learning Approach**: Instead of abstract explanations, the assistant shows you the actual code, architecture diagrams, and data flows that power the conversation you're having. You can explore:
+- "Show me the backend stack" → See real Python code with annotations
+- "How does RAG work?" → Walk through the retrieval pipeline with examples
+- "Display data analytics" → View live metrics and understand observability
+- "What makes this valuable to enterprises?" → Connect technical patterns to business ROI
 
-### 🎯 Master Documentation (Authoritative)
-- 📘 **Project Overview** → `docs/context/PROJECT_REFERENCE_OVERVIEW.md`  
-  *Purpose, roles, stack, and behavior contracts*
-- 🧩 **System Architecture** → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`  
-  *Control flow, RAG pipeline, data layer, presentation rules*
-- 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`  
-  *Tables, queries, analytics, and grounding standards*
-- 💬 **Conversation Personality** → `docs/context/CONVERSATION_PERSONALITY.md`  
-  *Warmth, enthusiasm, invitation culture, and engagement style*
-
-### 📚 Supplementary Guides
-- `docs/GLOSSARY.md` - Technical definitions
-- `docs/EXTERNAL_SERVICES.md` - Service setup (Resend, Twilio)
-- `docs/OBSERVABILITY.md` - Metrics and monitoring
-- `docs/LANGSMITH.md` - LangSmith tracing setup
-- `docs/QUALITY_ASSURANCE_STRATEGY.md` - Testing strategy
-- `docs/CONVERSATION_PIPELINE_MODULES.md` - Pipeline refactoring details
-
-**Why:** These files define the assistant's purpose, stack, data contracts, and presentation rules (when to show code, data, or narrative). They are optimized for Copilot prompt context and human review.
+The assistant adapts its teaching style based on user roles (technical vs. non-technical), making complex AI concepts accessible while showcasing production-ready implementation patterns.
 
 ## Table of Contents
 - [🚀 Quickstart](#-quickstart)
@@ -34,8 +19,6 @@ Open these when implementing features or refactoring so changes stay aligned:
 - [Role-Specific Behaviors](#role-specific-behaviors)
 - [Installation](#installation)
 - [Usage](#usage)
-- [LangGraph Flow](#langgraph-flow)
-- [Platform Operations](#platform-operations)
 - [File Structure](#file-structure)
 - [Contributing](#contributing)
 - [License](#license)
@@ -73,7 +56,7 @@ SUPABASE_SERVICE_KEY=eyJhbGc...
 
 ```bash
 # 4. Set up the database schema
-# Follow the step-by-step guide in archive/docs/migrated_from_docs/PHASE_1_SETUP.md
+# Follow the step-by-step guide in docs/PHASE_1_SETUP.md
 # This creates tables for knowledge base, messages, and analytics
 
 # 5. Run the data migration (one-time)
@@ -86,25 +69,71 @@ streamlit run src/main.py
 **🎉 Success!** Open http://localhost:8501 in your browser.
 
 **First steps**:
-1. Select a role (try "Software Developer" to see code retrieval)
-2. Ask a question like "What's your Python experience?"
-3. See RAG in action with grounded responses!
+1. Select a role (try "Software Developer" to explore technical architecture)
+2. Ask questions like:
+   - "How does RAG work in this application?"
+   - "Show me the backend architecture"
+   - "Explain the data pipeline"
+   - "What makes this valuable to enterprises?"
+3. See the assistant explain its own implementation with code examples!
 
 **Need help?** See [PHASE_1_SETUP.md](docs/PHASE_1_SETUP.md) for detailed setup instructions.
 
-**Next**: Explore the master docs in `docs/context/` or check out the [glossary](docs/GLOSSARY.md) for technical terms.
+**Next**: Learn about [architecture](docs/ARCHITECTURE.md) or explore the [glossary](docs/GLOSSARY.md) for technical terms.
+
+## What You'll Learn
+
+Through interactive conversation, this assistant teaches you:
+
+### For Technical Audiences
+- **RAG Architecture**: How Retrieval-Augmented Generation works (vector embeddings, semantic search, context injection)
+- **Vector Search**: Supabase pgvector implementation with IVFFLAT indexing and similarity scoring
+- **LLM Orchestration**: LangGraph-style node-based conversation flows with state management
+- **Data Pipelines**: Document processing, chunking strategies, embedding generation, and storage
+- **System Design**: Hybrid deployment (Streamlit + Vercel), API routes, error handling, observability
+- **Production Patterns**: Analytics logging, PII redaction, rate limiting, security (RLS policies)
+- **Cost Optimization**: Model selection, caching strategies, and infrastructure choices
+- **Testing & Reliability**: Pytest patterns, Supabase mocking, error degradation modes
+
+### For Non-Technical Audiences
+- **GenAI Business Value**: Why enterprises invest in AI assistants (cost savings, scalability, 24/7 availability)
+- **Accuracy & Trust**: How RAG prevents hallucinations by grounding responses in real data
+- **Data Governance**: PII protection, privacy controls, compliance considerations
+- **ROI & Metrics**: Success measurement (response time, accuracy, user satisfaction, conversion rates)
+- **Competitive Advantage**: Using AI to improve customer experience and operational efficiency
+- **Implementation Roadmap**: High-level steps to build similar systems for your organization
+
+### Live Demonstrations
+The assistant demonstrates concepts by showing its own implementation:
+- **Ask "show me the backend stack"** → See real Python code with explanations
+- **Ask "display data analytics"** → Live dashboard with real-time metrics
+- **Ask "how do you prevent hallucinations?"** → RAG pipeline walkthrough with examples
+- **Ask "what's your data pipeline?"** → Document processing flow with architecture diagrams
 
 ## Features
-- **Role-Based Interaction**: Session-level role selection shapes retrieval + formatting.
-- **Retrieval-Augmented Generation (RAG)**: Supabase pgvector stores (career KB, code index).
-- **Dual-Audience Formatting**: Engineer Detail + Plain-English Summary (for technical audiences).
-- **Code & Career Grounding**: File:line citations where available.
-- **MMA Query Routing**: Direct fight link for MMA-related queries (bypasses general retrieval).
-- **Confession Mode**: Lightweight, guarded input path with no unintended PII retention.
-- **Analytics Tracking**: Interaction logging, retrieval tracking, user feedback with Supabase.
-- **Contact Requests**: Email delivery via Resend, SMS notifications via Twilio.
-- **Extensible Orchestration**: LangGraph-style node pipeline now powers the default flow.
-- **Observability Ready**: LangSmith integration hooks (traces/evals).
+
+### 🎓 Educational Features (Learn GenAI Through Demonstration)
+- **Self-Referential Teaching**: Explains RAG, vector search, and LLM orchestration by showing its own implementation
+- **Live Code Walkthroughs**: Displays actual Python files with explanations of GenAI patterns and enterprise applications
+- **Architecture Tours**: Interactive exploration of stack, data pipelines, backend design, and deployment strategies
+- **Enterprise Value Mapping**: Connects every technical concept to business ROI (cost reduction, scalability, reliability)
+- **Role-Adaptive Teaching**: Adjusts depth for technical (with code) vs. non-technical (with analogies) audiences
+- **Real Metrics Dashboard**: Shows live analytics to explain observability, logging, and data governance in production
+
+### 🏗️ Technical Features (Production-Ready Patterns)
+- **Retrieval-Augmented Generation (RAG)**: Supabase pgvector with IVFFLAT indexing for semantic search
+- **LangGraph Orchestration**: Node-based conversation flows with immutable state management
+- **Dual-Audience Formatting**: Technical details + plain-English summaries for mixed audiences
+- **Code & Career Grounding**: File:line citations proving all responses are grounded in real data
+- **PII Redaction**: Automated masking of emails/phones in user feedback (demonstrates data governance)
+- **Rate Limiting**: 6 req/min per IP with graceful degradation (demonstrates production reliability)
+- **Live Analytics Dashboard**: Real-time data visualization with PII redaction and role-based access
+- **MMA Query Routing**: Direct fight link for MMA-related queries (demonstrates multi-modal routing)
+- **Confession Mode**: Privacy-protected personal messaging (demonstrates data governance)
+- **Analytics Tracking**: Interaction logging, retrieval tracking, user feedback with Supabase
+- **Contact Requests**: Email delivery via Resend, SMS notifications via Twilio
+- **Extensible Orchestration**: LangGraph-style node-based conversation flow
+- **Observability**: LangSmith integration for tracing and performance monitoring
 
 ## Tech Stack
 
@@ -217,8 +246,6 @@ Run the Streamlit application locally:
 streamlit run src/main.py
 ```
 
-By default the LangGraph-inspired node pipeline runs. Set `LANGGRAPH_FLOW_ENABLED=false` only if you need the legacy `RoleRouter` path for troubleshooting (deprecated and scheduled for removal).
-
 ### Production Deployment
 
 **Option 1: Streamlit Community Cloud**
@@ -247,21 +274,6 @@ User → Streamlit UI → RagEngine (pgvector search) → OpenAI GPT → Respons
                 ↓
         Feedback → Email (Resend) / SMS (Twilio)
 ```
-
-## LangGraph Flow
-
-- **Preferred Runtime:** `LANGGRAPH_FLOW_ENABLED=true` (default) executes `run_conversation_flow`, which chains `classify_query → retrieve_chunks → generate_answer → plan_actions → apply_role_context → execute_actions → log_and_notify` using `ConversationState`.
-- **Legacy Path:** When the flag is `false`, the legacy `RoleRouter` handles requests. This path is frozen and will be removed once downstream integrations are migrated.
-- **Service Initialization:** Conversation nodes lazily resolve Resend, Twilio, and Supabase Storage through shared helpers so both runtime and tests rely on the same singleton instances.
-- **Inventory:** See `docs/runtime_dependencies.md` for the authoritative list of modules referenced at runtime.
-
-## Platform Operations
-
-- Consolidated observability, tracing, and monitoring guidance lives in `docs/platform_operations.md`.
-- See `CONTRIBUTING.md` for full instructions.
-
-- Contributor onboarding context (roles, architecture, data model) is captured in `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md` and `docs/context/PROJECT_REFERENCE_OVERVIEW.md`.
-- Legacy setup notes remain in `archive/docs` for historical reference when needed.
 
 ## File Structure
 ```
