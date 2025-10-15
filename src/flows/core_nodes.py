@@ -100,7 +100,8 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     answer = rag_engine.response_generator.generate_contextual_response(
         query=state.query,
         context=retrieved_chunks,
-        role=state.role
+        role=state.role,
+        chat_history=state.chat_history
     )
     
     # Clean up any SQL artifacts that leaked from retrieval

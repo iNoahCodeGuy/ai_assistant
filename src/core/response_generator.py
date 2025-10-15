@@ -69,7 +69,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             # Fallback: return the first retrieved document
             return fallback_docs[0] if fallback_docs else "I'm having trouble generating a response right now."
 
-    def generate_contextual_response(self, query: str, context: List[Dict[str, Any]], role: str = None) -> str:
+    def generate_contextual_response(self, query: str, context: List[Dict[str, Any]], role: str = None, chat_history: List[Dict[str, str]] = None) -> str:
         """Generate response with explicit context and role awareness."""
         context_parts = []
         for item in context:
@@ -80,7 +80,7 @@ Please provide a helpful and accurate answer based on the information provided. 
                 context_parts.append(str(item))
         
         context_str = "\n".join(context_parts)
-        prompt = self._build_role_prompt(query, context_str, role)
+        prompt = self._build_role_prompt(query, context_str, role, chat_history)
         
         try:
             if self.qa_chain and not self.degraded_mode:
@@ -136,13 +136,29 @@ Please provide a helpful and accurate answer based on the information provided. 
             logger.error(f"Technical response generation failed: {e}")
             return "Technical details are temporarily unavailable. Please try again."
 
-    def _build_role_prompt(self, query: str, context_str: str, role: str = None) -> str:
-        """Build role-specific prompt."""
+    def _build_role_prompt(self, query: str, context_str: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> str:
+        """Build role-specific prompt with conversation history."""
+        # Build conversation history string for context continuity
+        history_context = ""
+        if chat_history and len(chat_history) > 0:
+            # Get last 4 messages for context (last 2 exchanges)
+            recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+            history_parts = []
+            for msg in recent_history:
+                if msg["role"] == "user":
+                    history_parts.append(f"User: {msg['content']}")
+                elif msg["role"] == "assistant":
+                    # Truncate long assistant messages for token efficiency
+                    content = msg['content'][:300] + "..." if len(msg['content']) > 300 else msg['content']
+                    history_parts.append(f"Assistant: {content}")
+            if history_parts:
+                history_context = "\n\nPrevious conversation:\n" + "\n".join(history_parts) + "\n"
+        
         if role == "Hiring Manager (technical)":
             return f"""
             You are Noah's AI Assistant, designed to help people understand how generative AI applications work 
             and their value to enterprises by explaining THIS SYSTEM'S OWN architecture as a real-world example.
-            
+            {history_context}
             Context about Noah: {context_str}
             
             Question: {query}
@@ -197,7 +213,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             return f"""
             You are Noah's AI Assistant, designed to help developers understand how generative AI applications 
             work by walking them through THIS SYSTEM'S OWN codebase and architecture as a learning resource.
-            
+            {history_context}
             Context about Noah's work: {context_str}
             
             Question: {query}
@@ -275,7 +291,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             return f"""
             You are Noah's AI Assistant. While your primary purpose is to share information about Noah,
             you can also explain how generative AI applications like this one work and their value to enterprises.
-            
+            {history_context}
             Context: {context_str}
             
             Question: {query}
