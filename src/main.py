@@ -109,15 +109,13 @@ def main():
     """Main application flow: validate config → role selection → chat loop."""
     init_state()
     
-    # Ensure all required environment variables are set
-    # Raises helpful error if OPENAI_API_KEY, SUPABASE_URL, etc. are missing
+    # Validate Supabase configuration
     supabase_settings.validate_configuration()
     
-    # Initialize all services
-    memory = Memory()  # Conversation history manager
-    rag_engine = RagEngine(supabase_settings)  # Retrieval engine (pgvector or FAISS)
-    role_router = RoleRouter()  # Routes queries based on role
-    response_formatter = ResponseFormatter()  # Formats responses for target audience
+    memory = Memory()
+    rag_engine = RagEngine(supabase_settings)
+    role_router = RoleRouter()
+    response_formatter = ResponseFormatter()
 
     st.title("Noah's AI Assistant")
 
@@ -127,10 +125,11 @@ def main():
     if st.session_state.role is None:
         st.write("Hello! I'm Noah's AI Assistant.")
         st.write("To provide you with the best experience, please select the option that best describes you:")
-        st.session_state.role = st.selectbox("Select your role:", ROLE_OPTIONS)
+        selected_role = st.selectbox("Select your role:", ROLE_OPTIONS)
         
         if st.button("Confirm Role"):
-            # Show warm greeting immediately after role selection
+            # Set role and show warm greeting immediately after role selection
+            st.session_state.role = selected_role
             greeting = get_role_greeting(st.session_state.role)
             st.session_state.chat_history.append({
                 "role": "assistant",
@@ -143,49 +142,8 @@ def main():
         st.sidebar.markdown(f"**Active Role:** {st.session_state.role}")
         if st.sidebar.button("Change Role"):
             st.session_state.role = None  # Reset role
-            st.stop()  # Force rerun to show role selection screen
-
-    # ========== CHAT INTERFACE ==========
-    # Display prior messages from session (survives reruns)
-    for m in st.session_state.chat_history:
-        with st.chat_message(m["role"]):  # "user" or "assistant"
-            st.markdown(m["content"])
-
-    # Chat input (multi-turn conversation)
-    user_input = st.chat_input("Ask a question...")
-    if user_input:
-        # Start timer for response latency tracking
-        start_time = time.time()
-        
-        # Display user message immediately
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
-def main():
-    init_state()
-    
-    # Validate Supabase configuration
-    supabase_settings.validate_configuration()
-    
-    memory = Memory()
-    rag_engine = RagEngine(supabase_settings)
-    role_router = RoleRouter()
-    response_formatter = ResponseFormatter()
-
-    st.title("Noah's AI Assistant")
-
-    # One-time role selection (persisted)
-    if st.session_state.role is None:
-        st.write("Hello, I am Noah’s AI Assistant. To better provide assistance, which best describes you?")
-        st.session_state.role = st.selectbox("Select your role:", ROLE_OPTIONS)
-        st.button("Confirm Role", on_click=lambda: None)
-        st.stop()
-    else:
-        st.sidebar.markdown(f"**Active Role:** {st.session_state.role}")
-        if st.sidebar.button("Change Role"):
-            st.session_state.role = None
-            st.stop()
+            st.session_state.chat_history = []  # Clear chat history
+            st.rerun()  # Force rerun to show role selection screen
 
     # Display prior messages
     for m in st.session_state.chat_history:
