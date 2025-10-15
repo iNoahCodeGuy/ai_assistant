@@ -2,6 +2,17 @@
 
 Noah's AI Assistant (repo: NoahsAIAssistant-) is a retrieval-augmented generative AI application that adapts its conversational style and retrieval strategy based on distinct user roles. It tailors responses for hiring managers, software developers, casual visitors, and personal interactions while emphasizing transparency, robustness, and compliance.
 
+## Context Docs (Start Here)
+
+This project ships with **self-documenting context** for Copilot and contributors.  
+Open these when implementing features or refactoring so changes stay aligned:
+
+- 📘 **Project Overview** → `docs/context/PROJECT_REFERENCE_OVERVIEW.md`
+- 🧩 **System Architecture** → `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`
+- 🧮 **Data & Schema Reference** → `docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`
+
+**Why:** These files define the assistant's purpose, stack, data contracts, and presentation rules (when to show code, data, or narrative). They are optimized for Copilot prompt context and human review.
+
 ## Table of Contents
 - [🚀 Quickstart](#-quickstart)
 - [Features](#features)
