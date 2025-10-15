@@ -15,6 +15,7 @@ from src.flows.conversation_nodes import (
     apply_role_context,
     execute_actions,
     log_and_notify,
+    handle_greeting,
 )
 
 
@@ -28,11 +29,17 @@ def run_conversation_flow(
     nodes: tuple[Node, ...] | None = None,
     session_id: str,
 ) -> ConversationState:
-    """Execute the conversation pipeline in sequence."""
+    """Execute the conversation pipeline in sequence.
+    
+    Flow: handle_greeting → classify → retrieve → generate → plan → apply → execute → log
+    
+    The greeting node short-circuits if user's first query is a simple "hello".
+    """
     pipeline = nodes or (
+        lambda s: handle_greeting(s, rag_engine),  # Check for first-turn greetings
         classify_query,
-        lambda s: retrieve_chunks(s, rag_engine),
-        lambda s: generate_answer(s, rag_engine),
+        lambda s: retrieve_chunks(s, rag_engine) if not s.fetch("is_greeting") else s,
+        lambda s: generate_answer(s, rag_engine) if not s.fetch("is_greeting") else s,
         plan_actions,
         lambda s: apply_role_context(s, rag_engine),
         execute_actions,

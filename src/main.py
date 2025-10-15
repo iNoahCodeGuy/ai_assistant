@@ -76,6 +76,7 @@ from src.analytics.supabase_analytics import supabase_analytics, UserInteraction
 from src.config.supabase_config import supabase_settings
 from src.flows.conversation_state import ConversationState
 from src.flows.conversation_flow import run_conversation_flow
+from src.flows.greetings import get_role_greeting
 
 ROLE_OPTIONS = [
     "Hiring Manager (nontechnical)",  # Business-focused, career KB only
@@ -124,10 +125,19 @@ def main():
     # User must select role before accessing chat interface.
     # This ensures we know their context before retrieval.
     if st.session_state.role is None:
-        st.write("Hello, I am Noah's AI Assistant. To better provide assistance, which best describes you?")
+        st.write("Hello! I'm Noah's AI Assistant.")
+        st.write("To provide you with the best experience, please select the option that best describes you:")
         st.session_state.role = st.selectbox("Select your role:", ROLE_OPTIONS)
-        st.button("Confirm Role", on_click=lambda: None)  # Dummy callback, just for UI
-        st.stop()  # Stop execution until role is confirmed (page will rerun)
+        
+        if st.button("Confirm Role"):
+            # Show warm greeting immediately after role selection
+            greeting = get_role_greeting(st.session_state.role)
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": greeting
+            })
+            st.rerun()  # Refresh to show chat interface with greeting
+        st.stop()  # Stop execution until role is confirmed
     else:
         # Role already selected - show it in sidebar with option to change
         st.sidebar.markdown(f"**Active Role:** {st.session_state.role}")
