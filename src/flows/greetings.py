@@ -43,58 +43,59 @@ def get_role_greeting(role: str) -> str:
 
 def _technical_hiring_manager_greeting() -> str:
     """Greeting for technical hiring managers."""
-    return """Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I'd love to show you what makes this project interesting from an engineering perspective.
-
-I'm here to help you really understand the architecture and design thinking — think of me as a senior staff engineer walking you through a system design.
+    return """Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I want you to understand how generative AI applications like this work and why they're valuable to enterprises.
 
 I can walk you through:
-- How my RAG pipeline works (pgvector + LangGraph orchestration)
-- The data contracts and analytics strategy
-- How this could scale in an enterprise context
-- Design tradeoffs and why we made certain choices
-- Noah's technical background and engineering approach
+- How RAG (Retrieval-Augmented Generation) ensures accuracy and grounding
+- The vector search and semantic retrieval architecture
+- LLM orchestration patterns and why they matter for production systems
+- Data governance, cost optimization, and reliability strategies
+- Why enterprises are investing in GenAI capabilities like this
+- How this demonstrates Noah's understanding of production GenAI systems
 
-I'm also happy to explain how I was built, dive into specific technical decisions, or show you the code. I want you to understand it, not just see it. What sounds interesting?"""
+I'm happy to explain the engineering, the business value, or both. I want you to really *get* why these systems matter. What sounds interesting?"""
 
 
 def _nontechnical_hiring_manager_greeting() -> str:
     """Greeting for nontechnical hiring managers."""
-    return """Hello! 👋 I'm so glad you're here. I'm Noah's AI Assistant, and I'd love to help you learn more about Noah's work and capabilities.
+    return """Hello! 👋 I'm so glad you're here. I'm Noah's AI Assistant, and I want you to understand how generative AI applications like this work and why they're valuable to enterprises — in plain English, no jargon.
 
-I can share:
-- Noah's background and experience
-- What this project demonstrates
-- How it could benefit your organization
-- The value of Noah's skill set
+I can explain:
+- What makes AI assistants like me reliable and accurate (RAG technology)
+- Why enterprises are investing in generative AI capabilities
+- The business value: cost savings, scalability, and competitive advantage
+- How systems like this improve customer experience and operational efficiency
+- What Noah understands about building production-ready GenAI applications
 
-I'm also happy to explain how I work in plain English — no jargon required. I can even walk you through my architecture in a way that makes sense from a business perspective.
-
-What would be most helpful for you?"""
+I'm here to make GenAI concepts approachable and show you why this technology matters for business. What would be most helpful for you?"""
 
 
 def _software_developer_greeting() -> str:
     """Greeting for software developers."""
-    return """Hey! 👋 So glad you're checking this out. I'm Noah's AI Assistant, and honestly, I'm kind of excited to geek out with another developer.
-
-I want you to really understand how this system works — not just what it does, but *why* it's built this way. Think of me as that senior staff engineer who loves explaining architecture.
+    return """Hey! 👋 So glad you're checking this out. I'm Noah's AI Assistant, and I want you to understand how generative AI applications like this work — not just the surface-level stuff, but the real RAG architecture, vector search, LLM orchestration, and why enterprises care.
 
 Want to explore:
-- Code snippets from the RAG engine or conversation flow?
-- How the pgvector retrieval works under the hood?
-- The LangGraph node orchestration pattern?
-- System architecture diagrams and design decisions?
-- Tradeoffs we made and why?
+- How RAG (Retrieval-Augmented Generation) works under the hood?
+- The vector embedding and semantic search strategy?
+- LLM orchestration with LangGraph nodes?
+- Prompt engineering and grounding techniques?
+- System architecture and why we made specific GenAI tradeoffs?
 
-Or ask me anything about how I work — teaching how systems work is literally my favorite thing. What catches your interest?"""
+Or ask me anything about how generative AI applications work — teaching this stuff is what I'm here for. What catches your interest?"""
 
 
 def _casual_visitor_greeting() -> str:
     """Greeting for casual visitors exploring the assistant."""
     return """Hey there! 👋 Welcome! I'm Noah's AI Assistant, and I'm really happy you stopped by.
 
-I'm here to help you understand Noah's background, this project, or really anything you're curious about. I like to think of myself as a friendly engineer who loves explaining how things work — I want you to actually *get it*, not just hear buzzwords.
+I want you to understand how generative AI applications like this work — the cool thing is, it's actually pretty interesting once you see how it works! I'll explain it in plain English, no technical jargon required.
 
-Feel free to ask me anything! I'm totally open to questions about how I work — like how I remember context, find relevant information, or decide what to say. I can explain it in plain English, no jargon required.
+Feel free to ask me:
+- How do AI assistants like me actually work?
+- What makes me accurate vs just making stuff up?
+- How do I remember our conversation?
+- Why are companies investing in this technology?
+- Anything about Noah's background or this project!
 
 What would you like to explore?"""
 
@@ -112,13 +113,13 @@ def _default_greeting() -> str:
     """Default greeting for unrecognized roles."""
     return """Hey! 👋 I'm Noah's AI Assistant, and I'm excited you're here.
 
-I'm here to help you understand:
-- Noah's background and experience
-- This project and how it works
-- My architecture and engineering decisions
-- Really anything you're curious about!
+I want you to understand:
+- How generative AI applications like this work
+- What makes them valuable to enterprises
+- The technology behind AI assistants (RAG, vector search, LLMs)
+- Noah's background and this project
 
-I like to think of myself as a friendly engineer who loves teaching — I want you to actually understand, not just get surface-level answers. Feel free to ask me to explain how I work or show you the code behind anything I do.
+I can explain things technically or in plain English — whatever works best for you. And I'm always happy to show you how the GenAI systems work under the hood.
 
 What would you like to explore?"""
 
