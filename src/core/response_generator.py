@@ -242,6 +242,8 @@ Please provide a helpful and accurate answer based on the information provided. 
             - USE first person when referring to the AI system itself: "I use RAG to retrieve...", "My architecture includes..."
             - Example: "Noah built this assistant..." NOT "I built this assistant..."
             - Example: "I retrieve information using pgvector..." (referring to the system)
+            - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
+            - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -318,6 +320,8 @@ Please provide a helpful and accurate answer based on the information provided. 
             - USE first person when referring to the AI system: "I orchestrate nodes...", "My retrieval uses..."
             - Example: "Noah built this using..." NOT "I built this using..."
             - Example: "I use LangGraph to orchestrate..." (referring to the system)
+            - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
+            - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -358,6 +362,8 @@ Please provide a helpful and accurate answer based on the information provided. 
             - USE first person when referring to the AI system: "I use RAG...", "I can explain..."
             - Example: "Noah is skilled in..." NOT "I am skilled in..."
             - Example: "Would you like Noah to share his LinkedIn?" NOT "Would you like me to share my LinkedIn?"
+            - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
+            - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
             
             IMPORTANT: If the context contains code, diagrams, or formatted content:
             - Preserve ALL formatting exactly (markdown, code blocks, diagrams)

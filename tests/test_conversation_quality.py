@@ -13,8 +13,9 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from src.flows.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
-    classify_query, generate_answer, apply_role_context, retrieve_chunks, _is_valid_code_snippet
+    classify_query, generate_answer, apply_role_context, retrieve_chunks
 )
+from src.flows.code_validation import is_valid_code_snippet
 from src.flows.data_reporting import render_full_data_report
 
 
@@ -303,7 +304,7 @@ class TestCodeDisplayQuality:
         ]
 
         for code_content, should_pass, description in test_cases:
-            is_valid = _is_valid_code_snippet(code_content)
+            is_valid = is_valid_code_snippet(code_content)
             assert is_valid == should_pass, (
                 f"Validation failed: {description} (got {is_valid}, expected {should_pass})"
             )
@@ -431,6 +432,66 @@ class TestSpecificRegressions:
         
         # Should appear in exactly ONE location (apply_role_context)
         assert occurrences <= 1, f"Found {occurrences} prompt generation locations - should be 1 (in apply_role_context only)"
+
+
+class TestResponseSynthesis:
+    """Ensure responses synthesize KB content naturally, not verbatim Q&A."""
+    
+    def test_no_qa_verbatim_responses(self):
+        """LLM must synthesize KB Q&A pairs into natural conversation, not return them verbatim."""
+        import inspect
+        from src.core import response_generator
+        
+        # Check that all role prompts include the synthesis instruction
+        source = inspect.getsource(response_generator)
+        
+        # The critical instruction should appear in prompts
+        synthesis_instruction = "NEVER return Q&A format from knowledge base verbatim"
+        
+        assert synthesis_instruction in source, (
+            "Response generator prompts must include instruction to synthesize Q&A content, "
+            "not return it verbatim. Check _build_role_prompt() for all roles."
+        )
+        
+    def test_response_synthesis_in_prompts(self):
+        """Verify all role prompts explicitly instruct to avoid Q&A verbatim responses."""
+        from src.core.response_generator import ResponseGenerator
+        from unittest.mock import Mock
+        
+        # Mock the LLM dependency
+        mock_llm = Mock()
+        gen = ResponseGenerator(llm=mock_llm)
+        
+        # Test different roles
+        roles_to_test = [
+            "Hiring Manager (technical)",
+            "Software Developer",
+            "Just looking around",
+            None  # General/default role
+        ]
+        
+        for role in roles_to_test:
+            prompt = gen._build_role_prompt(
+                query="Test query",
+                context_str="Q: What is Noah's background?\nA: Noah has experience...",
+                role=role
+            )
+            
+            # Prompt must mention synthesizing or avoiding Q&A format
+            synthesis_keywords = [
+                "synthesize", 
+                "Q&A format", 
+                "verbatim",
+                "natural conversation",
+                "rephrase naturally"
+            ]
+            
+            has_synthesis_guidance = any(keyword in prompt for keyword in synthesis_keywords)
+            
+            assert has_synthesis_guidance, (
+                f"Role '{role}' prompt lacks guidance to synthesize Q&A content naturally. "
+                f"Responses may return raw 'Q: ... A: ...' format from KB."
+            )
 
 
 if __name__ == "__main__":
