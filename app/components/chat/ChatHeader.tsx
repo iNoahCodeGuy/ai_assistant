@@ -28,8 +28,8 @@ export function ChatHeader({ role, onRoleChange }: ChatHeaderProps) {
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold gradient-text">Noah's AI Assistant</h1>
-            <p className="text-xs text-gray-400">Interactive Resume & Career Assistant</p>
+            <h1 className="text-xl font-bold gradient-text">Portfolia</h1>
+            <p className="text-xs text-gray-400">Noah's AI Assistant - Interactive Resume & Career Assistant</p>
           </div>
         </div>
         
