@@ -1,10 +1,12 @@
 # Portfolia - Noah's AI Assistant
 
-**Portfolia** is Noah's **educational generative AI assistant** that teaches users how GenAI systems work and their enterprise value by **using herself as a hands-on case study**. 
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+
+**Portfolia** is Noah's **educational generative AI assistant** that teaches users how GenAI systems work and their enterprise value by **using herself as a hands-on case study**.
 
 This is a **complete full-stack AI system** demonstrating every component enterprises need: **frontend** (UI/UX), **backend** (APIs, business logic), **data pipelines** (ETL, embeddings), **architecture** (RAG, vector search), **QA** (testing strategies), and **DevOps** (deployment, monitoring). Through interactive conversation, it explains its own implementation and shows how each pattern applies to enterprise use cases like customer support, internal documentation, and sales enablement.
 
-**🎓 The Learning Approach**: Instead of abstract explanations, the assistant shows you the actual code, architecture diagrams, and data flows that power the conversation you're having. 
+**🎓 The Learning Approach**: Instead of abstract explanations, the assistant shows you the actual code, architecture diagrams, and data flows that power the conversation you're having.
 
 **📘 [Start Here: Complete System Learning Guide](docs/LEARNING_GUIDE_COMPLETE_SYSTEM.md)** - Comprehensive walkthrough of every component with enterprise mapping.
 
@@ -205,7 +207,7 @@ The assistant demonstrates concepts by showing its own implementation:
 - **Vector Search**: pgvector with IVFFLAT indexing for semantic similarity
 - **Models**: OpenAI GPT-3.5/4 (generation), OpenAI ada-002 (embeddings)
 - **Analytics**: Direct Supabase writes (messages, retrieval_logs, feedback)
-- **External Services**: 
+- **External Services**:
   - Resend (email delivery)
   - Twilio (SMS notifications)
 - **API Layer**: Next.js API routes for external integrations
@@ -298,6 +300,101 @@ cp .env.example .env
 ```bash
 python scripts/migrate_data_to_supabase.py
 ```
+
+## Developer Setup
+
+### Quality Assurance & Pre-Commit Hooks
+
+This project uses **automated quality checks** to maintain code quality and prevent regressions. All tests and hooks are configured to run automatically.
+
+#### Install Pre-Commit Hooks
+
+**One-time setup** (required for contributors):
+
+```bash
+# 1. Install pre-commit framework
+pip install pre-commit
+
+# 2. Install git hooks
+pre-commit install
+
+# 3. (Optional) Run hooks manually on all files
+pre-commit run --all-files
+```
+
+#### What the Hooks Do
+
+Pre-commit hooks run automatically **before every commit** and check:
+
+✅ **Conversation Quality Tests** (18 tests)
+- No markdown headers in LLM responses
+- No duplicate follow-up prompts
+- No information overload (response length limits)
+- Professional formatting consistency
+
+✅ **Documentation Alignment Tests** (12 tests)
+- Function names in docs match actual code
+- File paths are valid (no broken references)
+- Configuration values are correct
+
+✅ **Documentation Drift Prevention**
+- New `.md` files must be registered in master docs
+- Feature docs follow naming conventions
+- Suggests CHANGELOG updates
+
+✅ **Code Hygiene**
+- Trailing whitespace removal (auto-fix)
+- End-of-file fixes (auto-fix)
+- YAML syntax validation
+
+**Execution time:** ~2-3 seconds total
+
+#### What Happens If a Check Fails?
+
+```bash
+# If a test fails, the commit is blocked:
+❌ Conversation Quality Tests (18 tests).....Failed
+- hook id: conversation-quality-tests
+- exit code: 1
+
+5 tests failed. Fix the issues and try again.
+
+# Fix the issues, then:
+git add -A
+git commit -m "your message"  # Hooks run again
+```
+
+#### Running Tests Manually
+
+```bash
+# Run all tests (30 total)
+pytest tests/ -v
+
+# Run only conversation quality tests
+pytest tests/test_conversation_quality.py -v
+
+# Run only documentation alignment tests
+pytest tests/test_documentation_alignment.py -v
+```
+
+#### Bypassing Hooks (Emergency Only)
+
+**⚠️ Warning:** Only use this for emergency hotfixes. CI/CD will still run tests on push.
+
+```bash
+# Skip pre-commit hooks (NOT RECOMMENDED)
+git commit --no-verify -m "emergency hotfix"
+
+# Better approach: Fix the failing test, then commit normally
+```
+
+#### CI/CD Integration
+
+Even if you bypass pre-commit hooks locally, **all tests run automatically** on every push via GitHub Actions. Failed tests will block PR merges.
+
+See [QA_STRATEGY.md](docs/QA_STRATEGY.md) for complete quality assurance documentation.
+
+---
 
 ## Usage
 

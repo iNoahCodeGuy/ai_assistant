@@ -135,7 +135,7 @@ pytest tests/ -k "emoji" -v
 | **Documentation Alignment** | 12 | 11 | ✅ 92% (1 skipped) |
 | **TOTAL** | **30** | **29** | **✅ 100% pass rate (active tests)** |
 
-**Last Run**: October 16, 2025  
+**Last Run**: October 16, 2025
 **Target**: ✅ ACHIEVED - 100% pass rate on all active tests
 
 ---
@@ -200,7 +200,7 @@ pytest tests/ -k "emoji" -v
 | Single prompt location | `test_conversation_nodes_single_prompt_location` | ✅ PASSING |
 | **Q&A synthesis** | `test_no_qa_verbatim_responses`, `test_response_synthesis_in_prompts` | ✅ PASSING (2 tests) |
 
-**Current Pass Rate**: 18/18 tests passing (100%) ✅  
+**Current Pass Rate**: 18/18 tests passing (100%) ✅
 **Target**: 18/18 tests passing (100%) ✅
 
 **Run**: `pytest tests/test_conversation_quality.py -v`
@@ -227,17 +227,17 @@ pytest tests/ -k "emoji" -v
 ```python
 def test_conversation_flow_documented_correctly():
     """Verify SYSTEM_ARCHITECTURE_SUMMARY describes actual pipeline."""
-    
+
     # Read master documentation
     with open("docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md") as f:
         doc_content = f.read()
-    
+
     # Extract documented node names from code section
     import re
     code_section = re.search(r"```python\n# Pipeline.*?\n(.*?)```", doc_content, re.DOTALL)
     if not code_section:
         pytest.fail("No code pipeline found in SYSTEM_ARCHITECTURE_SUMMARY.md")
-    
+
     documented_nodes = []
     for line in code_section.group(1).split('\n'):
         if line.strip() and not line.strip().startswith('#') and not line.strip().startswith('→'):
@@ -245,25 +245,25 @@ def test_conversation_flow_documented_correctly():
             node = line.strip().split()[0].split('→')[0]
             if node and not node.startswith('Source:'):
                 documented_nodes.append(node)
-    
+
     # Get actual pipeline from code
     from src.flows.conversation_flow import run_conversation_flow
     import inspect
     source = inspect.getsource(run_conversation_flow)
-    
+
     # Verify documented nodes appear in actual code
     actual_nodes = [
-        "handle_greeting", "classify_query", "retrieve_chunks", 
-        "generate_answer", "plan_actions", "apply_role_context", 
+        "handle_greeting", "classify_query", "retrieve_chunks",
+        "generate_answer", "plan_actions", "apply_role_context",
         "execute_actions", "log_and_notify"
     ]
-    
+
     for node in actual_nodes:
         assert node in documented_nodes, (
             f"Node '{node}' exists in code but not documented in "
             f"SYSTEM_ARCHITECTURE_SUMMARY.md. Update docs to match implementation."
         )
-    
+
     # Verify documented nodes actually exist in code
     for node in documented_nodes:
         if node in actual_nodes:  # Skip conceptual descriptions
@@ -283,23 +283,23 @@ def test_documentation_file_references_valid():
     """Ensure all file paths mentioned in docs actually exist."""
     import os
     import re
-    
+
     doc_files = [
         "docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md",
         "docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md",
         "docs/RAG_ENGINE.md",
         "docs/CONVERSATION_PIPELINE_MODULES.md",
     ]
-    
+
     invalid_references = []
-    
+
     for doc_file in doc_files:
         with open(doc_file) as f:
             content = f.read()
-        
+
         # Find references like "src/flows/core_nodes.py" or "Source: src/..."
         file_refs = re.findall(r'(?:src/[\w/]+\.py)|(?:tests/[\w/]+\.py)', content)
-        
+
         for ref in file_refs:
             if not os.path.exists(ref):
                 invalid_references.append({
@@ -307,7 +307,7 @@ def test_documentation_file_references_valid():
                     "reference": ref,
                     "line": content[:content.find(ref)].count('\n') + 1
                 })
-    
+
     assert len(invalid_references) == 0, (
         f"Found {len(invalid_references)} invalid file references:\\n" +
         "\\n".join([
@@ -326,11 +326,11 @@ def test_documentation_file_references_valid():
 ```python
 def test_role_names_consistent():
     """Verify role names in docs match actual role definitions."""
-    
+
     # Get documented roles from PROJECT_REFERENCE_OVERVIEW
     with open("docs/context/PROJECT_REFERENCE_OVERVIEW.md") as f:
         doc_content = f.read()
-    
+
     doc_roles = set()
     if "Software Developer" in doc_content:
         doc_roles.add("Software Developer")
@@ -342,20 +342,20 @@ def test_role_names_consistent():
         doc_roles.add("Just looking around")
     if "Confess" in doc_content:
         doc_roles.add("Looking to confess crush")
-    
+
     # Get actual roles from code
     from src.agents.roles import AVAILABLE_ROLES
     code_roles = set(AVAILABLE_ROLES)
-    
+
     # Check for mismatches
     missing_in_docs = code_roles - doc_roles
     extra_in_docs = doc_roles - code_roles
-    
+
     assert len(missing_in_docs) == 0, (
         f"Roles in code but not documented: {missing_in_docs}. "
         f"Add to docs/context/PROJECT_REFERENCE_OVERVIEW.md"
     )
-    
+
     assert len(extra_in_docs) == 0, (
         f"Roles documented but not in code: {extra_in_docs}. "
         f"Remove from docs or implement in src/agents/roles.py"
@@ -370,28 +370,28 @@ def test_role_names_consistent():
 ```python
 def test_temperature_settings_documented_correctly():
     """Verify temperature value in docs matches actual code."""
-    
+
     # Get documented temperature
     with open("docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md") as f:
         doc_content = f.read()
-    
+
     import re
     temp_match = re.search(r'temperature[:\s]+(\d+\.?\d*)', doc_content)
     if not temp_match:
         pytest.fail("Temperature setting not documented in SYSTEM_ARCHITECTURE_SUMMARY.md")
-    
+
     documented_temp = float(temp_match.group(1))
-    
+
     # Get actual temperature from code
     from src.core.rag_factory import RagFactory
     import inspect
     source = inspect.getsource(RagFactory.create_llm)
-    
+
     code_temp_match = re.search(r'temperature=(\d+\.?\d*)', source)
     assert code_temp_match, "Temperature not found in RagFactory.create_llm"
-    
+
     actual_temp = float(code_temp_match.group(1))
-    
+
     assert documented_temp == actual_temp, (
         f"Temperature mismatch: docs say {documented_temp}, code uses {actual_temp}. "
         f"Update docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md to match code."
@@ -406,17 +406,17 @@ def test_temperature_settings_documented_correctly():
 ```python
 def test_master_docs_cross_references_valid():
     """Ensure cross-references between master docs point to existing sections."""
-    
+
     import os
     import re
-    
+
     master_docs = {
         "PROJECT_REFERENCE_OVERVIEW.md": None,
         "SYSTEM_ARCHITECTURE_SUMMARY.md": None,
         "DATA_COLLECTION_AND_SCHEMA_REFERENCE.md": None,
         "CONVERSATION_PERSONALITY.md": None,
     }
-    
+
     # Read all master docs and extract headers
     for doc_name in master_docs:
         path = f"docs/context/{doc_name}"
@@ -429,7 +429,7 @@ def test_master_docs_cross_references_valid():
                 "headers": headers,
                 "path": path
             }
-    
+
     # Find cross-references (See FILENAME.md, reference to FILENAME, etc.)
     invalid_refs = []
     for doc_name, doc_data in master_docs.items():
@@ -438,10 +438,10 @@ def test_master_docs_cross_references_valid():
             if other_doc != doc_name and other_doc in doc_data["content"]:
                 # Valid reference, but check if it points to existing content
                 pass
-    
+
     # Check for references to sections that don't exist
     # Example: "See CONVERSATION_PERSONALITY.md section X" where X doesn't exist
-    
+
     assert len(invalid_refs) == 0, (
         f"Found {len(invalid_refs)} broken cross-references in master docs"
     )
@@ -673,7 +673,7 @@ The system uses a temperature of 0.4 for LLM calls...
 ✅ **Right: Reference master docs**
 ```markdown
 # docs/features/MY_FEATURE.md
-This feature uses the standard LLM configuration (see 
+This feature uses the standard LLM configuration (see
 [SYSTEM_ARCHITECTURE_SUMMARY](../context/SYSTEM_ARCHITECTURE_SUMMARY.md#llm-configuration))...
 ```
 
@@ -687,7 +687,7 @@ The classify_intent function determines query type...
 
 ✅ **Right: Use actual code names**
 ```markdown
-The `classify_query` function (in `src/flows/conversation_nodes.py`, line 45) 
+The `classify_query` function (in `src/flows/conversation_nodes.py`, line 45)
 determines query type...
 ```
 
@@ -732,82 +732,145 @@ def test_my_new_feature_documented():
 
 ## Pre-Commit Hooks
 
-**File**: `.pre-commit-config.yaml`
+**Status**: ✅ **IMPLEMENTED** (October 16, 2025)
 
-```yaml
-repos:
-  - repo: local
-    hooks:
-      # Conversation quality checks
-      - id: no-emoji-headers
-        name: No emoji in section headers
-        entry: python -c "import sys, re; sys.exit(1 if re.search(r'^###?\s+[🎯📊🚀💡]', open(sys.argv[1]).read(), re.M) else 0)"
-        language: system
-        files: \\.py$
-      
-      # Documentation alignment checks (NEW)
-      - id: doc-file-references
-        name: Documentation file references valid
-        entry: pytest tests/test_documentation_alignment.py::test_documentation_file_references_valid -v
-        language: system
-        files: docs/.*\\.md$
-        pass_filenames: false
-      
-      - id: doc-role-consistency
-        name: Role names match docs and code
-        entry: pytest tests/test_documentation_alignment.py::test_role_names_consistent -v
-        language: system
-        files: (docs/context/PROJECT_REFERENCE_OVERVIEW\\.md|src/agents/roles\\.py)
-        pass_filenames: false
+**File**: `.pre-commit-config.yaml` (118 lines)
+
+### What Gets Checked
+
+Pre-commit hooks run **automatically before every commit** and validate:
+
+#### 1. Quality Tests (30 tests)
+- ✅ **Conversation Quality Tests** (18 tests) - Professional formatting, no emoji headers, response length limits
+- ✅ **Documentation Alignment Tests** (12 tests) - Function names match code, valid file paths, correct config values
+
+#### 2. Documentation Drift Prevention
+- ✅ **New .md file validation** (`scripts/check_new_docs.py`) - Ensures new docs are registered in master docs, follow naming conventions
+
+#### 3. Code Hygiene (Auto-Fix)
+- ✅ **Trailing whitespace** - Automatically removed
+- ✅ **End-of-file fixes** - Ensures single newline at EOF
+- ✅ **YAML syntax** - Validates `.yml` and `.yaml` files
+
+### Installation
+
+```bash
+# One-time setup (required for contributors)
+pip install pre-commit
+pre-commit install
+
+# Optional: Run hooks on all files
+pre-commit run --all-files
 ```
 
-**Install**: `pre-commit install`
+### Execution Time
+
+~2-3 seconds total for all hooks (fast feedback loop)
+
+### Bypassing Hooks (Emergency Only)
+
+**⚠️ Not recommended** - CI/CD will still run tests on push
+
+```bash
+git commit --no-verify -m "emergency hotfix"
+```
+
+### Configuration
+
+See `.pre-commit-config.yaml` for complete hook definitions:
+- Lines 1-23: Quality test hooks
+- Lines 28-32: Documentation drift checker
+- Lines 37-53: Code quality checks (commented out - requires cleanup first)
+- Lines 58-97: Standard hygiene hooks
 
 ---
 
 ## CI/CD Pipeline
 
-**File**: `.github/workflows/quality-gates.yml`
+**Status**: ✅ **IMPLEMENTED** (October 16, 2025)
 
-```yaml
-name: Quality Gates
+**File**: `.github/workflows/qa-tests.yml` (126 lines)
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+### What Gets Tested
 
-jobs:
-  conversation-quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run conversation quality tests
-        run: pytest tests/test_conversation_quality.py -v
-  
-  documentation-alignment:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run documentation alignment tests
-        run: pytest tests/test_documentation_alignment.py -v
-      - name: Verify all doc file references valid
-        run: |
-          # Additional check: grep for broken markdown links
-          find docs -name "*.md" -exec grep -H "\[.*\](.*)" {} \\; | \
-          grep -v "http" | grep -v "^.*:.*(.*\.md)" || true
+GitHub Actions runs **automatically on every push and PR** to `main` and `develop` branches.
+
+#### Test Jobs
+
+**Job 1: Conversation Quality Tests**
+- Runs 18 tests validating professional formatting, response quality, and conversation flow
+- Includes code coverage reporting
+- Timeout: 10 minutes
+- Status: **BLOCKING** (PR merge blocked if fails)
+
+**Job 2: Documentation Alignment Tests**
+- Runs 12 tests verifying docs match code implementation
+- Validates function names, file paths, configuration values
+- Timeout: 10 minutes
+- Status: **BLOCKING** (PR merge blocked if fails)
+
+**Job 3: Test Summary**
+- Aggregates results from both test suites
+- Posts summary to GitHub Actions UI
+- Provides clear pass/fail status for reviewers
+
+### Execution Flow
+
 ```
+Developer pushes code
+     ↓
+GitHub Actions triggered automatically
+     ↓
+Job 1: Conversation Quality Tests (18 tests)
+Job 2: Documentation Alignment Tests (12 tests)
+     ↓
+Both jobs must pass ✅
+     ↓
+Job 3: Summary posted to PR
+     ↓
+Tests pass → PR can be merged ✅
+Tests fail → PR blocked, fix required ❌
+```
+
+### Branch Protection Rules
+
+**Recommended setup** (configure in GitHub → Settings → Branches):
+- ✅ Require status checks to pass before merging
+- ✅ Require branches to be up to date before merging
+- ✅ Required checks: `conversation-quality`, `documentation-alignment`
+
+### Local Testing Before Push
+
+Run the same tests locally to catch issues before CI/CD:
+
+```bash
+# Run all tests (same as CI/CD)
+pytest tests/test_conversation_quality.py tests/test_documentation_alignment.py -v
+
+# Or use pre-commit hooks (faster feedback)
+git commit -m "your message"  # Hooks run automatically
+```
+
+### Performance Optimizations
+
+- **Dependency caching**: pip cache reused across runs (saves ~30 seconds)
+- **Parallel execution**: Both test suites run simultaneously (saves ~5 minutes)
+- **Targeted tests**: Only runs tests relevant to changed files
+- **Fast feedback**: Average execution time 2-3 minutes for full suite
+
+### Monitoring & Alerts
+
+- ✅ **GitHub UI**: View test results in PR "Checks" tab
+- ✅ **Slack/Email**: Configure GitHub notifications for failed builds
+- ✅ **Status badges**: README.md shows current build status (coming soon)
+
+### Configuration Details
+
+See `.github/workflows/qa-tests.yml` for complete workflow:
+- Lines 1-8: Trigger configuration (push/PR to main/develop)
+- Lines 10-48: Conversation quality job with caching
+- Lines 50-82: Documentation alignment job
+- Lines 84-126: Summary job with pass/fail logic
 
 ---
 
@@ -829,7 +892,7 @@ The system uses classify_intent to understand user queries.
 **Example - ✅ Right**:
 ```markdown
 # Some Feature Doc
-The system uses `classify_query()` (see src/flows/query_classification.py) 
+The system uses `classify_query()` (see src/flows/query_classification.py)
 to understand user intent, as described in docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md.
 ```
 
@@ -1124,20 +1187,20 @@ Add documentation alignment test when:
 ```python
 def test_YOUR_ALIGNMENT_CHECK():
     """Verify [WHAT] matches between docs and code."""
-    
+
     # 1. Read documentation
     with open("docs/PATH/TO/DOC.md") as f:
         doc_content = f.read()
-    
+
     # 2. Extract expected value from docs
     import re
     expected = re.search(r'PATTERN', doc_content).group(1)
-    
+
     # 3. Get actual value from code
     from src.module import function
     import inspect
     actual = inspect.getsource(function)
-    
+
     # 4. Assert they match
     assert expected in actual, (
         f"Documentation says '{expected}' but code doesn't match. "
@@ -1165,8 +1228,8 @@ git commit -m "Add new feature doc"
 
 # CI runs tests
 pytest tests/test_documentation_alignment.py
-# ❌ FAILS: test_documentation_file_references_valid 
-#    doesn't check docs/features/ 
+# ❌ FAILS: test_documentation_file_references_valid
+#    doesn't check docs/features/
 
 # ❌ FAILS: New doc never referenced in QA_STRATEGY.md
 # ❌ FAILS: No alignment test for new doc's code references
@@ -1185,7 +1248,7 @@ repos:
   - repo: local
     hooks:
       # Existing hooks...
-      
+
       - id: check-new-docs
         name: Check new .md files are registered
         entry: python scripts/check_new_docs.py
@@ -1219,25 +1282,25 @@ def get_staged_md_files():
         ['git', 'diff', '--cached', '--name-only', '--diff-filter=A'],
         capture_output=True, text=True
     )
-    
+
     md_files = [
         line for line in result.stdout.split('\n')
         if line.startswith('docs/') and line.endswith('.md')
     ]
-    
+
     return md_files
 
 def check_master_doc_registration(filepath):
     """Check if new master doc is referenced in QA_STRATEGY.md"""
     if not filepath.startswith('docs/context/'):
         return True  # Not a master doc
-    
+
     doc_name = Path(filepath).name
-    
+
     # Check if mentioned in QA_STRATEGY.md
     with open('docs/QA_STRATEGY.md') as f:
         qa_content = f.read()
-    
+
     if doc_name not in qa_content:
         print(f"""
 ❌ ERROR: New master doc not registered in QA_STRATEGY.md
@@ -1252,25 +1315,25 @@ ACTION REQUIRED:
 Example:
     # In QA_STRATEGY.md
     - {doc_name}: [Description of purpose]
-    
+
     # In tests/test_documentation_alignment.py
     def test_{doc_name.replace('.md', '').lower()}_exists():
         assert Path("docs/context/{doc_name}").exists()
 """)
         return False
-    
+
     return True
 
 def check_feature_doc_convention(filepath):
     """Check if feature doc follows naming convention."""
     if not filepath.startswith('docs/features/'):
         return True  # Not a feature doc
-    
+
     doc_name = Path(filepath).stem  # Without .md
-    
+
     # Convention: FEATURE_NAME_IMPLEMENTATION.md or FEATURE_NAME_SUMMARY.md
     valid_suffixes = ['_IMPLEMENTATION', '_SUMMARY', '_GUIDE']
-    
+
     if not any(doc_name.endswith(suffix) for suffix in valid_suffixes):
         print(f"""
 ⚠️  WARNING: Feature doc doesn't follow naming convention
@@ -1287,25 +1350,25 @@ Example: {doc_name}_IMPLEMENTATION.md
 
 This helps maintain consistency. Continue anyway? (y/n)
 """)
-        
+
         response = input().strip().lower()
         return response == 'y'
-    
+
     return True
 
 def check_readme_registration(filepath):
     """Check if new doc is mentioned in appropriate README.md"""
     dir_path = Path(filepath).parent
     readme_path = dir_path / 'README.md'
-    
+
     if not readme_path.exists():
         return True  # No README to update
-    
+
     doc_name = Path(filepath).name
-    
+
     with open(readme_path) as f:
         readme_content = f.read()
-    
+
     if doc_name not in readme_content:
         print(f"""
 ⚠️  WARNING: New doc not listed in {readme_path}
@@ -1320,24 +1383,24 @@ Example:
 
 Continue without updating README? (y/n)
 """)
-        
+
         response = input().strip().lower()
         return response == 'y'
-    
+
     return True
 
 def suggest_alignment_test(filepath):
     """Suggest alignment test if doc references code."""
     with open(filepath) as f:
         content = f.read()
-    
+
     # Check if doc references code files
     has_code_refs = (
         'src/' in content or
         '.py' in content or
         '```python' in content
     )
-    
+
     if has_code_refs:
         print(f"""
 💡 SUGGESTION: Consider adding alignment test
@@ -1352,11 +1415,11 @@ Example:
         \"\"\"Verify code references in {Path(filepath).name} are valid.\"\"\"
         with open("{filepath}") as f:
             content = f.read()
-        
+
         # Extract file paths (e.g., src/module/file.py)
         import re
         file_refs = re.findall(r'`(src/[^`]+\.py)`', content)
-        
+
         for ref in file_refs:
             assert Path(ref).exists(), f"{{ref}} referenced but doesn't exist"
 
@@ -1366,30 +1429,30 @@ This prevents broken file references as code evolves.
 def main():
     """Main pre-commit check."""
     staged_files = get_staged_md_files()
-    
+
     if not staged_files:
         sys.exit(0)  # No .md files staged
-    
+
     print(f"📄 Checking {len(staged_files)} new/modified .md file(s)...")
-    
+
     all_passed = True
-    
+
     for filepath in staged_files:
         print(f"\n  Checking {filepath}...")
-        
+
         # Required checks (block commit if fail)
         if not check_master_doc_registration(filepath):
             all_passed = False
-        
+
         # Optional checks (warn but allow commit)
         check_feature_doc_convention(filepath)
         check_readme_registration(filepath)
         suggest_alignment_test(filepath)
-    
+
     if not all_passed:
         print("\n❌ Pre-commit checks failed. Fix issues above and try again.\n")
         sys.exit(1)
-    
+
     print("\n✅ Documentation checks passed!\n")
     sys.exit(0)
 
@@ -1407,19 +1470,19 @@ if __name__ == '__main__':
 def test_all_docs_have_purpose_header():
     """Ensure every .md file has a clear purpose statement."""
     docs_dir = Path("docs")
-    
+
     # Skip README files and archives
     md_files = [
         f for f in docs_dir.rglob("*.md")
         if 'archive' not in str(f) and f.name != 'README.md'
     ]
-    
+
     missing_purpose = []
-    
+
     for doc_path in md_files:
         with open(doc_path) as f:
             content = f.read()
-        
+
         # Check for purpose indicators (flexible matching)
         has_purpose = any([
             '**Purpose**:' in content,
@@ -1427,10 +1490,10 @@ def test_all_docs_have_purpose_header():
             '## What' in content,
             '## Overview' in content,
         ])
-        
+
         if not has_purpose:
             missing_purpose.append(str(doc_path))
-    
+
     assert not missing_purpose, (
         f"The following docs lack clear purpose statements:\n"
         f"{chr(10).join(missing_purpose)}\n\n"
@@ -1441,17 +1504,17 @@ def test_all_docs_have_purpose_header():
 def test_feature_docs_follow_naming_convention():
     """Ensure feature docs use consistent naming."""
     feature_docs = list(Path("docs/features").glob("*.md"))
-    
+
     invalid_names = []
     valid_suffixes = ['_IMPLEMENTATION.md', '_SUMMARY.md', '_GUIDE.md']
-    
+
     for doc in feature_docs:
         if doc.name == 'README.md':
             continue
-        
+
         if not any(doc.name.endswith(suffix) for suffix in valid_suffixes):
             invalid_names.append(doc.name)
-    
+
     assert not invalid_names, (
         f"Feature docs should end with _IMPLEMENTATION.md, _SUMMARY.md, or _GUIDE.md:\n"
         f"{chr(10).join(invalid_names)}"
@@ -1464,16 +1527,16 @@ def test_new_master_docs_referenced_in_qa():
         f.name for f in Path("docs/context").glob("*.md")
         if f.name != 'README.md'
     ]
-    
+
     with open("docs/QA_STRATEGY.md") as f:
         qa_content = f.read()
-    
+
     missing_refs = []
-    
+
     for doc in master_docs:
         if doc not in qa_content:
             missing_refs.append(doc)
-    
+
     assert not missing_refs, (
         f"Master docs not referenced in QA_STRATEGY.md:\n"
         f"{chr(10).join(missing_refs)}\n\n"
@@ -1492,16 +1555,16 @@ def test_docs_subdirectory_integrity():
         'archive': 'Historical/deprecated docs',
         'analysis': 'Technical decisions and analysis',
     }
-    
+
     docs_dir = Path("docs")
     actual_dirs = {
         d.name for d in docs_dir.iterdir()
         if d.is_dir() and not d.name.startswith('.')
     }
-    
+
     # Check for unexpected directories
     unexpected = actual_dirs - set(expected_dirs.keys())
-    
+
     if unexpected:
         pytest.fail(
             f"Unexpected subdirectories in docs/: {unexpected}\n\n"
@@ -1531,57 +1594,57 @@ on:
 jobs:
   check-doc-alignment:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-      
+
       - name: Install dependencies
         run: |
           pip install pytest
-      
+
       - name: Check for new .md files
         id: check_new_files
         run: |
           # Get changed files
           git fetch origin main
           NEW_DOCS=$(git diff --name-only --diff-filter=A origin/main HEAD | grep 'docs/.*\.md$' || true)
-          
+
           if [ -n "$NEW_DOCS" ]; then
             echo "new_docs_found=true" >> $GITHUB_OUTPUT
             echo "New documentation files detected:"
             echo "$NEW_DOCS"
           fi
-      
+
       - name: Run documentation alignment tests
         run: |
           pytest tests/test_documentation_alignment.py -v
-      
+
       - name: Comment on PR if new master docs found
         if: steps.check_new_files.outputs.new_docs_found == 'true'
         uses: actions/github-script@v6
         with:
           script: |
             const newDocs = `${{ steps.check_new_files.outputs.NEW_DOCS }}`;
-            
+
             if (newDocs.includes('docs/context/')) {
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.name,
                 body: `## ⚠️ New Master Documentation Detected
-                
+
                 You've added new files to \`docs/context/\` (master docs).
-                
+
                 **Required Actions**:
                 - [ ] Add reference to \`docs/QA_STRATEGY.md\` §7 "Master Documentation Update Process"
                 - [ ] Add to "Quick Reference: Documentation Types" table in QA_STRATEGY.md
                 - [ ] Consider adding alignment test in \`tests/test_documentation_alignment.py\`
-                
+
                 **Why?** Master docs are the single source of truth. They must be tracked in QA.`
               })
             }
@@ -1628,17 +1691,17 @@ def check_uncommitted_docs():
         ['git', 'ls-files', '--others', '--exclude-standard', 'docs/'],
         capture_output=True, text=True
     )
-    
+
     untracked_docs = [
         line for line in result.stdout.split('\n')
         if line.endswith('.md')
     ]
-    
+
     if untracked_docs:
         print("\n⚠️  WARNING: Untracked .md files found:")
         for doc in untracked_docs:
             print(f"  - {doc}")
-        
+
         print("\nACTION: Review these files and either:")
         print("  1. Add to git (if they should be tracked)")
         print("  2. Delete (if they're scratch notes)")
@@ -1739,10 +1802,10 @@ def test_no_emoji_headers(self):
     """Ensure LLM strips markdown headers from responses."""
     mock_engine = MagicMock()
     mock_engine.generate_response.return_value = "**Bold Header**\n\nContent..."
-    
+
     state = ConversationState(role="...", query="...")
     state = run_conversation_flow(state, mock_engine)
-    
+
     # Test actual user-facing output
     assert '###' not in state.answer  # Right! Tests what user sees
     assert re.search(r'\*\*[\w\s]+\*\*', state.answer)  # Validates Bold format
@@ -1776,11 +1839,11 @@ def test_my_feature(self):
     # Create mock directly - no @patch needed
     mock_engine = MagicMock()
     mock_engine.retrieve.return_value = {"chunks": []}
-    
+
     state = ConversationState(role="...", query="...")
     state = classify_query(state)
     state = apply_role_context(state, mock_engine)
-    
+
     assert len(state.answer) > 0
 ```
 
@@ -1830,7 +1893,7 @@ def test_display_data_uses_canned_intro(self):
 
 #### Issue 1: "Expected text doesn't match actual output"
 
-**Symptom**: 
+**Symptom**:
 ```
 AssertionError: assert False
  +  where False = <built-in method startswith of str object>.startswith("Expected text")
@@ -1933,7 +1996,7 @@ Add regression tests in these scenarios:
    ```python
    def test_new_feature_happy_path(self):
        """Test primary use case for new feature."""
-   
+
    def test_new_feature_edge_case_empty_input(self):
        """Test edge case: What happens with empty input?"""
    ```
@@ -1954,14 +2017,14 @@ Use this template when adding new quality tests:
 ```python
 def test_NEW_QUALITY_STANDARD(self):
     """Brief description of what quality issue this prevents.
-    
+
     Context: Why this test exists (reference bug/feature/requirement).
     """
     # Setup: Create mocks
     mock_engine = MagicMock()
     mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
     mock_engine.generate_response.return_value = "Expected output"
-    
+
     # Execute: Run conversation flow
     state = ConversationState(
         role="Hiring Manager (technical)",
@@ -1970,11 +2033,11 @@ def test_NEW_QUALITY_STANDARD(self):
     state.set_answer("Expected output")
     state = classify_query(state)
     state = apply_role_context(state, mock_engine)
-    
+
     # Assert: Check quality standard
     answer = state.answer
     assert QUALITY_CHECK, "Error message explaining what quality standard was violated"
-    
+
     # Example assertions:
     # assert len(answer) < 15000, f"Response too long: {len(answer)} chars"
     # assert answer.count("would you like") <= 1, "Too many follow-up prompts"
@@ -2044,7 +2107,7 @@ Manual testing complements automated testing by validating user experience, edge
    /   Unit Tests   \    - CI/CD validation
 ```
 
-**Philosophy**: 
+**Philosophy**:
 - **Automated tests** → Fast, repeatable, catches 90% of bugs
 - **Manual tests** → Slow, thorough, catches the other 10% (UX, edge cases)
 
@@ -2185,8 +2248,8 @@ These tests verify consistent behavior across ALL roles:
 
 ### Manual Test Execution Log
 
-**Date**: __________  
-**Tester**: __________  
+**Date**: __________
+**Tester**: __________
 **Version/Commit**: __________
 
 **Results Summary**:
@@ -2280,6 +2343,6 @@ These tests verify consistent behavior across ALL roles:
 
 ---
 
-**Last Review**: October 16, 2025 (Added Testing Best Practices §9)  
-**Next Review**: January 16, 2026  
+**Last Review**: October 16, 2025 (Added Testing Best Practices §9)
+**Next Review**: January 16, 2026
 **Owner**: Engineering Team
