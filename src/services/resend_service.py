@@ -187,7 +187,7 @@ class ResendService:
             <div class="container">
                 <div class="header">
                     <h2 style="margin: 0;">New Contact Form Submission</h2>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Noah's AI Assistant</p>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Portfolia - Noah's AI Assistant</p>
                 </div>
                 <div class="content">
                     <div class="field">
@@ -218,7 +218,7 @@ class ResendService:
                     </div>
                 </div>
                 <div class="footer">
-                    <p>This is an automated notification from Noah's AI Assistant contact form.</p>
+                    <p>This is an automated notification from Portfolia, Noah's AI Assistant contact form.</p>
                 </div>
             </div>
         </body>
@@ -351,7 +351,7 @@ class ResendService:
                 <div class="content">
                     <h2>Hi {to_name}! 👋</h2>
                     
-                    <p>Thank you for reaching out through my AI Assistant. I've received your message and will get back to you shortly.</p>
+                    <p>Thank you for reaching out through Portfolia. I've received your message and will get back to you shortly.</p>
                     
                     <p>In the meantime, feel free to:</p>
                     <ul>

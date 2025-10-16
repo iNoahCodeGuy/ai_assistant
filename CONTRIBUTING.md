@@ -1,6 +1,6 @@
 # CONTRIBUTING.md
 
-Welcome! This repo powers **Noah’s AI Assistant** — a role‑aware, RAG‑backed portfolio system.  
+Welcome! This repo powers **Portfolia (Noah's AI Assistant)** — a role‑aware, RAG‑backed portfolio system.
 Please read these short conventions before making changes.
 
 ---

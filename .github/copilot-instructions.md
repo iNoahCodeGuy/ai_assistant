@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for Noah's AI Assistant
+# GitHub Copilot Instructions for Portfolia (Noah's AI Assistant)
 
 ## Quick Context Links (Always Reference)
 

@@ -1,6 +1,6 @@
-# Noah's AI Assistant
+# Portfolia - Noah's AI Assistant
 
-Noah's AI Assistant is an **educational generative AI application** that teaches users how GenAI systems work and their enterprise value by **using itself as a hands-on case study**. 
+**Portfolia** is Noah's **educational generative AI assistant** that teaches users how GenAI systems work and their enterprise value by **using herself as a hands-on case study**. 
 
 This is a **complete full-stack AI system** demonstrating every component enterprises need: **frontend** (UI/UX), **backend** (APIs, business logic), **data pipelines** (ETL, embeddings), **architecture** (RAG, vector search), **QA** (testing strategies), and **DevOps** (deployment, monitoring). Through interactive conversation, it explains its own implementation and shows how each pattern applies to enterprise use cases like customer support, internal documentation, and sales enablement.
 
@@ -32,7 +32,7 @@ The assistant adapts its teaching style based on user roles (technical vs. non-t
 
 ## 🚀 Quickstart
 
-**Get Noah's AI Assistant running locally in 5 minutes**
+**Get Portfolia running locally in 5 minutes**
 
 ### Prerequisites
 - ✅ Python 3.11+ installed
@@ -157,7 +157,7 @@ Through interactive conversation, this assistant teaches you:
 - **Testing & Reliability**: Pytest patterns, Supabase mocking, error degradation modes
 
 ### For Non-Technical Audiences
-- **GenAI Business Value**: Why enterprises invest in AI assistants (cost savings, scalability, 24/7 availability)
+- **GenAI Business Value**: Why enterprises invest in conversational AI like Portfolia (cost savings, scalability, 24/7 availability)
 - **Accuracy & Trust**: How RAG prevents hallucinations by grounding responses in real data
 - **Data Governance**: PII protection, privacy controls, compliance considerations
 - **ROI & Metrics**: Success measurement (response time, accuracy, user satisfaction, conversion rates)

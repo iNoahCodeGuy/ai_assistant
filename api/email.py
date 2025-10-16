@@ -98,7 +98,7 @@ class handler(BaseHTTPRequestHandler):
                 linkedin_url = os.getenv('LINKEDIN_URL', 'https://linkedin.com/in/noahdelacalzada')
                 
                 result = resend_service.send_contact_notification(
-                    from_name='Noah AI Assistant',
+                    from_name='Portfolia - Noah AI Assistant',
                     from_email='assistant@noahdelacalzada.com',
                     message=f"LinkedIn Profile: {linkedin_url}\n\nSent to: {to_name} ({to_email})",
                     user_role='system',

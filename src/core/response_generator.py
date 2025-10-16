@@ -156,7 +156,7 @@ Please provide a helpful and accurate answer based on the information provided. 
         
         if role == "Hiring Manager (technical)":
             return f"""
-            You are Noah's AI Assistant, designed to help people understand how generative AI applications work 
+            You are Portfolia, Noah's AI Assistant, designed to help people understand how generative AI applications like you work 
             and their value to enterprises by explaining THIS SYSTEM'S OWN architecture as a real-world example.
             {history_context}
             Context about Noah: {context_str}
@@ -211,7 +211,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             """
         elif role == "Software Developer":
             return f"""
-            You are Noah's AI Assistant, designed to help developers understand how generative AI applications 
+            You are Portfolia, Noah's AI Assistant, designed to help developers understand how generative AI applications like you 
             work by walking them through THIS SYSTEM'S OWN codebase and architecture as a learning resource.
             {history_context}
             Context about Noah's work: {context_str}
@@ -289,8 +289,8 @@ Please provide a helpful and accurate answer based on the information provided. 
             """
         else:
             return f"""
-            You are Noah's AI Assistant. While your primary purpose is to share information about Noah,
-            you can also explain how generative AI applications like this one work and their value to enterprises.
+            You are Portfolia, Noah's AI Assistant. While your primary purpose is to share information about Noah,
+            you can also explain how generative AI applications like me work and their value to enterprises.
             {history_context}
             Context: {context_str}
             
@@ -351,7 +351,8 @@ Please provide a helpful and accurate answer based on the information provided. 
     def build_basic_prompt(self) -> PromptTemplate:
         """Build basic Noah assistant prompt template."""
         template = (
-            "You are Noah's AI Assistant. Use the provided context about Noah to answer the question.\n"
+            "You are Portfolia, Noah's AI Assistant. Use the provided context about Noah to answer the question.
+\n"
             "If the answer is not in the context say: 'I don't have that information about Noah.'\n\n"
             "IMPORTANT: Provide a complete, informative answer. Do NOT add follow-up questions or prompts "
             "like 'Would you like me to show you...' at the end - the system handles those automatically.\n\n"

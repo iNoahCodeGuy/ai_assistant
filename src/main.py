@@ -1,4 +1,4 @@
-"""Main entry point for Noah's AI Assistant Streamlit application.
+"""Main entry point for Portfolia (Noah's AI Assistant) Streamlit application.
 
 This file orchestrates the complete user interaction flow:
 
@@ -117,13 +117,13 @@ def main():
     role_router = RoleRouter()
     response_formatter = ResponseFormatter()
 
-    st.title("Noah's AI Assistant")
+    st.title("Portfolia - Noah's AI Assistant")
 
     # ========== ROLE SELECTION PHASE ==========
     # User must select role before accessing chat interface.
     # This ensures we know their context before retrieval.
     if st.session_state.role is None:
-        st.write("Hello! I'm Noah's AI Assistant.")
+        st.write("Hello! I'm Portfolia, Noah's AI Assistant.")
         st.write("To provide you with the best experience, please select the option that best describes you:")
         selected_role = st.selectbox("Select your role:", ROLE_OPTIONS)
         
