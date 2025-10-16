@@ -57,6 +57,9 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     This calls the RAG engine to find the top-k most relevant pieces of
     information from the knowledge base (career facts, technical docs, etc.)
     
+    If the query was expanded (vague query like "engineering"), we use the
+    expanded version for better retrieval quality.
+    
     Args:
         state: Current conversation state with the query
         rag_engine: RAG engine instance (handles embeddings + vector search)
@@ -65,10 +68,18 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     Returns:
         Updated state with retrieved_chunks, retrieval_matches, and retrieval_scores
     """
-    results = rag_engine.retrieve(state.query, top_k=top_k)
+    # Use expanded query if available (for vague queries like "engineering")
+    query_for_retrieval = state.fetch("expanded_query", state.query)
+    
+    results = rag_engine.retrieve(query_for_retrieval, top_k=top_k)
     state.add_retrieved_chunks(results.get("chunks", []))
     state.stash("retrieval_matches", results.get("matches", []))
     state.stash("retrieval_scores", results.get("scores", []))
+    
+    # Log if we used expansion
+    if state.fetch("vague_query_expanded", False):
+        logger.info(f"Retrieved {len(results.get('chunks', []))} chunks using expanded query")
+    
     return state
 
 
@@ -78,8 +89,9 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     This is where the LLM creates the actual answer to the user's question.
     It uses the chunks we retrieved in the previous step as context.
     
-    Special case: For data display requests, we skip LLM generation and
-    fetch live analytics directly (handled in apply_role_context later).
+    Special cases:
+    - For data display requests, we skip LLM generation and fetch live analytics
+    - For vague queries with insufficient context, we provide a helpful fallback
     
     Args:
         state: Current conversation state with query + retrieved chunks
@@ -94,6 +106,47 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     # Just set a placeholder for now
     if state.fetch("data_display_requested", False):
         state.set_answer("Fetching live analytics data from Supabase...")
+        return state
+    
+    # Check if we have sufficient context
+    # If vague query was expanded but we still have no good matches, help the user
+    if state.fetch("vague_query_expanded", False) and len(retrieved_chunks) == 0:
+        original_query = state.query
+        expanded_query = state.fetch("expanded_query", "")
+        
+        fallback_answer = f"""I'd love to answer your question about "{original_query}"! 
+
+Could you be more specific? For example:
+- If you're curious about my engineering skills, try: "What are your software engineering skills?"
+- If you want to know about specific technologies, ask: "What's your experience with Python and AI?"
+- If you're wondering about projects, try: "What projects have you built?"
+- If you want to understand my architecture approach, ask: "How do you design systems?"
+
+I'm here to help you understand Noah's capabilities and how generative AI applications like me work. What would you like to explore?"""
+        
+        state.set_answer(fallback_answer)
+        state.stash("fallback_used", True)
+        logger.info(f"Used fallback for vague query '{original_query}' with no matches")
+        return state
+    
+    # Check for very low retrieval quality (all scores below threshold)
+    retrieval_scores = state.fetch("retrieval_scores", [])
+    if retrieval_scores and all(score < 0.4 for score in retrieval_scores):
+        fallback_answer = f"""I'm not finding great matches for "{state.query}" in my knowledge base, but I'd love to help!
+
+Here are some things I can tell you about:
+- **Noah's engineering skills and experience** - "What are your software engineering skills?"
+- **Production GenAI systems** - "What do you understand about production GenAI systems?"
+- **System architecture** - "How do you approach system architecture?"
+- **Specific projects** - "What projects have you built?"
+- **Technical stack and tools** - "What technologies do you use?"
+- **Career background** - "Tell me about your career journey"
+
+Or ask me to explain how I work - I love teaching about RAG, vector search, and LLM orchestration! What sounds interesting?"""
+        
+        state.set_answer(fallback_answer)
+        state.stash("fallback_used", True)
+        logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
         return state
     
     # Use the LLM to generate a response with retrieved context

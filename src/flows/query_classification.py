@@ -9,10 +9,37 @@ Types we detect:
 - Data display requests (show analytics, metrics)
 - MMA queries (Noah's fight history)
 - Fun queries (hobbies, fun facts)
+
+Vague query expansion:
+- Detects single-word or very short queries that need context enrichment
+- Expands them into fuller questions to improve retrieval quality
 """
 
 import re
 from src.flows.conversation_state import ConversationState
+
+
+# Vague query expansion mappings
+VAGUE_QUERY_EXPANSIONS = {
+    "engineering": "What are Noah's software engineering skills, principles, and experience with production systems?",
+    "engineer": "What are Noah's software engineering skills, principles, and experience with production systems?",
+    "technical": "What are Noah's technical skills and experience with software development?",
+    "skills": "What technical skills does Noah have in software engineering and AI?",
+    "ai": "What is Noah's experience with AI, machine learning, and GenAI systems?",
+    "genai": "What does Noah understand about production GenAI systems and patterns?",
+    "architecture": "How does Noah approach system architecture and what patterns has he implemented?",
+    "rag": "What is Noah's experience with Retrieval-Augmented Generation and how did he implement it?",
+    "python": "How strong is Noah's Python and what has he built with it?",
+    "projects": "What projects has Noah built with AI and software engineering?",
+    "experience": "What is Noah's career experience and technical background?",
+    "background": "What is Noah's background in software engineering and career history?",
+    "tesla": "What is Noah's role at Tesla and how has he contributed to AI initiatives?",
+    "debugging": "How does Noah debug and troubleshoot applications?",
+    "testing": "What testing and quality assurance practices does Noah follow?",
+    "deployment": "What is Noah's experience with deploying applications to production?",
+    "databases": "What database technologies and patterns has Noah worked with?",
+    "apis": "What API integration experience does Noah have?",
+}
 
 
 DATA_DISPLAY_KEYWORDS = [
@@ -34,11 +61,40 @@ def _is_data_display_request(lowered_query: str) -> bool:
     return any(keyword in lowered_query for keyword in DATA_DISPLAY_KEYWORDS)
 
 
+def _expand_vague_query(query: str) -> str:
+    """Expand single-word or vague queries into fuller questions.
+    
+    When users ask vague questions like 'engineering' or 'skills', we expand
+    them into more specific queries that will retrieve better context from
+    the knowledge base.
+    
+    Args:
+        query: Original user query
+        
+    Returns:
+        Expanded query if match found, otherwise original query
+    """
+    # Check if query is very short (likely vague)
+    if len(query.split()) <= 2:
+        lowered = query.lower().strip()
+        # Remove punctuation for matching
+        clean_query = re.sub(r'[^\w\s]', '', lowered)
+        
+        if clean_query in VAGUE_QUERY_EXPANSIONS:
+            expanded = VAGUE_QUERY_EXPANSIONS[clean_query]
+            return expanded
+    
+    return query
+
+
 def classify_query(state: ConversationState) -> ConversationState:
     """Classify the incoming query and stash the result on state.
     
     This is the first node in the conversation pipeline. It looks at the
     user's question and figures out what category it falls into.
+    
+    First, it expands vague queries (like "engineering") into fuller questions
+    to improve retrieval quality. Then it detects query type.
     
     Detects:
     - Code display requests (show/display code, how do you, implementation details)
@@ -53,8 +109,20 @@ def classify_query(state: ConversationState) -> ConversationState:
         state: Current conversation state with the user's query
         
     Returns:
-        Updated state with query_type and relevant flags stashed
+        Updated state with query_type, expanded_query, and relevant flags stashed
     """
+    # Expand vague queries for better retrieval
+    original_query = state.query
+    expanded_query = _expand_vague_query(original_query)
+    
+    if expanded_query != original_query:
+        state.stash("expanded_query", expanded_query)
+        state.stash("vague_query_expanded", True)
+        # Log the expansion for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Expanded vague query: '{original_query}' → '{expanded_query}'")
+    
     lowered = state.query.lower()
     
     # Code display triggers (explicit requests to see code)
