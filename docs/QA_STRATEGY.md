@@ -862,7 +862,65 @@ git commit -m "your message"  # Hooks run automatically
 
 - ✅ **GitHub UI**: View test results in PR "Checks" tab
 - ✅ **Slack/Email**: Configure GitHub notifications for failed builds
-- ✅ **Status badges**: README.md shows current build status (coming soon)
+- ✅ **Status badges**: README.md shows current build status
+
+### Branch Protection Rules (Recommended Setup)
+
+**Why needed:** CI/CD tests are useless without branch protection—tests can pass but PRs still merge without them.
+
+**Setup (5 minutes):**
+
+1. Go to GitHub → **Settings** → **Branches**
+2. Click **Add branch protection rule**
+3. **Branch name pattern:** `main`
+4. Enable these settings:
+
+```yaml
+Required Settings:
+  ✅ Require a pull request before merging
+     - Required approvals: 1 (adjust for team size)
+
+  ✅ Require status checks to pass before merging
+     - Require branches to be up to date before merging ✅
+     - Status checks that are required:
+       - conversation-quality  ← CRITICAL (18 tests)
+       - documentation-alignment  ← CRITICAL (12 tests)
+
+  ✅ Do not allow bypassing the above settings
+     - Ensures even admins must pass tests
+
+Optional (Recommended):
+  ✅ Require conversation resolution before merging
+  ✅ Require linear history (prevents messy merges)
+  ⬜ Include administrators (enable after team is comfortable)
+```
+
+5. **Save changes**
+
+**Result:**
+- ✅ PRs blocked if any of 30 tests fail
+- ✅ "Merge" button disabled until all checks pass
+- ✅ Status visible in PR UI (green checkmark = ready to merge)
+
+**Testing the setup:**
+```bash
+# Create test branch with intentional failure
+git checkout -b test-branch-protection
+echo "print('test')" >> src/main.py  # Will fail strict checks (when enabled)
+git add -A && git commit -m "test: verify branch protection"
+git push origin test-branch-protection
+
+# Create PR in GitHub UI
+# Expected: "Checks have failed" message, merge blocked
+```
+
+**Common Issues:**
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "Required checks not found" | Workflow hasn't run yet | Push a commit to trigger workflow first |
+| "Merge anyway" button visible | "Do not allow bypassing" not enabled | Re-check protection rule settings |
+| Checks not blocking | Wrong check names in protection rule | Use exact names: `conversation-quality`, `documentation-alignment` |
 
 ### Configuration Details
 
