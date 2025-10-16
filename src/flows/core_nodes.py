@@ -161,7 +161,7 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "help the user truly understand. Use examples where helpful."
         )
     
-    # When code is requested, technical users want implementation details
+    # EXPLICIT code request - user specifically asked
     if state.fetch("code_display_requested", False) and state.role in [
         "Software Developer", 
         "Hiring Manager (technical)"
@@ -171,12 +171,29 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "with comments explaining key decisions. Keep code blocks under 40 lines and focus "
             "on the most interesting parts."
         )
+    # PROACTIVE code suggestion - code would clarify but wasn't explicitly requested
+    elif state.fetch("code_would_help", False) and state.role in [
+        "Software Developer",
+        "Hiring Manager (technical)"
+    ]:
+        extra_instructions.append(
+            "This technical concept would benefit from a code example. After your explanation, "
+            "include a relevant code snippet (≤40 lines) with comments to clarify the implementation. "
+            "This is proactive - the user didn't explicitly ask but code will help understanding."
+        )
     
-    # When data is requested, be concise and table-focused
+    # EXPLICIT data request - user specifically asked
     if state.fetch("data_display_requested", False):
         extra_instructions.append(
             "The user wants data/analytics. Be brief with narrative - focus on presenting clean "
             "tables with proper formatting. Include source attribution."
+        )
+    # PROACTIVE data suggestion - metrics would clarify but weren't explicitly requested
+    elif state.fetch("data_would_help", False):
+        extra_instructions.append(
+            "This question would benefit from actual metrics/data. After your explanation, "
+            "include relevant analytics in table format if available. Be concise with tables, "
+            "include source attribution. This is proactive - help the user with concrete numbers."
         )
     
     # Build the instruction suffix

@@ -1,10 +1,17 @@
-# Display Intelligence Implementation
+# Display Intelligence Implementation (with Proactive Code/Data)
 
-> **Portfolia now understands WHEN to provide longer responses, WHEN to show code, and WHEN to display data.**
+> **Portfolia now understands WHEN to provide longer responses, WHEN to show code, and WHEN to display data - even when NOT explicitly requested.**
 
 ## Overview
 
-This enhancement aligns Portfolia's response behavior with the master documentation rules from `DATA_COLLECTION_AND_SCHEMA_REFERENCE.md` and `CONVERSATION_PERSONALITY.md`. The system now intelligently detects query intent and adjusts response length, code inclusion, and data formatting accordingly.
+This enhancement aligns Portfolia's response behavior with the master documentation rules from `DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`, `CONVERSATION_PERSONALITY.md`, and `PROJECT_REFERENCE_OVERVIEW.md`. The system now intelligently detects query intent and **proactively** includes code or data when it would clarify the answer, not just when explicitly requested.
+
+### Key Principles
+
+1. **Reactive (Explicit)**: Show code/data when user explicitly asks ("show me code", "display analytics")
+2. **Proactive (Implicit)**: Show code/data when it would naturally enhance understanding, even without explicit request
+3. **Role-Aware**: Code proactivity only for technical roles (Software Developer, Hiring Manager technical)
+4. **Teaching-Focused**: Align with Portfolia's GenAI educator persona
 
 ## Implementation Details
 
@@ -51,7 +58,42 @@ code_display_keywords = [
 
 ---
 
-#### C. Data/Analytics Display Requests
+#### C. **NEW: Proactive Code Detection** 
+```python
+proactive_code_topics = [
+    # Implementation questions (even without "show me")
+    "implement", "build", "create", "develop", "write",
+    # Architecture/design questions that benefit from code
+    "rag pipeline", "vector search", "retrieval", "embedding", "orchestration",
+    "langgraph", "conversation flow", "node", "pipeline",
+    # Technical concepts best shown with code
+    "api route", "endpoint", "function", "class", "method",
+    "pgvector", "supabase query", "database", "migration",
+    "prompt engineering", "llm call", "generation",
+    # Patterns that need examples
+    "pattern", "approach", "technique", "strategy" 
+]
+
+# Only for technical roles
+if state.role in ["Software Developer", "Hiring Manager (technical)"]:
+    if any(topic in lowered for topic in proactive_code_topics):
+        state.stash("code_would_help", True)
+```
+
+**Sets flags:**
+- `code_would_help`: True
+- `query_type`: "technical"
+
+**When detected:** Technical user asks about implementation, architecture, or GenAI patterns - code would clarify even without "show me"
+
+**Examples:**
+- "How does RAG work?" → Proactive code snippet showing retrieval
+- "Explain vector search" → Code example of pgvector query
+- "What's the LangGraph pattern?" → Orchestration node code
+
+---
+
+#### D. Data/Analytics Display Requests
 ```python
 # Already existed via _is_data_display_request()
 ```
@@ -60,7 +102,40 @@ code_display_keywords = [
 - `data_display_requested`: True
 - `query_type`: "data"
 
-**When detected:** User asks for "show analytics", "display data", "metrics", "performance stats"
+**When detected:** User explicitly asks for "show analytics", "display data", "metrics", "performance stats"
+
+---
+
+#### E. **NEW: Proactive Data Detection**
+```python
+proactive_data_topics = [
+    # Performance/metrics questions
+    "how many", "how much", "how often", "frequency",
+    "performance", "metrics", "statistics", "stats",
+    "usage", "activity", "engagement", "interactions",
+    # Trend/pattern questions
+    "trend", "pattern", "over time", "growth",
+    "most common", "popular", "typical", "average",
+    # Comparison questions that need numbers
+    "compare", "difference between", "vs",
+    # Success/outcome questions
+    "success rate", "conversion", "effectiveness"
+]
+
+if any(topic in lowered for topic in proactive_data_topics):
+    state.stash("data_would_help", True)
+```
+
+**Sets flags:**
+- `data_would_help`: True
+- `query_type`: "data"
+
+**When detected:** Question implies metrics without explicitly requesting display
+
+**Examples:**
+- "How many users interact daily?" → Proactive usage statistics table
+- "What's the performance trend?" → Time-series data with brief explanation
+- "How often do people ask about RAG?" → Query frequency metrics
 
 ---
 
@@ -80,7 +155,7 @@ if state.fetch("needs_longer_response", False) or state.fetch("teaching_moment",
         "help the user truly understand. Use examples where helpful."
     )
 
-# When code is requested, technical users want implementation details
+# EXPLICIT code request - user specifically asked
 if state.fetch("code_display_requested", False) and state.role in [
     "Software Developer", 
     "Hiring Manager (technical)"
@@ -90,14 +165,33 @@ if state.fetch("code_display_requested", False) and state.role in [
         "with comments explaining key decisions. Keep code blocks under 40 lines and focus "
         "on the most interesting parts."
     )
+# PROACTIVE code suggestion - code would clarify but wasn't explicitly requested
+elif state.fetch("code_would_help", False) and state.role in [
+    "Software Developer",
+    "Hiring Manager (technical)"
+]:
+    extra_instructions.append(
+        "This technical concept would benefit from a code example. After your explanation, "
+        "include a relevant code snippet (≤40 lines) with comments to clarify the implementation. "
+        "This is proactive - the user didn't explicitly ask but code will help understanding."
+    )
 
-# When data is requested, be concise and table-focused
+# EXPLICIT data request - user specifically asked
 if state.fetch("data_display_requested", False):
     extra_instructions.append(
         "The user wants data/analytics. Be brief with narrative - focus on presenting clean "
         "tables with proper formatting. Include source attribution."
     )
+# PROACTIVE data suggestion - metrics would clarify but weren't explicitly requested
+elif state.fetch("data_would_help", False):
+    extra_instructions.append(
+        "This question would benefit from actual metrics/data. After your explanation, "
+        "include relevant analytics in table format if available. Be concise with tables, "
+        "include source attribution. This is proactive - help the user with concrete numbers."
+    )
 ```
+
+**Key Enhancement:** Now distinguishes between explicit requests and proactive suggestions, instructing the LLM accordingly.
 
 These instructions are passed to the LLM via the `extra_instructions` parameter.
 
@@ -142,14 +236,31 @@ def _build_role_prompt(
 
 ---
 
-## Behavior Matrix
+## Comprehensive Behavior Matrix
 
-| Query Type | Flags Set | Response Style | Example Query |
-|------------|-----------|----------------|---------------|
-| **Teaching/Why** | `needs_longer_response`, `teaching_moment` | Comprehensive, well-structured explanation with examples | "Why use pgvector instead of FAISS?" |
-| **Code Request** | `code_display_requested`, `query_type=technical` | Explanation + code snippets (≤40 lines) with comments | "Show me the retrieval code" |
-| **Data Request** | `data_display_requested`, `query_type=data` | Brief narrative + clean tables with source attribution | "Display analytics for last 7 days" |
-| **General** | None | Standard conversational response | "Tell me about Noah's experience" |
+### Proactive vs Reactive Display Logic
+
+| Scenario | Query Example | Role | Flags Set | Response | Reasoning |
+|----------|---------------|------|-----------|----------|-----------|
+| **Explicit Code** | "Show me the RAG code" | Developer | `code_display_requested` | Explanation + code (≤40 lines) | User specifically requested |
+| **Proactive Code** | "How does RAG work?" | Developer | `code_would_help` | Explanation + code example | Code clarifies GenAI concept |
+| **Proactive Code** | "Explain vector search" | Technical HM | `code_would_help` | Explanation + pgvector query | Implementation helps understanding |
+| **No Code** | "How does RAG work?" | Nontechnical HM | None | Explanation only | Non-technical role, no code |
+| **Explicit Data** | "Show analytics" | Any | `data_display_requested` | Brief + tables | User explicitly wants metrics |
+| **Proactive Data** | "How many users interact daily?" | Any | `data_would_help` | Context + usage table | Question implies metrics |
+| **Proactive Data** | "What's the performance trend?" | Any | `data_would_help` | Brief + time-series data | "Trend" needs actual numbers |
+| **Teaching Depth** | "Why use pgvector?" | Any | `needs_longer_response` | Long structured explanation | "Why" = teaching moment |
+| **Teaching Depth** | "Explain how RAG prevents hallucinations" | Any | `teaching_moment` | Comprehensive breakdown | Needs step-by-step clarity |
+| **Simple Fact** | "What's Noah's background?" | Any | None | Concise narrative | Straightforward answer |
+
+### Role-Specific Behavior
+
+| Role | Proactive Code? | Proactive Data? | Response Depth |
+|------|----------------|----------------|----------------|
+| **Software Developer** | ✅ Yes (for technical topics) | ✅ Yes (when metrics implied) | High technical detail |
+| **Hiring Manager (technical)** | ✅ Yes (for GenAI concepts) | ✅ Yes (when metrics implied) | Balanced technical + business |
+| **Hiring Manager (nontechnical)** | ❌ No (unless explicitly requested) | ✅ Yes (when metrics implied) | Business value focus |
+| **Just looking around** | ❌ No | ✅ Yes (when metrics implied) | Conversational, accessible |
 
 ---
 

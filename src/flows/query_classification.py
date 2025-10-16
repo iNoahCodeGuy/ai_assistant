@@ -152,6 +152,33 @@ def classify_query(state: ConversationState) -> ConversationState:
         state.stash("code_display_requested", True)
         state.stash("query_type", "technical")
     
+    # PROACTIVE code detection - when code would clarify the answer for technical roles
+    # Per PROJECT_REFERENCE_OVERVIEW: "proactively displays code snippets when they clarify concepts"
+    # Per DATA_COLLECTION_AND_SCHEMA_REFERENCE: "If user is technical and seems unsure → proactively show code"
+    proactive_code_topics = [
+        # Implementation questions (even without "show me")
+        "implement", "build", "create", "develop", "write",
+        # Architecture/design questions that benefit from code
+        "rag pipeline", "vector search", "retrieval", "embedding", "orchestration",
+        "langgraph", "conversation flow", "node", "pipeline",
+        # Technical concepts best shown with code
+        "api route", "endpoint", "function", "class", "method",
+        "pgvector", "supabase query", "database", "migration",
+        "prompt engineering", "llm call", "generation",
+        # Patterns that need examples
+        "pattern", "approach", "technique", "strategy" 
+    ]
+    
+    # Only proactively show code for technical roles
+    if state.role in ["Software Developer", "Hiring Manager (technical)"]:
+        if any(topic in lowered for topic in proactive_code_topics):
+            state.stash("code_would_help", True)
+            state.stash("query_type", "technical")
+            # Log for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Proactive code detection: query '{state.query}' would benefit from code examples")
+    
     # Import/stack explanation triggers (why did you choose X?)
     import_keywords = [
         "why use", "why choose", "why did you use", "why did you choose",
@@ -183,14 +210,42 @@ def classify_query(state: ConversationState) -> ConversationState:
     elif _is_data_display_request(lowered):
         state.stash("data_display_requested", True)
         state.stash("query_type", "data")
+    else:
+        # PROACTIVE data detection - when analytics/metrics would clarify the answer
+        # Questions about performance, usage, trends benefit from actual data
+        proactive_data_topics = [
+            # Performance/metrics questions
+            "how many", "how much", "how often", "frequency",
+            "performance", "metrics", "statistics", "stats",
+            "usage", "activity", "engagement", "interactions",
+            # Trend/pattern questions
+            "trend", "pattern", "over time", "growth",
+            "most common", "popular", "typical", "average",
+            # Comparison questions that need numbers
+            "compare", "difference between", "vs",
+            # Success/outcome questions
+            "success rate", "conversion", "effectiveness"
+        ]
+        
+        if any(topic in lowered for topic in proactive_data_topics):
+            state.stash("data_would_help", True)
+            state.stash("query_type", "data")
+            # Log for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Proactive data detection: query '{state.query}' would benefit from analytics")
+    
     # Detect "how does [product/system/chatbot] work" queries as technical
-    elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
+    if any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
          or (("how does" in lowered or "how did" in lowered or "explain how" in lowered) 
              and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "rag", "pipeline", "work", "built"])):
-        state.stash("query_type", "technical")
+        # Override if not already set
+        if not state.fetch("query_type"):
+            state.stash("query_type", "technical")
     elif any(term in lowered for term in ["career", "resume", "cv", "experience", "achievement", "work"]):
-        state.stash("query_type", "career")
-    else:
+        if not state.fetch("query_type"):
+            state.stash("query_type", "career")
+    elif not state.fetch("query_type"):
         state.stash("query_type", "general")
     
     return state
