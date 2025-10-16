@@ -4,27 +4,73 @@
 ## 0) Educational Mission
 This system exists to **teach how generative AI applications work** by using itself as a transparent example:
 - **Every component is explorable:** Ask about any part and I'll show you the code
-- **Design decisions are explained:** Learn why I chose pgvector over FAISS, serverless over dedicated servers, temperature 0.2 for factual vs 0.8 for creative
+- **Design decisions are explained:** Learn why I chose pgvector over FAISS, serverless over dedicated servers, temperature 0.4 (balanced factual + conversational)
 - **Patterns map to enterprise use cases:** See how this architecture adapts for customer support, internal docs, sales enablement
 - **Live observability:** View real metrics showing retrieval performance, costs, user satisfaction
 - **Production-ready patterns:** Authentication, rate limiting, PII handling, error management, cost optimization
 
 ## 1) Control flow (LangGraph nodes) - **The GenAI Conversation Pipeline**
+
+### Conceptual Flow (What's Happening)
 ```
-classify_intent (understand what user wants to learn)
-→ ensure_role_context (adapt teaching depth to user type)
-→ retrieve_context (pgvector semantic search - THIS IS RAG!)
-→ generate_factual_answer (grounded in retrieved facts, temp 0.2)
-→ style_layer (narrative|data mode switching)
-→ contextual_code_display? (show implementation when it teaches)
-→ generate_followup (invite deeper exploration, temp 0.8)
-→ log_event (observability for continuous improvement)
+Classify user intent → Retrieve relevant knowledge → Generate grounded answer → 
+Enhance with role context → Execute side effects → Log for observability
 ```
+
+### Actual Implementation (The Code)
+```python
+# Pipeline defined in src/flows/conversation_flow.py
+handle_greeting
+  → Detects first-turn "hello" and returns greeting without RAG
+  → Short-circuits pipeline if user just said hi (efficiency!)
+  
+classify_query
+  → Analyzes user intent: teaching moment? code request? data request?
+  → Sets flags: needs_longer_response, code_would_help, data_would_help
+  → Source: src/flows/query_classification.py
+  
+retrieve_chunks (THIS IS RAG!)
+  → Converts query to embedding via text-embedding-3-small (768 dims)
+  → Searches Supabase kb_chunks using pgvector cosine similarity
+  → Returns top-k relevant context chunks with similarity scores
+  → Source: src/flows/core_nodes.py → src/retrieval/pgvector_retriever.py
+  
+generate_answer
+  → Calls OpenAI GPT-4o-mini with retrieved context
+  → Injects dynamic instructions based on query classification
+  → Handles narrative (explain concepts) and code display (show implementation)
+  → Uses role-specific prompts (Technical HM, Developer, General)
+  → Source: src/flows/core_nodes.py → src/core/response_generator.py
+  
+plan_actions
+  → Determines side effects needed: send analytics? offer contact? log feedback?
+  → Creates action plan without executing yet (separation of concerns)
+  → Source: src/flows/conversation_nodes.py
+  
+apply_role_context
+  → Adds role-specific enhancements (follow-ups, contact offers, personality)
+  → Software Developer → technical follow-ups + code examples
+  → Hiring Manager → business value + Noah's contact offer
+  → Just exploring → fun facts + casual tone
+  → Source: src/flows/conversation_nodes.py
+  
+execute_actions
+  → Runs planned side effects: email via Resend, SMS via Twilio, analytics logging
+  → Handles failures gracefully (degraded mode - logs errors but doesn't crash)
+  → Source: src/flows/action_execution.py
+  
+log_and_notify
+  → Logs interaction to Supabase messages + retrieval_logs tables
+  → Tracks latency, tokens, success/failure for observability
+  → Source: src/flows/conversation_nodes.py
+```
+
 **Teaching insights:**
 - **Determinism first:** Factual answers only after retrieval (no hallucinations)
-- **Mode switch:** Narrative (explain concepts creatively) vs Data (professional metrics)
-- **Code transparency:** Show actual Python when it clarifies GenAI patterns
-- **Follow-up culture:** Keep users engaged in learning journey
+- **Proactive intelligence:** Show code/data when it would clarify, not just when explicitly requested
+- **Role adaptation:** Technical users get code, business users get value propositions
+- **Graceful degradation:** External services fail → log errors, continue with core functionality
+- **Observability:** Every step logged for continuous improvement
 
 **Try it:** Ask "show me the retrieval code" or "how does classification work?" to see these nodes in action!
 
@@ -32,7 +78,7 @@ classify_intent (understand what user wants to learn)
 1. **Embedding:** `text-embedding-3-small` converts your query into a vector (768 dimensions capturing semantic meaning)
 2. **Vector search:** `SELECT ... FROM kb_chunks ORDER BY embedding <=> $query LIMIT k` using IVFFLAT index (approximate nearest neighbor)
 3. **Context assembly:** Merge top-k chunks + role instructions + dynamic affordances (code snippets, contact links)
-4. **Generation:** `gpt-4o-mini` with grounded context; temperature varies by mode (0.2 factual, 0.8 creative)
+4. **Generation:** `gpt-4o-mini` with grounded context; temperature 0.4 (balanced - factual but not robotic)
 5. **Attribution:** Cite KB sections so you can verify sources (transparency!)
 
 **Why this matters for enterprises:**
@@ -119,10 +165,11 @@ This architecture maps directly to common enterprise use cases:
 - ❌ Polyglot: Separate vector DB + warehouse + cache adds operational complexity
 - **Decision:** Start simple; add BigQuery/Snowflake only when analytics query volume demands it
 
-**Temperature 0.2 (factual) vs 0.8 (creative):**
-- **Factual mode:** Low temperature = deterministic, grounded answers for accuracy-critical responses
-- **Creative mode:** Higher temperature = varied phrasing for follow-ups and engagement
-- **Decision:** Mode-switch demonstrates how to balance reliability and user experience
+**Temperature 0.4 (balanced):**
+- **Why 0.4:** Sweet spot between deterministic (0.0) and creative (1.0)
+- **Effect:** Grounded in retrieved facts but with natural conversational phrasing
+- **Alternative approaches:** Some systems use 0.0 for maximum determinism, 0.7+ for creative writing
+- **Decision:** Balance accuracy with readability - users get factual answers that don't sound robotic
 
 **Try it:** Ask "why pgvector over Pinecone?" or "show me cost comparison" to dive deeper into any tradeoff
 
