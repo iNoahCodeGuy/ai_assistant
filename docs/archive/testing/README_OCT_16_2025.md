@@ -51,7 +51,7 @@ Centralized location for all testing-related documentation:
     /--------------\
 ```
 
-This directory focuses on **E2E/manual testing documentation**.  
+This directory focuses on **E2E/manual testing documentation**.
 Automated tests live in `tests/` directory.
 
 ## Checklist Format

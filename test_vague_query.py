@@ -11,15 +11,15 @@ from src.flows.query_classification import classify_query
 def test_vague_queries():
     test_cases = [
         "engineering",
-        "skills", 
+        "skills",
         "hello",
         "Tell me about Noah's experience with RAG"
     ]
-    
+
     for query in test_cases:
         print(f"\nTesting: '{query}'")
         state = ConversationState(role="Hiring Manager (technical)", query=query)
-        
+
         try:
             result = classify_query(state)
             print(f"  ✓ Success")

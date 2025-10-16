@@ -73,25 +73,25 @@ This document explains how a user request flows through Noah's AI Assistant from
 
 ### **Technical Manager Path**
 ```
-Query → RoleRouter → (Career KB + Code Index) → RagEngine → ResponseGen → 
+Query → RoleRouter → (Career KB + Code Index) → RagEngine → ResponseGen →
 Formatter (Engineer Detail + Plain-English) → User
 ```
 
 ### **Software Developer Path**
 ```
-Query → RoleRouter → Code Index (primary) → RagEngine → ResponseGen → 
+Query → RoleRouter → Code Index (primary) → RagEngine → ResponseGen →
 Formatter (Maximum Technical Detail) → User
 ```
 
 ### **Non-technical Manager Path**
 ```
-Query → RoleRouter → Career KB → RagEngine → ResponseGen → 
+Query → RoleRouter → Career KB → RagEngine → ResponseGen →
 Formatter (Business-Focused) → User
 ```
 
 ### **Casual Visitor Path**
 ```
-Query → RoleRouter → (MMA Check) → Direct Link OR Career KB → 
+Query → RoleRouter → (MMA Check) → Direct Link OR Career KB →
 Simple Response → User
 ```
 
@@ -101,7 +101,7 @@ Simple Response → User
 - **Purpose**: Query classification and role-based routing
 - **Input**: `(role, query, memory, rag_engine, chat_history)`
 - **Output**: `{"response": str, "type": str, "context": List}`
-- **Logic**: 
+- **Logic**:
   - Classifies query as "technical", "career", "mma", "fun"
   - Routes to appropriate knowledge source
   - Calls specialized handlers
@@ -132,19 +132,19 @@ Simple Response → User
 
 ### **Career Knowledge Base Flow**
 ```
-CSV File → DocumentProcessor → Text Chunks → FAISS Embeddings → 
+CSV File → DocumentProcessor → Text Chunks → FAISS Embeddings →
 Vector Search → Relevant Docs → Context Assembly
 ```
 
 ### **Code Index Flow**
 ```
-Source Files → CodeIndex → Real-time Monitoring → File:Line Citations → 
+Source Files → CodeIndex → Real-time Monitoring → File:Line Citations →
 GitHub URLs → Snippet Assembly → Technical Context
 ```
 
 ### **Memory Flow**
 ```
-Session Start → Role Selection → Chat History → Context Building → 
+Session Start → Role Selection → Chat History → Context Building →
 Token Budgeting → Persistence → Session Recovery
 ```
 
@@ -152,20 +152,20 @@ Token Budgeting → Persistence → Session Recovery
 
 ### **Code Index Versioning**
 ```
-File Change Detection → Hash Comparison → Index Rebuild → 
+File Change Detection → Hash Comparison → Index Rebuild →
 Version Update → Fresh Code Retrieval
 ```
 
 ### **Memory Management**
 ```
-New Message → History Append → Truncation (10 messages) → 
+New Message → History Append → Truncation (10 messages) →
 Persistence → Context Retrieval
 ```
 
 ## 🧪 Testing Flow
 
 ```
-Request → Mock Components → Test Assertions → 
+Request → Mock Components → Test Assertions →
 Performance Checks → Integration Validation
 ```
 
@@ -179,7 +179,7 @@ Performance Checks → Integration Validation
 ## 📈 Analytics Flow
 
 ```
-User Interaction → Metrics Collection → Performance Tracking → 
+User Interaction → Metrics Collection → Performance Tracking →
 Feedback Analysis → Test Generation → Continuous Improvement
 ```
 

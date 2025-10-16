@@ -30,34 +30,34 @@ class CodeDisplayMetrics:
 
 class CodeDisplayMonitor:
     """Monitor code display performance and accuracy in production."""
-    
+
     def __init__(self, metrics_file: str = "logs/code_display_metrics.jsonl"):
         self.metrics_file = Path(metrics_file)
         self.metrics_file.parent.mkdir(exist_ok=True)
-        
+
         # Performance baselines (from testing)
         self.baselines = {
             'max_query_time': 10.0,  # seconds
             'min_code_snippets': 1,   # for technical roles
             'max_response_size': 50000,  # characters
         }
-    
+
     def record_query(self, query: str, role: str, start_time: float, result: Dict[str, Any]) -> CodeDisplayMetrics:
         """Record metrics for a code display query."""
         end_time = time.time()
         query_time = end_time - start_time
-        
+
         # Analyze result quality
         code_snippets_found = len(result.get('code_snippets', []))
         citation_accuracy = self._check_citation_accuracy(result)
-        
+
         # Determine query type
         query_type = 'technical' if role in ['Software Developer', 'Hiring Manager (technical)'] else 'career'
-        
+
         # Calculate response size
         response_content = str(result.get('response', ''))
         response_size = len(response_content)
-        
+
         metrics = CodeDisplayMetrics(
             timestamp=datetime.now(),
             query_time=query_time,
@@ -67,59 +67,59 @@ class CodeDisplayMonitor:
             query_type=query_type,
             response_size=response_size
         )
-        
+
         # Check for performance issues
         self._check_performance_alerts(metrics)
-        
+
         # Log metrics
         self._log_metrics(metrics)
-        
+
         return metrics
-    
+
     def _check_citation_accuracy(self, result: Dict[str, Any]) -> bool:
         """Check if citations follow expected format."""
         code_snippets = result.get('code_snippets', [])
-        
+
         for snippet in code_snippets:
             citation = snippet.get('citation', '')
             if not citation or ':' not in citation:
                 return False
-            
+
             # Check for proper file:line format
             parts = citation.split(':')
             if len(parts) < 2:
                 return False
-                
+
             filename = parts[0]
             if not filename.endswith('.py'):
                 return False
-        
+
         return True
-    
+
     def _check_performance_alerts(self, metrics: CodeDisplayMetrics):
         """Check metrics against baselines and alert if needed."""
         alerts = []
-        
+
         if metrics.query_time > self.baselines['max_query_time']:
             alerts.append(f"Slow query: {metrics.query_time:.2f}s > {self.baselines['max_query_time']}s")
-        
-        if (metrics.query_type == 'technical' and 
+
+        if (metrics.query_type == 'technical' and
             metrics.code_snippets_found < self.baselines['min_code_snippets']):
             alerts.append(f"Low code results: {metrics.code_snippets_found} snippets for technical query")
-        
+
         if metrics.response_size > self.baselines['max_response_size']:
             alerts.append(f"Large response: {metrics.response_size} chars")
-        
+
         if not metrics.citation_accuracy:
             alerts.append("Citation format issues detected")
-        
+
         if alerts:
             logger.warning(f"Code display performance alerts: {'; '.join(alerts)}")
             # In production, you might send these to monitoring systems like:
             # - Datadog, New Relic, CloudWatch
             # - Slack/Discord notifications
             # - PagerDuty for critical issues
-    
+
     def _log_metrics(self, metrics: CodeDisplayMetrics):
         """Log metrics to file for analysis."""
         with open(self.metrics_file, 'a') as f:
@@ -127,14 +127,14 @@ class CodeDisplayMonitor:
             metrics_dict = asdict(metrics)
             metrics_dict['timestamp'] = metrics.timestamp.isoformat()
             f.write(json.dumps(metrics_dict) + '\n')
-    
+
     def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
         """Get performance summary for the last N hours."""
         cutoff_time = datetime.now() - timedelta(hours=hours)
-        
+
         if not self.metrics_file.exists():
             return {"error": "No metrics data available"}
-        
+
         recent_metrics = []
         with open(self.metrics_file, 'r') as f:
             for line in f:
@@ -145,15 +145,15 @@ class CodeDisplayMonitor:
                         recent_metrics.append(data)
                 except (json.JSONDecodeError, KeyError):
                     continue
-        
+
         if not recent_metrics:
             return {"error": f"No metrics data in last {hours} hours"}
-        
+
         # Calculate summary statistics
         query_times = [m['query_time'] for m in recent_metrics]
         code_results = [m['code_snippets_found'] for m in recent_metrics if m['query_type'] == 'technical']
         citation_accuracy = [m['citation_accuracy'] for m in recent_metrics]
-        
+
         return {
             "period_hours": hours,
             "total_queries": len(recent_metrics),
@@ -169,15 +169,15 @@ class CodeDisplayMonitor:
 # Integration with RagEngine
 class MonitoredRagEngine:
     """Wrapper for RagEngine that adds monitoring."""
-    
+
     def __init__(self, rag_engine, monitor: CodeDisplayMonitor = None):
         self.rag_engine = rag_engine
         self.monitor = monitor or CodeDisplayMonitor()
-    
+
     def retrieve_with_code(self, query: str, role: str = None, **kwargs):
         """Monitored version of retrieve_with_code."""
         start_time = time.time()
-        
+
         try:
             result = self.rag_engine.retrieve_with_code(query, role, **kwargs)
             self.monitor.record_query(query, role, start_time, result)
@@ -189,7 +189,7 @@ class MonitoredRagEngine:
             metrics.error_occurred = True
             metrics.error_message = str(e)
             raise
-    
+
     def __getattr__(self, name):
         """Delegate other methods to the wrapped RagEngine."""
         return getattr(self.rag_engine, name)
@@ -201,15 +201,15 @@ def health_check() -> Dict[str, Any]:
     try:
         from src.core.rag_engine import RagEngine
         from src.config.settings import Settings
-        
+
         settings = Settings()
         engine = RagEngine(settings=settings)
-        
+
         # Quick functionality test
         start_time = time.time()
         result = engine.retrieve_with_code("test health check", role="Software Developer")
         response_time = time.time() - start_time
-        
+
         return {
             "status": "healthy",
             "response_time": response_time,
@@ -231,6 +231,6 @@ if __name__ == "__main__":
     monitor = CodeDisplayMonitor()
     summary = monitor.get_performance_summary(24)
     print(f"Performance summary: {summary}")
-    
+
     health = health_check()
     print(f"Health check: {health}")

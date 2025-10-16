@@ -21,7 +21,7 @@ Followed by duplicate prompts and emoji spam (which we fixed separately).
 ### Investigation Steps
 
 1. **Checked code retrieval logic** in `conversation_nodes.py` → Logic was correct ✅
-2. **Checked RAG engine code retrieval** in `rag_engine.py` → Logic was correct ✅  
+2. **Checked RAG engine code retrieval** in `rag_engine.py` → Logic was correct ✅
 3. **Checked code index file** at `data/code_chunks` → **File was empty** ❌
 4. **Tested code index search**:
    ```python
@@ -53,7 +53,7 @@ if snippets:
     snippet = snippets[0]
     code_content = snippet.get("content", "")
     citation = snippet.get("citation", "codebase")
-    
+
     # Directly display without validation
     formatted_code = content_blocks.format_code_snippet(...)
     components.append(f"\n\n**Code Implementation**\n{formatted_code}")
@@ -65,7 +65,7 @@ if snippets:
     snippet = snippets[0]
     code_content = snippet.get("content", "")
     citation = snippet.get("citation", "codebase")
-    
+
     # Validate code content is not empty or malformed
     if code_content and len(code_content.strip()) > 10 and not code_content.startswith("doc_id"):
         formatted_code = content_blocks.format_code_snippet(...)
@@ -115,7 +115,7 @@ Now failures are tracked for debugging instead of silently failing.
 The fix includes **3 validation layers**:
 
 1. **Length Check**: `len(code_content.strip()) > 10` - Filters out empty or near-empty results
-2. **Content Check**: `not code_content.startswith("doc_id")` - Filters out malformed metadata  
+2. **Content Check**: `not code_content.startswith("doc_id")` - Filters out malformed metadata
 3. **Existence Check**: `if code_content` - Ensures content isn't None or empty string
 
 ## Results

@@ -97,7 +97,7 @@ Log to retrieval_logs table
 ```python
 class PgVectorRetriever:
     """pgvector-based retrieval with Supabase."""
-    
+
     def retrieve(self, query, top_k=3, threshold=0.7):
         """Basic similarity search."""
         embedding = self.embed(query)
@@ -106,13 +106,13 @@ class PgVectorRetriever:
             'match_threshold': threshold,
             'match_count': top_k
         }).execute()
-    
+
     def retrieve_and_log(self, query, message_id, top_k=3):
         """Production method with logging."""
         chunks = self.retrieve(query, top_k)
         self.log_retrieval(message_id, chunks)
         return chunks
-    
+
     def retrieve_for_role(self, query, role, top_k=3):
         """Role-aware retrieval with filtering."""
         candidates = self.retrieve(query, top_k * 2)
@@ -131,7 +131,7 @@ class RagEngine:
         else:
             self.use_pgvector = False
             self.vector_store = load_faiss_store()
-    
+
     def retrieve(self, query, top_k=4):
         if self.use_pgvector:
             return self.retriever.retrieve(query, top_k)
@@ -263,16 +263,16 @@ This migration demonstrates:
 
 ## ✅ Phase 2 Status: COMPLETE
 
-**Branch**: `data_collection_management`  
-**Commits**: 5 commits pushed  
-**Files changed**: 2 (+660 lines)  
-**Tests passing**: ✅ (backward compatible)  
-**Production ready**: ✅ (with data migration)  
+**Branch**: `data_collection_management`
+**Commits**: 5 commits pushed
+**Files changed**: 2 (+660 lines)
+**Tests passing**: ✅ (backward compatible)
+**Production ready**: ✅ (with data migration)
 
 **Next**: Phase 3 - Next.js frontend + `/api/chat` endpoint 🚀
 
 ---
 
-**Date**: October 5, 2025  
-**Author**: Noah De La Calzada (@iNoahCodeGuy)  
+**Date**: October 5, 2025
+**Author**: Noah De La Calzada (@iNoahCodeGuy)
 **Reviewed by**: GitHub Copilot AI

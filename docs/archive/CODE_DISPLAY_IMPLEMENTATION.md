@@ -10,7 +10,7 @@ Successfully implemented the Code Display & Import Explanation Policy as specifi
 
 Comprehensive 3-tier knowledge base covering all major stack components:
 - **Tier 1**: 1-2 sentence overview for Technical Hiring Managers
-- **Tier 2**: 3-6 lines with implementation details for Software Developers  
+- **Tier 2**: 3-6 lines with implementation details for Software Developers
 - **Tier 3**: Full trade-off analysis with enterprise alternatives for Advanced Technical Users
 
 **Coverage**:
@@ -99,7 +99,7 @@ Three new formatting functions:
 
 Handles new actions:
 - **Code Display**: Retrieves code via `rag_engine.retrieve_with_code()`, formats with metadata, adds guardrails
-- **Import Explanation**: 
+- **Import Explanation**:
   - Detects specific library mentioned → gets targeted explanation
   - General query → searches top 3 relevant imports
   - Returns tier-appropriate explanations based on role
@@ -132,7 +132,7 @@ Both sections integrated into existing enterprise readiness guidance.
 ```python
 # Automatically detects and classifies:
 "show me the retrieval code"           → code_display_requested + technical
-"why did you choose Supabase?"         → import_explanation_requested + technical  
+"why did you choose Supabase?"         → import_explanation_requested + technical
 "how do you call the OpenAI API?"      → BOTH code display + import explanation
 "explain your imports"                 → import_explanation_requested
 ```
@@ -214,7 +214,7 @@ When to switch: When need sub-50ms p99 latency globally, or >100M events/day
   - Updated `plan_actions()` with 2 new actions
   - Updated `apply_role_context()` with code display + import explanation handlers
   - Added imports for import_retriever module
-  
+
 - `src/flows/content_blocks.py`:
   - Added `format_code_snippet()`
   - Added `format_import_explanation()`

@@ -1,7 +1,7 @@
 # LangSmith Integration into QA Strategy
 
-**Date:** October 16, 2025  
-**Question:** "Should we incorporate LangSmith into our QA?"  
+**Date:** October 16, 2025
+**Question:** "Should we incorporate LangSmith into our QA?"
 **Answer:** **YES - As Phase 2 production monitoring, NOT as replacement for pytest**
 
 ---
@@ -50,9 +50,9 @@ def test_no_emoji_headers():
     """Ensure LLM strips markdown headers."""
     mock_engine = MagicMock()
     mock_engine.generate_response.return_value = "**Bold Header**\n\nContent..."
-    
+
     state = run_conversation_flow(mock_engine)
-    
+
     # Assert NO markdown headers in response
     assert "###" not in state.answer  # ✅ Blocks deployment if fails
 ```
@@ -84,18 +84,18 @@ def test_no_emoji_headers():
 def check_production_quality():
     """Check LangSmith traces for quality violations."""
     client = get_langsmith_client()
-    
+
     # Get last 100 production queries
     runs = client.list_runs(
         project_name="noahs-ai-assistant",
         start_time=datetime.now() - timedelta(hours=1)
     )
-    
+
     violations = []
-    
+
     for run in runs:
         answer = run.outputs.get("answer", "")
-        
+
         # Check for markdown headers (our KB vs Response policy!)
         if re.search(r'#{1,6}\s', answer):
             violations.append({
@@ -105,7 +105,7 @@ def check_production_quality():
                 "message": f"Found markdown headers in production response",
                 "link": f"https://smith.langchain.com/o/.../runs/{run.id}"
             })
-        
+
         # Check response length
         if len(answer) > 15000:
             violations.append({
@@ -114,7 +114,7 @@ def check_production_quality():
                 "severity": "WARNING",
                 "message": f"Response too long: {len(answer)} chars"
             })
-        
+
         # Check latency
         if run.total_time and run.total_time > 5000:
             violations.append({
@@ -123,7 +123,7 @@ def check_production_quality():
                 "severity": "WARNING",
                 "message": f"Query took {run.total_time}ms (>5s threshold)"
             })
-    
+
     return violations
 ```
 
@@ -182,72 +182,72 @@ def check_supabase_metrics():
 def check_langsmith_traces():
     """NEW function - checks production LLM traces."""
     client = get_langsmith_client()
-    
+
     if not client:
         print("⚠️  LangSmith not configured, skipping trace checks")
         return []
-    
+
     print("🔍 Checking LangSmith production traces...")
-    
+
     # Get last 24 hours
     runs = client.list_runs(
         project_name="noahs-ai-assistant",
         start_time=datetime.now() - timedelta(hours=24)
     )
-    
+
     violations = []
-    
+
     for run in runs:
         if not run.outputs or "answer" not in run.outputs:
             continue
-        
+
         answer = run.outputs["answer"]
-        
+
         # Policy 1: No markdown headers
         if re.search(r'#{1,6}\s', answer):
             violations.append(f"🔴 CRITICAL: Markdown headers in trace {run.id}")
-        
+
         # Policy 2: No information overload
         if len(answer) > 15000:
             violations.append(f"⚠️  WARNING: Response {len(answer)} chars in trace {run.id}")
-        
+
         # Policy 3: No duplicate prompts
         prompt_count = answer.lower().count("would you like")
         if prompt_count > 1:
             violations.append(f"⚠️  WARNING: {prompt_count} prompts in trace {run.id}")
-        
+
         # Performance check
         if run.total_time and run.total_time > 5000:
             violations.append(f"⚠️  WARNING: Slow query {run.total_time}ms in trace {run.id}")
-        
+
         # Error check
         if run.error:
             violations.append(f"❌ ERROR: {run.error} in trace {run.id}")
-    
+
     return violations
 
 def main():
     """Run all quality checks."""
     all_violations = []
-    
+
     # Check 1: Supabase metrics (existing)
     supabase_violations = check_supabase_metrics()
     all_violations.extend(supabase_violations)
-    
+
     # Check 2: LangSmith traces (NEW)
     langsmith_violations = check_langsmith_traces()
     all_violations.extend(langsmith_violations)
-    
+
     # Report results
     if all_violations:
         print(f"\n❌ {len(all_violations)} quality violations found:\n")
         for v in all_violations:
             print(f"  {v}")
-        
+
         # Send alerts
         send_email_alert(all_violations)
         send_slack_alert(all_violations)
-        
+
         sys.exit(1)
     else:
         print("\n✅ All quality checks passed!")
@@ -268,49 +268,49 @@ from langsmith import Client
 def show_langsmith_section():
     """Display LangSmith production metrics."""
     st.header("🔍 Production Quality (LangSmith)")
-    
+
     client = get_langsmith_client()
-    
+
     if not client:
         st.warning("⚠️  LangSmith not configured - showing Supabase metrics only")
         st.info("To enable: Set LANGCHAIN_API_KEY in environment")
         return
-    
+
     # Get last 24 hours
     runs = client.list_runs(
         project_name="noahs-ai-assistant",
         start_time=datetime.now() - timedelta(hours=24)
     )
-    
+
     # Calculate metrics
     total_runs = len(runs)
     errors = sum(1 for r in runs if r.error)
     slow_queries = sum(1 for r in runs if r.total_time and r.total_time > 2000)
-    
+
     # Display KPI cards
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric("Queries (24h)", f"{total_runs:,}")
-    
+
     with col2:
         error_rate = (errors / total_runs * 100) if total_runs > 0 else 0
         st.metric("Error Rate", f"{error_rate:.1f}%",
                   delta=f"{-0.5 if error_rate < 1 else +0.5}%",
                   delta_color="inverse")
-    
+
     with col3:
         slow_rate = (slow_queries / total_runs * 100) if total_runs > 0 else 0
         st.metric("Slow Queries", f"{slow_rate:.1f}%")
-    
+
     with col4:
         avg_latency = sum(r.total_time for r in runs if r.total_time) / total_runs if total_runs > 0 else 0
         st.metric("Avg Latency", f"{avg_latency:.0f}ms")
-    
+
     # Check for quality violations
     st.subheader("⚠️  Quality Violations")
     violations = check_langsmith_traces()  # From quality_monitor.py
-    
+
     if violations:
         for v in violations:
             if "CRITICAL" in v:
@@ -321,7 +321,7 @@ def show_langsmith_section():
                 st.info(v)
     else:
         st.success("✅ No quality violations detected in last 24 hours")
-    
+
     # Show trace links
     st.subheader("📊 Recent Traces")
     for run in runs[:10]:  # Show last 10
@@ -531,5 +531,5 @@ Phase 3 (Improve):  Add new pytest tests for patterns found in production
 
 ---
 
-**Status:** ✅ Integration plan approved and documented  
+**Status:** ✅ Integration plan approved and documented
 **Next Step:** Complete Phase 1 testing, then proceed to Phase 2 LangSmith setup

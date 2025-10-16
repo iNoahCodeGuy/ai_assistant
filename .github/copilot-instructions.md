@@ -32,7 +32,7 @@ This is a **role-based RAG (Retrieval-Augmented Generation) application** servin
 ### Critical Flow: User Query → Response
 
 ```
-User input → classify_query → retrieve_chunks (pgvector) → generate_answer → 
+User input → classify_query → retrieve_chunks (pgvector) → generate_answer →
 plan_actions → apply_role_context → execute_actions → log_and_notify
 ```
 
@@ -169,11 +169,11 @@ class handler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode('utf-8')
         data = json.loads(body)
-        
+
         # Process with LangGraph flow
         state = ConversationState(role=data['role'], query=data['query'])
         result = run_conversation_flow(state, rag_engine, session_id=...)
-        
+
         # Return JSON
         self._send_json(200, {'answer': result.answer})
 ```

@@ -1,6 +1,6 @@
 # Code-Documentation Alignment Report
 
-**Date:** October 16, 2025  
+**Date:** October 16, 2025
 **Purpose:** Verify that code implementation matches documentation claims
 
 ---
@@ -110,7 +110,7 @@ handle_greeting (detect first-turn hello, short-circuit if needed)
 
 **Issue**: `docs/RAG_ENGINE.md` exists and is referenced, but should cross-reference the actual modules.
 
-**Current**: General overview of RAG concepts  
+**Current**: General overview of RAG concepts
 **Recommendation**: Add section mapping concepts to actual code:
 - Embedding: `src/retrieval/pgvector_retriever.py` lines ~XX-XX
 - Vector search: `src/retrieval/pgvector_retriever.py` lines ~XX-XX

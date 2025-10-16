@@ -20,7 +20,7 @@ The conversation pipeline used to be a single 624-line file (`conversation_nodes
 
 **Key function**: `classify_query(state) -> state`
 
-**What it does**: 
+**What it does**:
 - Detects if the query is technical, career-focused, data display, MMA, or fun
 - Sets `query_type` and `data_display_requested` in state
 - First node in the pipeline
@@ -38,11 +38,11 @@ The conversation pipeline used to be a single 624-line file (`conversation_nodes
 ### 3. `code_validation.py` (111 lines)
 **Purpose**: Defensive utilities to validate and sanitize content
 
-**Key functions**: 
+**Key functions**:
 - `is_valid_code_snippet(code) -> bool`: Checks if retrieved code is real Python (not metadata)
 - `sanitize_generated_answer(answer) -> str`: Strips SQL artifacts that leak from retrieval
 
-**What it does**: 
+**What it does**:
 - Prevents malformed code snippets from showing to users
 - Cleans up LLM output before displaying
 - Fixes the "display data bug" (SQL tokens appearing in responses)
@@ -56,7 +56,7 @@ The conversation pipeline used to be a single 624-line file (`conversation_nodes
 
 **Key function**: `plan_actions(state) -> state`
 
-**What it does**: 
+**What it does**:
 - Looks at query type, role, turn count, and conversation history
 - Builds a list of actions like "include_code_snippets", "offer_resume_prompt", "send_linkedin"
 - Different roles get different action plans (developers get code, hiring managers get enterprise content)
@@ -79,13 +79,13 @@ The conversation pipeline used to be a single 624-line file (`conversation_nodes
 - `apply_role_context(state, rag_engine) -> state`: Add role-specific content blocks (code, data, links)
 - `log_and_notify(state, session_id, latency_ms) -> state`: Save analytics to database
 
-**What it does**: 
+**What it does**:
 - `retrieve_chunks`: Calls the RAG engine to get top 4 relevant chunks from vector DB
 - `generate_answer`: Feeds chunks to LLM, gets conversational response, sanitizes output
 - `apply_role_context`: Reads pending_actions list and appends content blocks (code, data tables, resume links)
 - `log_and_notify`: Saves conversation to Supabase for analytics
 
-**When to edit**: 
+**When to edit**:
 - `retrieve_chunks`: When changing retrieval strategy or top_k value
 - `generate_answer`: When tweaking LLM prompts or adding special cases
 - `apply_role_context`: When adding new content blocks or changing enrichment logic
@@ -96,7 +96,7 @@ The conversation pipeline used to be a single 624-line file (`conversation_nodes
 ## 🔄 Full Pipeline Flow
 
 ```
-User query 
+User query
     ↓
 1. classify_query (query_classification.py)
     → Detects intent, sets query_type

@@ -23,6 +23,13 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: code-quality-tests
+        name: Code Quality Tests (5 tests)
+        entry: pytest tests/test_code_quality.py -v --tb=short
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
       # ============================================================
       # DOCUMENTATION DRIFT PREVENTION
       # ============================================================
@@ -36,22 +43,11 @@ repos:
         stages: [pre-commit]
 
       # ============================================================
-      # CODE QUALITY CHECKS (Optional - can be enabled later)
+      # CODE QUALITY CHECKS (Enabled after Phase 1.5 cleanup)
       # ============================================================
 
-      # Uncomment these when ready for stricter enforcement:
-
-      # - id: no-print-statements
-      #   name: No print() statements (use logger)
-      #   entry: bash -c 'grep -rn "^\s*print(" src/ && exit 1 || exit 0'
-      #   language: system
-      #   pass_filenames: false
-      #
-      # - id: no-hardcoded-paths
-      #   name: No hardcoded absolute paths
-      #   entry: bash -c 'grep -rn "/Users/\|/home/\|C:" --include="*.py" . && exit 1 || exit 0'
-      #   language: system
-      #   pass_filenames: false
+      # Note: The test_code_quality.py tests implement more sophisticated
+      # checks (docstring-aware, context-aware). These hooks provide fast feedback.
 
       # ============================================================
       # STANDARD CHECKS (from pre-commit-hooks repo)

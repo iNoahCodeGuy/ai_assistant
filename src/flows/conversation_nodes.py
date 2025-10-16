@@ -38,14 +38,14 @@ from src.flows.greetings import get_role_greeting, should_show_greeting, is_firs
 
 def handle_greeting(state, rag_engine):
     """Check if this is a first-turn greeting and respond appropriately.
-    
+
     If the user's first query is a simple greeting (hi/hello/hey), we respond
     with a warm, role-specific introduction per CONVERSATION_PERSONALITY.md.
-    
+
     Args:
         state: ConversationState with query and role
         rag_engine: RAG engine (not used for greetings, but part of node signature)
-        
+
     Returns:
         Updated state with greeting as answer, or unchanged if not a greeting
     """

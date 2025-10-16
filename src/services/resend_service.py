@@ -23,9 +23,9 @@ Setup:
 
 Usage:
     from services import ResendService
-    
+
     resend = ResendService()
-    
+
     # Send contact form notification
     resend.send_contact_notification(
         from_name="Jane Doe",
@@ -33,7 +33,7 @@ Usage:
         message="I'd like to discuss the senior role",
         user_role="Hiring Manager (technical)"
     )
-    
+
     # Send resume to hiring manager
     resend.send_resume_email(
         to_email="recruiter@company.com",
@@ -59,29 +59,29 @@ logger = logging.getLogger(__name__)
 
 class ResendService:
     """Resend email service wrapper."""
-    
+
     def __init__(self):
         """Initialize Resend service with API key."""
         self.api_key = os.getenv('RESEND_API_KEY')
         self.from_email = os.getenv('RESEND_FROM_EMAIL', 'noreply@yourdomain.com')
         self.admin_email = os.getenv('ADMIN_EMAIL', 'noah@yourdomain.com')
-        
+
         if not RESEND_AVAILABLE:
             logger.warning("Resend package not available. Install with: pip install resend")
             self.enabled = False
             return
-        
+
         if not self.api_key:
             logger.warning("RESEND_API_KEY not set. Email functionality disabled.")
             self.enabled = False
             return
-        
+
         # Configure Resend
         resend.api_key = self.api_key
         self.enabled = True
-        
+
         logger.info(f"ResendService initialized. From: {self.from_email}")
-    
+
     def send_email(
         self,
         to_email: str,
@@ -91,24 +91,24 @@ class ResendService:
         reply_to: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send an email via Resend.
-        
+
         Args:
             to_email: Recipient email address
             subject: Email subject line
             html: HTML email body
             from_email: Sender email (defaults to configured from_email)
             reply_to: Reply-to email address
-            
+
         Returns:
             Dict with status and message ID
-            
+
         Raises:
             Exception: If email sending fails
         """
         if not self.enabled:
             logger.warning(f"Email service disabled. Would send: {subject} to {to_email}")
             return {'status': 'disabled', 'message': 'Email service not configured'}
-        
+
         try:
             params = {
                 "from": from_email or self.from_email,
@@ -116,25 +116,25 @@ class ResendService:
                 "subject": subject,
                 "html": html
             }
-            
+
             if reply_to:
                 params["reply_to"] = [reply_to]
-            
+
             response = resend.Emails.send(params)
-            
+
             logger.info(f"Email sent to {to_email}: {subject} (ID: {response.get('id')})")
-            
+
             return {
                 'status': 'sent',
                 'message_id': response.get('id'),
                 'to': to_email,
                 'subject': subject
             }
-        
+
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {e}")
             raise Exception(f"Email sending failed: {e}")
-    
+
     def send_contact_notification(
         self,
         from_name: str,
@@ -144,17 +144,17 @@ class ResendService:
         phone: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send contact form notification to admin.
-        
+
         Args:
             from_name: Contact's name
             from_email: Contact's email
             message: Contact's message
             user_role: User's selected role
             phone: Optional phone number
-            
+
         Returns:
             Dict with send status
-            
+
         Example:
             resend.send_contact_notification(
                 from_name="Jane Doe",
@@ -165,7 +165,7 @@ class ResendService:
             )
         """
         subject = f"🔔 Contact Form: {from_name} ({user_role})"
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -194,24 +194,24 @@ class ResendService:
                         <div class="label">From</div>
                         <div class="value">{from_name}</div>
                     </div>
-                    
+
                     <div class="field">
                         <div class="label">Email</div>
                         <div class="value"><a href="mailto:{from_email}">{from_email}</a></div>
                     </div>
-                    
+
                     {f'<div class="field"><div class="label">Phone</div><div class="value">{phone}</div></div>' if phone else ''}
-                    
+
                     <div class="field">
                         <div class="label">User Role</div>
                         <div class="value">{user_role}</div>
                     </div>
-                    
+
                     <div class="field">
                         <div class="label">Timestamp</div>
                         <div class="value">{datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>
                     </div>
-                    
+
                     <div class="message">
                         <div class="label">Message</div>
                         <div class="value" style="white-space: pre-wrap;">{message}</div>
@@ -224,14 +224,14 @@ class ResendService:
         </body>
         </html>
         """
-        
+
         return self.send_email(
             to_email=self.admin_email,
             subject=subject,
             html=html,
             reply_to=from_email
         )
-    
+
     def send_resume_email(
         self,
         to_email: str,
@@ -240,20 +240,20 @@ class ResendService:
         message: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send resume to hiring manager with signed URL.
-        
+
         Args:
             to_email: Recipient's email
             to_name: Recipient's name
             resume_url: Signed URL to resume (from StorageService)
             message: Optional personalized message
-            
+
         Returns:
             Dict with send status
-            
+
         Example:
             storage = get_storage_service()
             resume_url = storage.get_signed_url('resumes/noah_resume.pdf', expires_in=86400)
-            
+
             resend.send_resume_email(
                 to_email="recruiter@company.com",
                 to_name="Jane Doe",
@@ -262,7 +262,7 @@ class ResendService:
             )
         """
         subject = "Noah De La Calzada - Resume"
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -285,29 +285,29 @@ class ResendService:
                     <h1 style="margin: 0; color: #111827;">Noah De La Calzada</h1>
                     <p style="margin: 10px 0 0 0; color: #6b7280;">Full-Stack Developer & AI Engineer</p>
                 </div>
-                
+
                 <div class="content">
                     <p>Hi {to_name},</p>
-                    
+
                     {f'<p>{message}</p>' if message else '<p>Thank you for your interest in my profile. Please find my resume below.</p>'}
-                    
+
                     <div style="text-align: center;">
                         <a href="{resume_url}" class="button">📄 Download Resume (PDF)</a>
                     </div>
-                    
+
                     <div class="note">
-                        <strong>📌 Note:</strong> This download link is valid for 24 hours for security purposes. 
+                        <strong>📌 Note:</strong> This download link is valid for 24 hours for security purposes.
                         If you need another copy after that, please let me know.
                     </div>
-                    
+
                     <p style="margin-top: 30px;">Looking forward to connecting!</p>
                     <p style="margin: 5px 0;">Best regards,<br><strong>Noah De La Calzada</strong></p>
                 </div>
-                
+
                 <div class="footer">
                     <p>
-                        📧 <a href="mailto:noah@yourdomain.com">noah@yourdomain.com</a> | 
-                        🔗 <a href="https://linkedin.com/in/noah">LinkedIn</a> | 
+                        📧 <a href="mailto:noah@yourdomain.com">noah@yourdomain.com</a> |
+                        🔗 <a href="https://linkedin.com/in/noah">LinkedIn</a> |
                         💻 <a href="https://github.com/noah">GitHub</a>
                     </p>
                 </div>
@@ -315,25 +315,25 @@ class ResendService:
         </body>
         </html>
         """
-        
+
         return self.send_email(
             to_email=to_email,
             subject=subject,
             html=html
         )
-    
+
     def send_welcome_email(self, to_email: str, to_name: str) -> Dict[str, Any]:
         """Send welcome email to new contacts.
-        
+
         Args:
             to_email: Recipient's email
             to_name: Recipient's name
-            
+
         Returns:
             Dict with send status
         """
         subject = "Thanks for reaching out! 🎉"
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -350,20 +350,20 @@ class ResendService:
             <div class="container">
                 <div class="content">
                     <h2>Hi {to_name}! 👋</h2>
-                    
+
                     <p>Thank you for reaching out through Portfolia. I've received your message and will get back to you shortly.</p>
-                    
+
                     <p>In the meantime, feel free to:</p>
                     <ul>
                         <li>Explore my projects on <a href="https://github.com/noah">GitHub</a></li>
                         <li>Connect on <a href="https://linkedin.com/in/noah">LinkedIn</a></li>
                         <li>Check out my <a href="https://yourwebsite.com">portfolio</a></li>
                     </ul>
-                    
+
                     <p>Looking forward to connecting!</p>
                     <p>Best,<br><strong>Noah</strong></p>
                 </div>
-                
+
                 <div class="footer">
                     <p>This is an automated confirmation. You'll receive a personal response soon.</p>
                 </div>
@@ -371,16 +371,16 @@ class ResendService:
         </body>
         </html>
         """
-        
+
         return self.send_email(
             to_email=to_email,
             subject=subject,
             html=html
         )
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check if Resend service is healthy.
-        
+
         Returns:
             Dict with status and configuration info
         """
@@ -389,7 +389,7 @@ class ResendService:
                 'status': 'disabled',
                 'reason': 'API key not configured or package not installed'
             }
-        
+
         return {
             'status': 'healthy',
             'from_email': self.from_email,
@@ -403,13 +403,13 @@ _resend_service = None
 
 def get_resend_service() -> ResendService:
     """Get or create global Resend service instance.
-    
+
     Returns:
         ResendService instance
-        
+
     Example:
         from services import get_resend_service
-        
+
         resend = get_resend_service()
         resend.send_contact_notification(...)
     """

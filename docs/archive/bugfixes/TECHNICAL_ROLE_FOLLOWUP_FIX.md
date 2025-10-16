@@ -1,6 +1,6 @@
 # Technical Role Follow-Up Questions & Backend Stack Fix
 
-**Date**: October 12, 2025  
+**Date**: October 12, 2025
 **Issues Fixed**:
 1. ❌ "How does this product work?" returning "no information"
 2. ❌ No technical follow-up questions appearing
@@ -49,7 +49,7 @@ Default threshold of **0.7** was filtering out valid matches:
 - "What backend technologies?" → 0.505 similarity (would be rejected)
 
 ### 5. Follow-Up Questions Logic Was There But Not Triggering
-`response_generator.py` had `_add_technical_followup()` method ✅  
+`response_generator.py` had `_add_technical_followup()` method ✅
 BUT it only triggers if query/response contains technical keywords like "rag", "python", "architecture".
 
 **User query** "how does this product work?" → **No keywords matched** → No follow-up added ❌
@@ -62,7 +62,7 @@ BUT it only triggers if query/response contains technical keywords like "rag", "
 ```python
 # NEW: Detect "how does [X] work" patterns as technical
 elif any(term in lowered for term in ["code", "technical", "stack", ...]) \
-     or (("how does" in lowered or "how did" in lowered or "explain how" in lowered) 
+     or (("how does" in lowered or "how did" in lowered or "explain how" in lowered)
          and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "work", "built"])):
     state.stash("query_type", "technical")
 ```
@@ -81,7 +81,7 @@ Question,Answer
 "How was this AI assistant built?","Noah built this through iterative development: Phase 1 (Foundation)..."
 ```
 
-**Before**: 13 questions  
+**Before**: 13 questions
 **After**: 17 questions
 
 **New semantic similarities**:
@@ -91,7 +91,7 @@ Question,Answer
 
 ### 3. Increased Retrieval Limit to 500 ✅
 ```python
-# Increased limit to accommodate all KBs: 
+# Increased limit to accommodate all KBs:
 # career_kb (20) + technical_kb (17) + architecture_kb (245) = 282 total
 result = self.supabase_client.table('kb_chunks')\
     .select('id, doc_id, section, content, embedding')\
@@ -150,7 +150,7 @@ Follow-up: None
 ```bash
 Query: "how does this product work?"
 Retrieved chunks: 1 (technical_kb, similarity: 0.535)
-Response: "This product is an AI-powered interactive resume assistant built by Noah. 
+Response: "This product is an AI-powered interactive resume assistant built by Noah.
 It works by combining retrieval-augmented generation (RAG) with role-aware context..."
 Sources: [technical_kb: "How does this product work?"]
 Follow-up: "💡 Dive Deeper: Can you show me Noah's system architecture diagram?"
@@ -186,7 +186,7 @@ Follow-up: "💡 Dive Deeper: Can you show me Noah's system architecture diagram
 After deployment goes live, test these queries:
 
 ### Test 1: Basic Product Query
-**Role**: Software Developer  
+**Role**: Software Developer
 **Query**: "How does this product work?"
 
 **Expected**:
@@ -196,7 +196,7 @@ After deployment goes live, test these queries:
 - ✅ Uses third-person: "Noah built...", "His system..."
 
 ### Test 2: Backend Stack Query
-**Role**: Hiring Manager (technical)  
+**Role**: Hiring Manager (technical)
 **Query**: "What is in the backend stack?"
 
 **Expected**:
@@ -206,7 +206,7 @@ After deployment goes live, test these queries:
 - ✅ Follow-up: 🔍 **Technical Follow-up:** [question]
 
 ### Test 3: How Built Query
-**Role**: Software Developer  
+**Role**: Software Developer
 **Query**: "How did Noah build this?"
 
 **Expected**:

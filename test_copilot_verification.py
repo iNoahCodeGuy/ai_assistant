@@ -10,7 +10,7 @@ def test_copilot_working():
     """
     # Type a comment here and see if Copilot suggests code:
     # TODO: Create a function that calculates the fibonacci sequence
-    
+
     pass
 
 

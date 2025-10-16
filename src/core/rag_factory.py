@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class RagEngineFactory:
     """Factory for creating RagEngine components.
-    
+
     **Architecture**: Creates components for pgvector-based RAG system.
     No longer supports FAISS fallback - all operations use Supabase.
     """
@@ -65,7 +65,7 @@ class RagEngineFactory:
         """Create or use provided career knowledge base."""
         if provided_kb is not None:
             return provided_kb
-        
+
         try:
             from src.retrieval.career_kb import CareerKnowledgeBase
             kb_path = getattr(self.settings, "career_kb_path", "data/career_kb.csv")
@@ -78,7 +78,7 @@ class RagEngineFactory:
         """Create or use provided code index."""
         if provided_index is not None:
             return provided_index
-            
+
         try:
             from src.retrieval.code_index import CodeIndex
             index_path = getattr(self.settings, "code_index_path", "vector_stores/code_index")
@@ -90,9 +90,9 @@ class RagEngineFactory:
     def load_documents(self, career_kb, provided_career_kb=None):
         """Load and process documents."""
         processor = DocumentProcessor(chunk_size=600, chunk_overlap=60)
-        
+
         if provided_career_kb is not None:
             return processor.load_from_career_kb(provided_career_kb)
-        
+
         kb_path = getattr(self.settings, "career_kb_path", "data/career_kb.csv")
         return processor.load_from_csv(kb_path, source_column="Question")

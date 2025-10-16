@@ -1,7 +1,7 @@
 # 📚 Code Readability Audit for Junior Developers
 
-**Date**: January 2025  
-**Auditor**: GitHub Copilot  
+**Date**: January 2025
+**Auditor**: GitHub Copilot
 **Purpose**: Assess codebase readability before Phase 3 (Next.js frontend)
 
 ---
@@ -176,13 +176,13 @@ def get_supabase_client():
 
 # AFTER (recommended):
 # Module-level client for connection pooling across requests.
-# Why global: Supabase handles pooling internally, reusing 
+# Why global: Supabase handles pooling internally, reusing
 # connections reduces latency (100ms → 10ms on subsequent calls).
 _client = None
 
 def get_supabase_client():
     """Get or create singleton Supabase client.
-    
+
     Returns cached client to avoid creating new connections.
     Thread-safe for Streamlit's session-per-thread model.
     """
@@ -233,15 +233,15 @@ def get_supabase_client():
 ```python
 def _classify_query(self, query: str) -> str:
     """Classify query type using keyword matching.
-    
-    Why keyword matching: 95% accuracy for this domain, 
+
+    Why keyword matching: 95% accuracy for this domain,
     much cheaper than LLM classification ($0 vs $0.0001/query).
-    
+
     Examples:
     - "What's your tech stack?" → "technical"
     - "Tell me about your experience" → "career"
     - "Any MMA fights?" → "mma"
-    
+
     Returns:
         Query type: technical, career, mma, fun, or general
     """
@@ -375,24 +375,24 @@ def _filter_technical(self, chunks: List[Dict]) -> List[Dict]:
 # AFTER (recommended):
 def _filter_technical(self, chunks: List[Dict]) -> List[Dict]:
     """Boost technical content for developer-focused queries.
-    
+
     Strategy: 20% score boost for chunks mentioning technical keywords.
-    Why 20%: Empirically tested to promote tech content without 
+    Why 20%: Empirically tested to promote tech content without
     completely overriding similarity scores.
     """
     # Keywords indicating technical depth
     keywords = ['python', 'api', 'architecture', 'code']
     boosted = []
-    
+
     for c in chunks:
         score = c['score']  # Base similarity score (0-1)
-        
+
         # Apply keyword boost if technical content detected
         if any(kw in c['text'].lower() for kw in keywords):
             score *= 1.2  # 20% boost for technical relevance
-        
+
         boosted.append({**c, 'score': score})
-    
+
     # Re-sort by boosted scores
     return sorted(boosted, key=lambda x: x['score'], reverse=True)
 ```
@@ -436,10 +436,10 @@ def chunk_text(text):
 # AFTER:
 def chunk_text(text: str) -> List[str]:
     """Split text into chunks by double newlines.
-    
+
     Args:
         text: Raw text to split
-    
+
     Returns:
         List of text chunks (paragraphs)
     """
@@ -489,7 +489,7 @@ ASCII diagrams in `ARCHITECTURE.md` and module docstrings make flows clear.
    - 5-minute setup instructions
    - Prerequisites list
    - First run example
-   
+
 2. **Create GLOSSARY.md** (1 hour)
    - Define technical terms
    - Explain acronyms

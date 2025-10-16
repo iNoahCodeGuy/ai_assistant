@@ -7,10 +7,10 @@ import { ChatInput } from './components/chat/ChatInput'
 
 /**
  * Main chat page - refactored from 224 lines to 28 lines
- * 
+ *
  * BEFORE: All state, API logic, and UI mixed in one component
  * AFTER: Clean separation of concerns with dedicated components
- * 
+ *
  * Benefits:
  * - 87% code reduction in main file
  * - Each component testable independently
@@ -30,16 +30,16 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen gradient-bg">
-      <ChatHeader 
-        role={selectedRole} 
-        onRoleChange={setSelectedRole} 
+      <ChatHeader
+        role={selectedRole}
+        onRoleChange={setSelectedRole}
       />
-      
-      <ChatMessages 
-        messages={messages} 
-        loading={loading} 
+
+      <ChatMessages
+        messages={messages}
+        loading={loading}
       />
-      
+
       <ChatInput
         value={input}
         onChange={setInput}

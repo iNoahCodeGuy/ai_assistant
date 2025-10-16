@@ -1161,6 +1161,235 @@ to understand user intent, as described in docs/context/SYSTEM_ARCHITECTURE_SUMM
 
 ---
 
+## Code Quality Standards
+
+**Last Updated**: October 16, 2025
+**Status**: ✅ Standards defined, cleanup in progress (Phase 1.5)
+
+### Production Code Requirements
+
+These standards ensure code is production-ready for serverless deployment (Vercel), observable by monitoring tools (LangSmith), and maintainable by the team.
+
+---
+
+### 1. Logging over Print Statements
+
+**Standard**: Use structured logging (`logger.info()`) not console prints (`print()`).
+
+**Why This Matters**:
+- ✅ **Vercel deployment**: `print()` statements may not appear in serverless function logs
+- ✅ **Log levels**: Can filter by severity (INFO, WARNING, ERROR, DEBUG)
+- ✅ **Observability**: LangSmith and monitoring tools expect structured logs
+- ✅ **Performance**: Print is synchronous and can block in high-traffic scenarios
+- ✅ **Production debugging**: Can dynamically change log levels without redeployment
+
+**✅ Correct Usage**:
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def retrieve_chunks(query: str):
+    logger.info(f"Retrieving chunks for query: {query[:50]}...")
+    chunks = search_pgvector(query)
+    logger.info(f"Retrieved {len(chunks)} chunks in {latency_ms}ms")
+    return chunks
+```
+
+**❌ Avoid**:
+```python
+def retrieve_chunks(query: str):
+    print(f"Found {len(chunks)} chunks")  # Won't appear in Vercel logs
+    return chunks
+```
+
+**Exception**: CLI scripts and one-time migration tools can use `print()` for user feedback.
+
+---
+
+### 2. Configuration over Hardcoding
+
+**Standard**: Use `supabase_settings` for all paths and configuration values.
+
+**Why This Matters**:
+- ✅ **Environment flexibility**: Different paths for dev/staging/production
+- ✅ **Docker compatibility**: Paths change in containerized environments
+- ✅ **Testing**: Can use temporary directories in tests
+- ✅ **Configuration**: Single source of truth in `.env` file
+- ✅ **Security**: Sensitive values in environment, not committed to git
+
+**✅ Correct Usage**:
+```python
+from src.config.supabase_config import supabase_settings
+
+def save_confession(confession: str):
+    path = supabase_settings.confessions_path  # Configurable via env
+    with open(path, 'a') as f:
+        f.write(confession)
+```
+
+**❌ Avoid**:
+```python
+def save_confession(confession: str):
+    path = "data/confessions.csv"  # Hardcoded, breaks in Docker
+    with open(path, 'a') as f:
+        f.write(confession)
+```
+
+**Exception**: Default parameters with override capability are acceptable:
+```python
+def __init__(self, persistence_file: str = "data/session_memory.json"):
+    self.file = persistence_file  # Caller can override
+```
+
+---
+
+### 3. Environment Awareness
+
+**Standard**: Check deployment environment before making assumptions about filesystem, resources, or behavior.
+
+**Why This Matters**:
+- ✅ **Vercel limitations**: No persistent filesystem, 10s function timeout, 50MB memory
+- ✅ **Local development**: Different paths, unlimited time, full filesystem access
+- ✅ **Production safety**: Avoid resource-intensive operations in serverless
+- ✅ **Cost optimization**: Use different models or cache strategies per environment
+
+**✅ Correct Usage**:
+```python
+from src.config.supabase_config import supabase_settings
+
+def expensive_analytics_query():
+    if supabase_settings.is_production:
+        # Use cached results in production (fast, cheap)
+        return get_cached_analytics()
+    else:
+        # Run full query in dev (accurate, slower)
+        return run_full_analytics_query()
+```
+
+**❌ Avoid**:
+```python
+def expensive_analytics_query():
+    # Always runs 5-minute query, times out in Vercel
+    return run_full_analytics_query()
+```
+
+**Environment Detection**:
+```python
+# In src/config/supabase_config.py
+class SupabaseSettings:
+    def __init__(self):
+        self.is_vercel = os.getenv("VERCEL") is not None
+        self.is_production = os.getenv("ENVIRONMENT") == "production"
+        self.is_development = not self.is_production
+```
+
+---
+
+### Current Code Quality Status (Phase 1.5)
+
+**Audit Completed**: October 16, 2025
+
+#### Print Statements Identified (8 instances in 6 files)
+
+**Priority 1 - Core Production Code (HIGH IMPACT)**:
+- [ ] `src/core/retrieval/pgvector_adapter.py:48` - Retrieval pipeline (every query hits this)
+- [ ] `src/utils/embeddings.py:16` - Embedding generation (core RAG)
+
+**Priority 2 - Service Layer (MEDIUM IMPACT)**:
+- [ ] `src/services/twilio_service.py:315` - SMS delivery status
+- [ ] `src/services/storage_service.py:261, 312` - Storage operations
+
+**Priority 3 - Analytics (LOW IMPACT)**:
+- [ ] `src/analytics/feedback_test_generator.py:318, 323` - Dashboard tooling
+- [ ] `src/analytics/code_display_monitor.py:233, 236` - Monitoring scripts
+
+**Implementation Plan**:
+1. Fix Priority 1 first (core retrieval)
+2. Add logging configuration to `supabase_config.py`
+3. Add tests using pytest `caplog` fixture
+4. Fix Priority 2 and 3 in batch PRs
+5. Enable strict pre-commit hook (currently commented out in `.pre-commit-config.yaml` lines 37-53)
+
+#### Hardcoded Paths Identified (1 requires fix)
+
+- [ ] `src/main.py:273` - Confession storage path (should use `supabase_settings.confessions_path`)
+
+**Note**: Other findings were false positives (docstring examples, config file itself, or prompt text).
+
+---
+
+### Enforcement Strategy
+
+#### Pre-Commit Hook (Planned - After Cleanup)
+
+**File**: `.pre-commit-config.yaml` (currently commented out, lines 37-53)
+
+```yaml
+# Code quality checks (strict mode - enable after Phase 1.5 cleanup)
+- repo: local
+  hooks:
+    - id: check-print-statements
+      name: Check for print() in production code
+      entry: bash -c 'grep -rn "^[^#]*print(" src/ --exclude-dir=__pycache__ && exit 1 || exit 0'
+      language: system
+      pass_filenames: false
+```
+
+**When to Enable**: After all print() statements migrated to logger.
+
+---
+
+#### Automated Test (Planned - After Cleanup)
+
+**File**: `tests/test_code_quality.py` (to be created)
+
+```python
+"""Test code quality standards (production readiness)."""
+
+def test_no_print_statements_in_production_code():
+    """Verify no print() statements in src/ directory."""
+    # Scans src/ for print() calls, fails if found
+    # See full implementation in code cleanup planning docs
+```
+
+**Test Count Impact**: 30 tests → 32 tests (adds 2 code quality tests)
+
+---
+
+### Migration Guide
+
+**For Contributors**: If you need to log output:
+
+```python
+# ❌ DON'T DO THIS
+print(f"Processing {count} items...")
+
+# ✅ DO THIS INSTEAD
+import logging
+logger = logging.getLogger(__name__)
+logger.info(f"Processing {count} items...")
+
+# For debugging during development (remove before commit):
+logger.debug(f"Debug info: {variable}")  # Won't appear in production logs (level=INFO)
+```
+
+**For Reviewers**: In code review, check for:
+- [ ] No `print()` statements in `src/` directory
+- [ ] Paths use `supabase_settings` not hardcoded strings
+- [ ] Environment-specific logic checks `is_production` or `is_vercel`
+- [ ] Tests use `caplog` fixture to verify logger output
+
+---
+
+### Related Documentation
+
+- **Cleanup Progress**: See `docs/QA_IMPLEMENTATION_SUMMARY.md` → Phase 1.5 section
+- **Testing Standards**: See [Testing Best Practices & Common Issues](#testing-best-practices--common-issues)
+- **Pre-Commit Hooks**: See [Pre-Commit Hooks](#pre-commit-hooks) section above
+
+---
+
 ## Quarterly Documentation Audit
 
 **Schedule**: Every 3 months (January, April, July, October)

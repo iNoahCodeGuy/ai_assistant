@@ -1,8 +1,8 @@
 # Phase 1 Test Fixes - October 16, 2025
 
-**Status**: ✅ **COMPLETED** - All fixes applied successfully  
-**Result**: 18/18 conversation tests passing (100%)  
-**Date Completed**: October 16, 2025  
+**Status**: ✅ **COMPLETED** - All fixes applied successfully
+**Result**: 18/18 conversation tests passing (100%)
+**Date Completed**: October 16, 2025
 **Archived**: This document captured the decision-making process for fixing 4 failing tests. The fixes are now complete and the principles are documented in `QA_STRATEGY.md` §9 (Testing Best Practices).
 
 ---
@@ -18,16 +18,16 @@ This proposal document has been archived after successful completion. For curren
 
 ## Original Proposal (For Historical Reference)
 
-**Date**: October 16, 2025  
-**Status**: ~~Awaiting approval (Option B)~~ → **COMPLETED**  
-**Starting Pass Rate**: 14/18 conversation tests passing (78%)  
+**Date**: October 16, 2025
+**Status**: ~~Awaiting approval (Option B)~~ → **COMPLETED**
+**Starting Pass Rate**: 14/18 conversation tests passing (78%)
 **Final Pass Rate**: 18/18 passing (100%) ✅
 
 ---
 
 ## Executive Summary
 
-We have **4 failing tests** remaining, all with the same root cause: **bad `@patch` decorators**. 
+We have **4 failing tests** remaining, all with the same root cause: **bad `@patch` decorators**.
 
 **Pattern Found**: Tests try to patch `'src.flows.conversation_nodes.RagEngine'` but `RagEngine` is never imported in `conversation_nodes.py` (it's only passed as a parameter).
 
@@ -115,32 +115,32 @@ def test_empty_code_index_shows_helpful_message(self):
         "has_code": False
     }
     mock_engine.generate_response.return_value = "I can help you view the code."
-    
+
     state = ConversationState(
         role="Software Developer",
         query="show me the conversation node code"  # Explicit code display trigger
     )
-    
+
     # Set initial answer
     state.set_answer("I can help you view the code.")
-    
+
     # Run through flow
     state = classify_query(state)
     state = apply_role_context(state, mock_engine)
-    
+
     answer = state.answer
-    
+
     # Should NOT show malformed data
     assert "doc_id text" not in answer, "Found 'doc_id text' malformed output"
     assert 'query="' not in answer, "Found metadata leak in output"
     assert "{'doc_id':" not in answer, "Found raw dict output"
-    
+
     # When code unavailable, should either:
     # 1. Show GitHub link
     # 2. Show actual code (if available)
     # 3. Show helpful "unavailable" message
     # 4. Or just show the answer without code (acceptable fallback)
-    
+
     # Main assertion: No malformed data (which is what we fixed)
     # The presence of helpful alternatives is bonus, but not required
     assert len(answer) > 0, "Answer should not be empty"
@@ -177,25 +177,25 @@ def test_no_information_overload(self):
     mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
     mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
     mock_engine.generate_response.return_value = "We collect interaction data, query types, and latency metrics for analytics."
-    
+
     state = ConversationState(
         role="Hiring Manager (technical)",
         query="what data do you collect?"
     )
-    
+
     # Set initial answer
     state.set_answer("We collect interaction data, query types, and latency metrics for analytics.")
-    
+
     # Run through flow
     state = classify_query(state)
     state = apply_role_context(state, mock_engine)
-    
+
     answer = state.answer
-    
+
     # Character count sanity check
     char_count = len(answer)
     assert char_count < 15000, f"Response is {char_count} chars - too long (>15k indicates data dump)"
-    
+
     # Table row count sanity check
     table_rows = answer.count("| ")
     assert table_rows < 250, f"Response has ~{table_rows // 2} table rows - too many (>125 rows indicates dump)"
@@ -233,29 +233,29 @@ def test_consistent_formatting_across_roles(self):
     mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
     mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
     mock_engine.generate_response.return_value = "This product helps manage your career journey."
-    
+
     roles = [
         "Hiring Manager (technical)",
         "Hiring Manager (nontechnical)",
         "Software Developer",
         "Just looking around"
     ]
-    
+
     for role in roles:
         state = ConversationState(
             role=role,
             query="Tell me about Noah's products"
         )
-        
+
         state.set_answer("This product helps manage your career journey.")
         state = classify_query(state)
         state = apply_role_context(state, mock_engine)
-        
+
         answer = state.answer
-        
+
         # No emoji headers (already tested elsewhere, but sanity check)
         assert not re.search(r'#{1,6}\s', answer), f"{role} has markdown headers"
-        
+
         # All should have at most 1 follow-up prompt
         prompt_count = answer.lower().count("would you like")
         assert prompt_count <= 1, f"{role} has {prompt_count} prompts - should be ≤1"

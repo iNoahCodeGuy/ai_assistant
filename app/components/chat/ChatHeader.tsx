@@ -32,7 +32,7 @@ export function ChatHeader({ role, onRoleChange }: ChatHeaderProps) {
             <p className="text-xs text-gray-400">Noah's AI Assistant - Interactive Resume & Career Assistant</p>
           </div>
         </div>
-        
+
         <div className="relative">
           <select
             value={role}
@@ -45,9 +45,9 @@ export function ChatHeader({ role, onRoleChange }: ChatHeaderProps) {
               </option>
             ))}
           </select>
-          <ChevronDown 
-            size={16} 
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" 
+          <ChevronDown
+            size={16}
+            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"
           />
         </div>
       </div>

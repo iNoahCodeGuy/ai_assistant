@@ -44,54 +44,54 @@ try:
     # Note: Supabase Python client doesn't have direct SQL execution
     # We'll use the REST API endpoint
     import httpx
-    
+
     headers = {
         "apikey": service_key,
         "Authorization": f"Bearer {service_key}",
         "Content-Type": "application/json",
         "Prefer": "return=minimal"
     }
-    
+
     # Supabase doesn't expose direct SQL execution via REST API for security
     # We need to create tables one by one using the Python client
-    
+
     print("\n⚠️  Note: Python client cannot execute raw SQL for security.")
     print("   Let's create tables using the REST API instead...\n")
-    
+
     # Alternative: Use psycopg2 to connect directly to Postgres
     print("📦 Installing psycopg2 if needed...")
     import subprocess
     subprocess.run(["pip", "install", "-q", "psycopg2-binary"], check=False)
-    
+
     import psycopg2
-    
+
     # Extract connection details from Supabase URL
     # Format: https://xxxproject.supabase.co
     project_ref = supabase_url.split("//")[1].split(".")[0]
-    
+
     # Supabase Postgres connection string
     # Format: postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
     print("\n🔐 To connect directly to Postgres, we need the database password.")
     print("   You can find this in:")
     print("   Supabase Dashboard → Settings → Database → Connection String")
     print("   Look for 'Connection pooling' URI\n")
-    
+
     db_password = input("   Enter your Supabase database password (or press Enter to skip): ").strip()
-    
+
     if db_password:
         conn_string = f"postgresql://postgres.{project_ref}:{db_password}@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
-        
+
         print("\n   🔌 Connecting to Postgres...")
         conn = psycopg2.connect(conn_string)
         cur = conn.cursor()
-        
+
         print("   ✅ Connected! Executing migration...")
         cur.execute(sql_content)
         conn.commit()
-        
+
         cur.close()
         conn.close()
-        
+
         print("\n" + "=" * 70)
         print("🎉 MIGRATION COMPLETED SUCCESSFULLY!")
         print("=" * 70)
@@ -105,7 +105,7 @@ try:
         print("   2. Select ALL (Ctrl+A) and Copy (Ctrl+C)")
         print("   3. In Supabase SQL Editor, clear everything")
         print("   4. Paste (Ctrl+V) and click Run")
-        
+
 except Exception as e:
     print(f"\n   ❌ Error: {e}")
     print("\n   💡 Alternative: Run the SQL manually in Supabase SQL Editor")

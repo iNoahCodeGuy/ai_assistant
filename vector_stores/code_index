@@ -25,7 +25,7 @@ class CodeIndex:
         if self.index is None:
             dimension = embeddings.shape[1]
             self.index = faiss.IndexFlatL2(dimension)
-        
+
         self.index.add(embeddings)
         self.save_index()
 

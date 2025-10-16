@@ -15,7 +15,7 @@ Portfolia now **proactively** shows code and data when it would enhance understa
 - ❌ No code shown (user didn't say "show me code")
 
 **After (Software Developer role):**
-- ✅ Detailed explanation of RAG  
+- ✅ Detailed explanation of RAG
 - ✅ **Proactive code snippet** showing retrieval logic (~30 lines)
 - ✅ Comments explaining key design decisions
 

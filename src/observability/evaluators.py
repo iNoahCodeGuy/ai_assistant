@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 def get_evaluation_client() -> OpenAI:
     """Get OpenAI client for evaluation.
-    
+
     Uses same API key as main application.
     """
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -42,18 +42,18 @@ def evaluate_faithfulness(
     model: str = "gpt-3.5-turbo"
 ) -> Tuple[float, str]:
     """Evaluate if the answer is faithful to the retrieved context.
-    
+
     Faithfulness means:
     - Claims in the answer are supported by the context
     - No hallucinations or fabricated information
     - Proper attribution to sources
-    
+
     Args:
         query: User query
         context: Retrieved chunks
         answer: Generated answer
         model: Model to use for evaluation
-        
+
     Returns:
         (score, explanation) where score is 0-1 and explanation is reasoning
     """
@@ -83,7 +83,7 @@ Format your response as:
 SCORE: <score>
 EXPLANATION: <explanation>
 """
-    
+
     try:
         client = get_evaluation_client()
         response = client.chat.completions.create(
@@ -92,13 +92,13 @@ EXPLANATION: <explanation>
             temperature=0.0,  # Deterministic evaluation
             max_tokens=200
         )
-        
+
         content = response.choices[0].message.content
         score, explanation = _parse_evaluation_response(content)
-        
+
         logger.debug(f"Faithfulness score: {score:.2f}")
         return score, explanation
-        
+
     except Exception as e:
         logger.error(f"Faithfulness evaluation failed: {e}")
         return 0.5, f"Evaluation failed: {str(e)}"
@@ -110,17 +110,17 @@ def evaluate_relevance(
     model: str = "gpt-3.5-turbo"
 ) -> Tuple[float, str]:
     """Evaluate if the retrieved context is relevant to the query.
-    
+
     Relevance means:
     - Retrieved chunks contain information to answer the query
     - Chunks are semantically related to the query
     - Minimal irrelevant information
-    
+
     Args:
         query: User query
         context: Retrieved chunks
         model: Model to use for evaluation
-        
+
     Returns:
         (score, explanation) where score is 0-1 and explanation is reasoning
     """
@@ -147,7 +147,7 @@ Format your response as:
 SCORE: <score>
 EXPLANATION: <explanation>
 """
-    
+
     try:
         client = get_evaluation_client()
         response = client.chat.completions.create(
@@ -156,13 +156,13 @@ EXPLANATION: <explanation>
             temperature=0.0,
             max_tokens=200
         )
-        
+
         content = response.choices[0].message.content
         score, explanation = _parse_evaluation_response(content)
-        
+
         logger.debug(f"Relevance score: {score:.2f}")
         return score, explanation
-        
+
     except Exception as e:
         logger.error(f"Relevance evaluation failed: {e}")
         return 0.5, f"Evaluation failed: {str(e)}"
@@ -174,18 +174,18 @@ def evaluate_answer_quality(
     model: str = "gpt-3.5-turbo"
 ) -> Tuple[float, str]:
     """Evaluate overall answer quality.
-    
+
     Quality metrics:
     - Helpfulness: Does it answer the user's question?
     - Clarity: Is it well-written and easy to understand?
     - Completeness: Does it cover all aspects of the query?
     - Accuracy: Is the information correct?
-    
+
     Args:
         query: User query
         answer: Generated answer
         model: Model to use for evaluation
-        
+
     Returns:
         (score, explanation) where score is 0-1 and explanation is reasoning
     """
@@ -218,7 +218,7 @@ Format your response as:
 SCORE: <score>
 EXPLANATION: <explanation>
 """
-    
+
     try:
         client = get_evaluation_client()
         response = client.chat.completions.create(
@@ -227,13 +227,13 @@ EXPLANATION: <explanation>
             temperature=0.0,
             max_tokens=200
         )
-        
+
         content = response.choices[0].message.content
         score, explanation = _parse_evaluation_response(content)
-        
+
         logger.debug(f"Answer quality score: {score:.2f}")
         return score, explanation
-        
+
     except Exception as e:
         logger.error(f"Answer quality evaluation failed: {e}")
         return 0.5, f"Evaluation failed: {str(e)}"
@@ -246,15 +246,15 @@ def evaluate_response(
     model: str = "gpt-3.5-turbo"
 ) -> EvaluationMetrics:
     """Comprehensive evaluation of a RAG response.
-    
+
     Combines all evaluation metrics into a single result.
-    
+
     Args:
         query: User query
         context: Retrieved chunks
         answer: Generated answer
         model: Model to use for evaluation
-        
+
     Returns:
         EvaluationMetrics with all scores
     """
@@ -262,14 +262,14 @@ def evaluate_response(
     faithfulness, faith_exp = evaluate_faithfulness(query, context, answer, model)
     relevance, rel_exp = evaluate_relevance(query, context, model)
     quality, qual_exp = evaluate_answer_quality(query, answer, model)
-    
+
     # Combine explanations
     explanation = (
         f"Faithfulness: {faith_exp} | "
         f"Relevance: {rel_exp} | "
         f"Quality: {qual_exp}"
     )
-    
+
     return EvaluationMetrics(
         faithfulness_score=faithfulness,
         relevance_score=relevance,
@@ -282,21 +282,21 @@ def evaluate_response(
 
 def _parse_evaluation_response(content: str) -> Tuple[float, str]:
     """Parse evaluation response from LLM.
-    
+
     Expected format:
         SCORE: 0.85
         EXPLANATION: The answer is mostly faithful...
-    
+
     Args:
         content: Raw LLM response
-        
+
     Returns:
         (score, explanation) tuple
     """
     lines = content.strip().split('\n')
     score = 0.5
     explanation = "Could not parse evaluation"
-    
+
     for line in lines:
         if line.startswith('SCORE:'):
             try:
@@ -305,10 +305,10 @@ def _parse_evaluation_response(content: str) -> Tuple[float, str]:
                 pass
         elif line.startswith('EXPLANATION:'):
             explanation = line.split('EXPLANATION:')[1].strip()
-    
+
     # Clamp score to [0, 1]
     score = max(0.0, min(1.0, score))
-    
+
     return score, explanation
 
 
@@ -316,12 +316,12 @@ def should_evaluate_sample(
     sample_rate: float = 0.1
 ) -> bool:
     """Determine if this response should be evaluated.
-    
+
     To save costs, we only evaluate a sample of responses.
-    
+
     Args:
         sample_rate: Fraction of responses to evaluate (0.0-1.0)
-        
+
     Returns:
         True if should evaluate, False otherwise
     """
@@ -335,21 +335,21 @@ def batch_evaluate_responses(
     model: str = "gpt-3.5-turbo"
 ) -> List[EvaluationMetrics]:
     """Evaluate multiple responses in batch.
-    
+
     Args:
         responses: List of dicts with 'query', 'context', 'answer' keys
         sample_rate: Fraction of responses to evaluate
         model: Model to use for evaluation
-        
+
     Returns:
         List of EvaluationMetrics (only for sampled responses)
     """
     results = []
-    
+
     for resp in responses:
         if not should_evaluate_sample(sample_rate):
             continue
-        
+
         try:
             metrics = evaluate_response(
                 query=resp['query'],
@@ -360,5 +360,5 @@ def batch_evaluate_responses(
             results.append(metrics)
         except Exception as e:
             logger.error(f"Batch evaluation error: {e}")
-    
+
     return results

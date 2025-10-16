@@ -2,9 +2,9 @@
 
 ## Issue Summary
 
-**Date**: Current deployment  
-**Commit**: efee177  
-**Previous Deployment**: c9b4ec9  
+**Date**: Current deployment
+**Commit**: efee177
+**Previous Deployment**: c9b4ec9
 **Symptom**: "Sorry, I encountered an error. Please try again." when querying "how does this product work?" as Hiring Manager (technical)
 
 ## Root Cause
@@ -67,18 +67,18 @@ def _get_imports_kb_path() -> Path:
     local_path = Path(__file__).parent.parent.parent / "data" / "imports_kb.csv"
     if local_path.exists():
         return local_path
-    
+
     # Strategy 2: Absolute from current working directory (Vercel)
     cwd_path = Path.cwd() / "data" / "imports_kb.csv"
     if cwd_path.exists():
         return cwd_path
-    
+
     # Strategy 3: From environment variable (explicit override)
     if env_path := os.getenv("IMPORTS_KB_PATH"):
         env_path_obj = Path(env_path)
         if env_path_obj.exists():
             return env_path_obj
-    
+
     # Fallback: return local path and let FileNotFoundError be caught
     logger.warning(f"Could not find imports_kb.csv, tried: {local_path}, {cwd_path}")
     return local_path

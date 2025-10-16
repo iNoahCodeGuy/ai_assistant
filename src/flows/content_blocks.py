@@ -43,7 +43,7 @@ def format_callout(message: str, *, label: str = "TIP") -> str:
 
 def data_collection_table() -> str:
     """Generate markdown table summarizing tracked datasets.
-    
+
     Returns:
         Markdown table showing dataset names, purposes, captured fields, and notes.
     """
@@ -60,7 +60,7 @@ def data_collection_table() -> str:
 
 def fun_facts_block() -> str:
     """Generate fun facts about Noah.
-    
+
     Returns:
         Markdown list of interesting personal facts.
     """
@@ -73,7 +73,7 @@ def fun_facts_block() -> str:
 
 def purpose_block() -> str:
     """Generate product purpose statement for enterprise evaluators.
-    
+
     Returns:
         Markdown list explaining mission, enterprise signal, and outcome.
     """
@@ -86,7 +86,7 @@ def purpose_block() -> str:
 
 def data_strategy_block() -> str:
     """Generate data management strategy overview.
-    
+
     Returns:
         Markdown list explaining vector store, pipelines, and analytics approach.
     """
@@ -99,7 +99,7 @@ def data_strategy_block() -> str:
 
 def enterprise_adaptability_block() -> str:
     """Generate enterprise scaling and adaptation strategy.
-    
+
     Returns:
         Markdown list covering infrastructure, security, and extensibility.
     """
@@ -112,7 +112,7 @@ def enterprise_adaptability_block() -> str:
 
 def architecture_snapshot() -> str:
     """Generate architecture overview for technical stakeholders.
-    
+
     Returns:
         Markdown list showing frontend, backend, retrieval, and action layers.
     """
@@ -126,7 +126,7 @@ def architecture_snapshot() -> str:
 
 def enterprise_fit_explanation() -> str:
     """Explain how the product fits enterprise use cases.
-    
+
     Returns:
         Paragraph explaining role routing and scalability for major enterprises.
     """
@@ -138,7 +138,7 @@ def enterprise_fit_explanation() -> str:
 
 def stack_importance_explanation() -> str:
     """Explain the importance of each layer in the stack.
-    
+
     Returns:
         Markdown list covering frontend, backend, retrieval/data, and observability layers.
     """
@@ -152,7 +152,7 @@ def stack_importance_explanation() -> str:
 
 def mma_fight_link() -> str:
     """Get Noah's featured MMA fight link.
-    
+
     Returns:
         Formatted message with YouTube fight link.
     """
@@ -167,25 +167,25 @@ def format_code_snippet(
     branch: str = "main"
 ) -> str:
     """Format a code snippet with file path, description, and enterprise prompt.
-    
+
     Args:
         code: The actual code content
         file_path: Relative path to the file (e.g., "src/core/retriever.py")
         language: Programming language for syntax highlighting
         description: Optional description of what the code does
         branch: Git branch name
-        
+
     Returns:
         Formatted markdown code block with metadata
     """
     header = f"**File**: `{file_path}` @ `{branch}`"
     if description:
         header += f"\n**Purpose**: {description}"
-    
+
     code_block = f"```{language}\n{code}\n```"
-    
+
     footer = "\n> Would you like to see the enterprise variant, test coverage, or full file?"
-    
+
     return f"{header}\n\n{code_block}{footer}"
 
 
@@ -198,7 +198,7 @@ def format_import_explanation(
     when_to_switch: str = ""
 ) -> str:
     """Format an import explanation with enterprise context.
-    
+
     Args:
         import_name: Name of the import/library (e.g., "openai", "supabase")
         tier: Explanation tier (1, 2, or 3)
@@ -206,28 +206,28 @@ def format_import_explanation(
         enterprise_concern: Optional enterprise-level concerns
         enterprise_alternative: Optional enterprise replacement options
         when_to_switch: Optional guidance on when to switch
-        
+
     Returns:
         Formatted markdown explanation
     """
     sections = [f"### 📦 {import_name.upper()}\n"]
     sections.append(explanation)
-    
+
     if tier in ["2", "3"] and enterprise_concern:
         sections.append(f"\n**Enterprise Concerns**: {enterprise_concern}")
-    
+
     if tier == "3" and enterprise_alternative:
         sections.append(f"\n**Enterprise Alternative**: {enterprise_alternative}")
-    
+
     if tier == "3" and when_to_switch:
         sections.append(f"\n**When to Switch**: {when_to_switch}")
-    
+
     return "\n".join(sections)
 
 
 def code_display_guardrails() -> str:
     """Return standard code display guardrails message.
-    
+
     Returns:
         Standard guardrails notice for code snippets
     """
@@ -240,7 +240,7 @@ def code_display_guardrails() -> str:
 
 def qa_strategy_block() -> str:
     """Generate QA strategy overview for product/architecture questions.
-    
+
     Returns:
         Markdown list explaining automated quality assurance approach.
     """
@@ -257,10 +257,10 @@ def qa_strategy_block() -> str:
 
 def role_switch_suggestion(target_role: str) -> str:
     """Generate suggestion to switch roles for better answers.
-    
+
     Args:
         target_role: Recommended role name (e.g., "Hiring Manager (technical)")
-        
+
     Returns:
         Markdown suggestion to switch roles.
     """

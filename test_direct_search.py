@@ -30,17 +30,17 @@ def cosine_similarity(vec1, vec2):
 
 def search_with_direct_query(query_text, top_k=5, threshold=0.3):
     """Search using direct table query and manual similarity calculation"""
-    
+
     # 1. Generate query embedding
     response = openai_client.embeddings.create(
         model='text-embedding-3-small',
         input=query_text
     )
     query_embedding = response.data[0].embedding
-    
+
     # 2. Get all chunks from database
     result = supabase.table('kb_chunks').select('id, doc_id, section, content, embedding').execute()
-    
+
     # 3. Calculate similarities manually
     chunks_with_similarity = []
     for chunk in result.data:
@@ -49,10 +49,10 @@ def search_with_direct_query(query_text, top_k=5, threshold=0.3):
             chunk_emb = chunk['embedding']
             if isinstance(chunk_emb, str):
                 chunk_emb = json.loads(chunk_emb)
-            
+
             # Calculate similarity
             similarity = cosine_similarity(query_embedding, chunk_emb)
-            
+
             if similarity > threshold:
                 chunks_with_similarity.append({
                     'id': chunk['id'],
@@ -61,7 +61,7 @@ def search_with_direct_query(query_text, top_k=5, threshold=0.3):
                     'content': chunk['content'],
                     'similarity': similarity
                 })
-    
+
     # 4. Sort by similarity and return top_k
     chunks_with_similarity.sort(key=lambda x: x['similarity'], reverse=True)
     return chunks_with_similarity[:top_k]

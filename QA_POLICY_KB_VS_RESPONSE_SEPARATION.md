@@ -1,7 +1,7 @@
 # QA Policy Update: KB Storage vs Response Presentation
 
-**Date:** October 16, 2025  
-**Issue:** User requested no `###` markdown headers in output  
+**Date:** October 16, 2025
+**Issue:** User requested no `###` markdown headers in output
 **Resolution:** Clarified KB can use rich formatting internally, LLM must strip it for users
 
 ---
@@ -10,13 +10,13 @@
 
 **User Request:** "I do not want # in the output for user"
 
-**Context:**  
+**Context:**
 - Phase 1 of conversation nodes feature added educational KB content with `### Node 1️⃣:` style headers
 - This content uses rich formatting (markdown headers, emojis) for structure and teaching value
 - KB content is optimized for semantic search and internal organization
 - User-facing responses should be professional and clean
 
-**Conflict:**  
+**Conflict:**
 - Educational KB content benefits from structured headers (semantic search, readability)
 - User expectations are professional **Bold** formatting (no `###`, no emojis)
 - Previous QA policy was ambiguous about internal storage vs external presentation
@@ -50,7 +50,7 @@ The system uses an 8-node pipeline:
 ### Node 1️⃣: handle_greeting
 **Purpose:** Detect and handle simple greetings efficiently...
 
-### Node 2️⃣: classify_query  
+### Node 2️⃣: classify_query
 **Purpose:** Understand user intent and set processing flags...
 ```
 
@@ -117,7 +117,7 @@ CRITICAL RULES:
 ```python
 def test_no_emoji_headers(self):
     """User-facing responses must strip markdown headers and emojis - convert to **Bold** only.
-    
+
     IMPORTANT: KB content (data/*.csv) can use ### headers and emojis for structure.
     This test validates LLM RESPONSES, not storage format.
     """
@@ -128,11 +128,11 @@ def test_no_emoji_headers(self):
         ]
     }
     mock_engine.generate_response.return_value = "**Key Features**\n\n**Data Analytics**..."  # LLM must convert
-    
+
     # Simulate full flow: classify → retrieve → generate → apply_role_context
     state = run_conversation_flow(...)
     answer = state.answer  # What user sees
-    
+
     # Assert NO markdown headers in user-facing response
     markdown_headers = re.findall(r'^\s*#{1,6}\s', answer, re.MULTILINE)
     assert len(markdown_headers) == 0, "Found markdown headers - must use **Bold** only"

@@ -23,13 +23,13 @@ Architecture:
 
 Usage:
     from observability import trace_rag_call, evaluate_response
-    
+
     # Wrap RAG operations
     @trace_rag_call
     def retrieve_and_generate(query):
         # ... your code
         pass
-    
+
     # Evaluate responses
     metrics = evaluate_response(
         query="What are Noah's skills?",
@@ -68,14 +68,14 @@ __all__ = [
     'trace_generation',
     'get_langsmith_client',
     'initialize_langsmith',
-    
+
     # Metrics
     'RetrievalMetrics',
     'GenerationMetrics',
     'EvaluationMetrics',
     'calculate_retrieval_metrics',
     'calculate_generation_metrics',
-    
+
     # Evaluation
     'evaluate_faithfulness',
     'evaluate_relevance',

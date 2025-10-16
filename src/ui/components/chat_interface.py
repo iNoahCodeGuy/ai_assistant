@@ -10,7 +10,7 @@ class ChatInterface:
         st.title("Noah's AI Assistant Chat")
         st.caption(f"Active role: {self.role}")
         self.user_input = st.text_input("You:", "")
-        
+
         if st.button("Send"):
             if self.user_input:
                 self.chat_history.append({"user": self.user_input})

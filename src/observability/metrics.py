@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RetrievalMetrics:
     """Metrics for a single retrieval operation.
-    
+
     Attributes:
         query: User query text
         num_chunks: Number of chunks retrieved
@@ -45,7 +45,7 @@ class RetrievalMetrics:
     latency_ms: int
     chunk_sources: List[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
+
     @classmethod
     def from_retrieval_result(
         cls,
@@ -54,18 +54,18 @@ class RetrievalMetrics:
         latency_ms: int
     ) -> 'RetrievalMetrics':
         """Create metrics from retrieval result.
-        
+
         Args:
             query: User query
             result: Retrieval result dict with 'matches' and optional 'scores'
             latency_ms: Retrieval latency
-            
+
         Returns:
             RetrievalMetrics instance
         """
         chunks = result.get('matches', [])
         scores = result.get('scores', [0.0] * len(chunks))
-        
+
         return cls(
             query=query,
             num_chunks=len(chunks),
@@ -79,7 +79,7 @@ class RetrievalMetrics:
 @dataclass
 class GenerationMetrics:
     """Metrics for a single LLM generation.
-    
+
     Attributes:
         prompt: Input prompt text
         response: Generated response text
@@ -100,7 +100,7 @@ class GenerationMetrics:
     model: str
     cost_usd: float = 0.0
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
+
     @classmethod
     def from_openai_response(
         cls,
@@ -110,13 +110,13 @@ class GenerationMetrics:
         model: str = "gpt-4"
     ) -> 'GenerationMetrics':
         """Create metrics from OpenAI API response.
-        
+
         Args:
             prompt: Input prompt
             response: OpenAI response object
             latency_ms: Generation latency
             model: Model name
-            
+
         Returns:
             GenerationMetrics instance
         """
@@ -127,7 +127,7 @@ class GenerationMetrics:
             response_text = response['choices'][0]['message']['content']
         else:
             response_text = str(response)
-        
+
         # Extract token usage
         if hasattr(response, 'usage'):
             tokens_prompt = response.usage.prompt_tokens
@@ -138,12 +138,12 @@ class GenerationMetrics:
         else:
             tokens_prompt = 0
             tokens_completion = 0
-        
+
         total_tokens = tokens_prompt + tokens_completion
-        
+
         # Estimate cost (approximate rates)
         cost_usd = calculate_openai_cost(model, tokens_prompt, tokens_completion)
-        
+
         return cls(
             prompt=prompt,
             response=response_text,
@@ -159,9 +159,9 @@ class GenerationMetrics:
 @dataclass
 class EvaluationMetrics:
     """Evaluation metrics for response quality.
-    
+
     These are calculated post-generation using LLM-as-judge.
-    
+
     Attributes:
         faithfulness_score: Does response cite retrieved context? (0-1)
         relevance_score: Are retrieved chunks relevant to query? (0-1)
@@ -178,10 +178,10 @@ class EvaluationMetrics:
     citation_accuracy: float = 0.0
     explanation: str = ""
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
+
     def overall_score(self) -> float:
         """Calculate overall quality score (0-1).
-        
+
         Weighted average of all metrics:
         - 30% faithfulness
         - 25% relevance
@@ -204,18 +204,18 @@ def calculate_retrieval_metrics(
     latency_ms: int
 ) -> RetrievalMetrics:
     """Calculate retrieval metrics from raw retrieval data.
-    
+
     Args:
         query: User query
         chunks: Retrieved chunks with 'content', 'score', 'source' keys
         latency_ms: Retrieval latency
-        
+
     Returns:
         RetrievalMetrics instance
     """
     scores = [c.get('score', 0.0) for c in chunks]
     sources = [c.get('source', 'unknown') for c in chunks]
-    
+
     return RetrievalMetrics(
         query=query,
         num_chunks=len(chunks),
@@ -235,7 +235,7 @@ def calculate_generation_metrics(
     model: str = "gpt-4"
 ) -> GenerationMetrics:
     """Calculate generation metrics from raw generation data.
-    
+
     Args:
         prompt: Input prompt
         response: Generated response
@@ -243,13 +243,13 @@ def calculate_generation_metrics(
         tokens_completion: Completion token count
         latency_ms: Generation latency
         model: Model name
-        
+
     Returns:
         GenerationMetrics instance
     """
     total_tokens = tokens_prompt + tokens_completion
     cost_usd = calculate_openai_cost(model, tokens_prompt, tokens_completion)
-    
+
     return GenerationMetrics(
         prompt=prompt,
         response=response,
@@ -268,17 +268,17 @@ def calculate_openai_cost(
     tokens_completion: int
 ) -> float:
     """Estimate OpenAI API cost in USD.
-    
+
     Pricing (as of 2024):
     - GPT-4: $0.03/1K prompt, $0.06/1K completion
     - GPT-4-turbo: $0.01/1K prompt, $0.03/1K completion
     - GPT-3.5-turbo: $0.0015/1K prompt, $0.002/1K completion
-    
+
     Args:
         model: Model name
         tokens_prompt: Prompt tokens
         tokens_completion: Completion tokens
-        
+
     Returns:
         Estimated cost in USD
     """
@@ -288,15 +288,15 @@ def calculate_openai_cost(
         'gpt-4-1106-preview': (0.01, 0.03),
         'gpt-3.5-turbo': (0.0015, 0.002),
     }
-    
+
     # Default to GPT-4 pricing if model not found
     prompt_price, completion_price = pricing.get(model, (0.03, 0.06))
-    
+
     cost = (
         (tokens_prompt / 1000.0) * prompt_price +
         (tokens_completion / 1000.0) * completion_price
     )
-    
+
     return round(cost, 6)
 
 
@@ -307,19 +307,19 @@ def log_metrics_to_supabase(
     message_id: Optional[int] = None
 ) -> bool:
     """Log metrics to Supabase for analysis.
-    
+
     Args:
         retrieval_metrics: Retrieval metrics to log
         generation_metrics: Generation metrics to log
         evaluation_metrics: Evaluation metrics to log
         message_id: Message ID to link metrics to
-        
+
     Returns:
         True if successful, False otherwise
     """
     try:
         from analytics.supabase_analytics import supabase_analytics
-        
+
         # Log retrieval metrics
         if retrieval_metrics and message_id:
             supabase_analytics.client.table('retrieval_metrics').insert({
@@ -330,7 +330,7 @@ def log_metrics_to_supabase(
                 'similarity_scores': retrieval_metrics.similarity_scores,
                 'chunk_sources': retrieval_metrics.chunk_sources,
             }).execute()
-        
+
         # Log generation metrics
         if generation_metrics and message_id:
             supabase_analytics.client.table('generation_metrics').insert({
@@ -342,7 +342,7 @@ def log_metrics_to_supabase(
                 'model': generation_metrics.model,
                 'cost_usd': generation_metrics.cost_usd,
             }).execute()
-        
+
         # Log evaluation metrics
         if evaluation_metrics and message_id:
             supabase_analytics.client.table('evaluation_metrics').insert({
@@ -355,9 +355,9 @@ def log_metrics_to_supabase(
                 'overall_score': evaluation_metrics.overall_score(),
                 'explanation': evaluation_metrics.explanation,
             }).execute()
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to log metrics to Supabase: {e}")
         return False

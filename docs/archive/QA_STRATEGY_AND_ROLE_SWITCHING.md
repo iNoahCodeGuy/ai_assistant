@@ -13,7 +13,7 @@ Enhanced conversation flow to showcase the automated quality assurance system an
 **What's Shown**:
 ```markdown
 **Quality Assurance**
-- **Automated Regression Tests**: 14 test cases cover analytics display, prompt deduplication, 
+- **Automated Regression Tests**: 14 test cases cover analytics display, prompt deduplication,
   professional formatting, and code validation (all passing in ~1.2s).
 - **Pre-Commit Hooks**: Catch emoji headers, duplicate prompts, and raw data dumps before commit.
 - **CI/CD Quality Gates**: GitHub Actions block merges if quality standards are violated.
@@ -39,7 +39,7 @@ This system prevents regression as the codebase grows—new features can't break
 
 **What's Shown**:
 ```markdown
-💡 **Tip**: For more detailed technical insights, try switching to the **Hiring Manager (technical)** role. 
+💡 **Tip**: For more detailed technical insights, try switching to the **Hiring Manager (technical)** role.
 That role provides code snippets, architecture diagrams, and implementation details.
 ```
 
@@ -59,7 +59,7 @@ That role provides code snippets, architecture diagrams, and implementation deta
 def qa_strategy_block() -> str:
     """Generate QA strategy overview for product/architecture questions."""
     # Returns 6-bullet overview of automated quality system
-    
+
 def role_switch_suggestion(target_role: str) -> str:
     """Generate suggestion to switch roles for better answers."""
     # Returns formatted tip with role name
@@ -83,7 +83,7 @@ def role_switch_suggestion(target_role: str) -> str:
 
 ### Scenario 1: Technical Role Asks About Product
 
-**Role**: Hiring Manager (technical)  
+**Role**: Hiring Manager (technical)
 **Query**: "how does this product work?"
 
 **Actions Triggered**:
@@ -103,7 +103,7 @@ def role_switch_suggestion(target_role: str) -> str:
 
 ### Scenario 2: Nontechnical Role Asks About Product
 
-**Role**: Hiring Manager (nontechnical)  
+**Role**: Hiring Manager (nontechnical)
 **Query**: "how does this product work?"
 
 **Actions Triggered**:
@@ -115,7 +115,7 @@ def role_switch_suggestion(target_role: str) -> str:
 
 ### Scenario 3: Nontechnical Role Asks for Code
 
-**Role**: Hiring Manager (nontechnical)  
+**Role**: Hiring Manager (nontechnical)
 **Query**: "show me the code for the retrieval system"
 
 **Actions Triggered**:
@@ -127,7 +127,7 @@ def role_switch_suggestion(target_role: str) -> str:
 
 ### Scenario 4: Nontechnical Role Asks About Stack
 
-**Role**: Hiring Manager (nontechnical)  
+**Role**: Hiring Manager (nontechnical)
 **Query**: "why did you use supabase?"
 
 **Actions Triggered**:

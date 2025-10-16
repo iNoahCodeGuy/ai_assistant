@@ -2,7 +2,7 @@
 
 **PRODUCTION ARCHITECTURE**: Uses Supabase pgvector exclusively for all vector operations.
 - Centralized: Single source of truth for embeddings
-- Scalable: Works with Vercel serverless functions  
+- Scalable: Works with Vercel serverless functions
 - Observable: Built-in retrieval logging and tracing with LangSmith
 - Real-time: Updates without redeployment
 - Cost-efficient: Smaller bundle size, faster cold starts
@@ -70,17 +70,17 @@ class RagEngine:
     """Complete RAG implementation using Supabase pgvector exclusively.
     ...existing docstring...
     """
-    
+
     # ========== INITIALIZATION ==========
     def __init__(self, *args, **kwargs):
         """Flexible initializer using factory pattern."""
         self.settings = kwargs.get("settings", supabase_settings)
         self._provided_career_kb = None
         self._provided_code_index = None
-        
+
         # pgvector mode flag (defaults to True, requires Supabase)
         self.use_pgvector = kwargs.get("use_pgvector", True)
-        
+
         # Initialize pgvector retriever
         self.pgvector_retriever = None
         if self.use_pgvector:
@@ -95,7 +95,7 @@ class RagEngine:
                     f"Failed to initialize pgvector retriever: {e}. "
                     "Ensure Supabase is configured with SUPABASE_URL and SUPABASE_KEY."
                 ) from e
-        
+
         # Parse initialization arguments
         if len(args) == 1 and not hasattr(self.settings, "validate_configuration"):
             # Assume it's supabase_settings if it has validate_configuration
@@ -114,24 +114,24 @@ class RagEngine:
         # Initialize using factory
         from .rag_factory import RagEngineFactory
         factory = RagEngineFactory(self.settings)
-        
+
         # Create core components
         self.embeddings, emb_degraded = factory.create_embeddings()
         self.llm, llm_degraded = factory.create_llm()
         self.degraded_mode = emb_degraded or llm_degraded
-        
+
         # Create knowledge bases
         self.career_kb = factory.create_career_kb(self._provided_career_kb)
         self.code_index = factory.create_code_index(self._provided_code_index)
-        
+
         # Initialize code service
         from src.retrieval.code_service import CodeIndexService
         self.code_service = CodeIndexService(settings=self.settings, code_index=self.code_index)
         self._code_index_snapshot = self.code_service._snapshot  # compatibility
-        
+
         # Load and process documents (for compatibility)
         self._career_docs = factory.load_documents(self.career_kb, self._provided_career_kb)
-        
+
         # Create response generator
         from .response_generator import ResponseGenerator
         self.response_generator = ResponseGenerator(
@@ -150,16 +150,16 @@ class RagEngine:
         - Centralized embeddings, no local files
         - Retrieval logging for observability
         - Scales horizontally on Vercel
-        
+
         **Observability**: Traced with LangSmith, metrics logged
-        
+
         Returns dict with keys: 'matches', 'skills', 'raw', 'scores', 'chunks'
         """
         start_time = time.time()
         matches: List[str] = []
         scores: List[float] = []
         chunks: List[Dict] = []  # ← PRESERVE full chunk data
-        
+
         # Use pgvector for retrieval
         if self.pgvector_retriever:
             try:
@@ -170,9 +170,9 @@ class RagEngine:
             except Exception as e:
                 logger.error(f"pgvector retrieval failed: {e}")
                 raise RuntimeError(f"Retrieval failed: {e}. Ensure Supabase is configured.")
-        
+
         latency_ms = int((time.time() - start_time) * 1000)
-        
+
         # Log retrieval metrics if observability enabled
         if OBSERVABILITY_ENABLED and matches:
             try:
@@ -184,7 +184,7 @@ class RagEngine:
                 logger.debug(f"Retrieval metrics: {metrics.num_chunks} chunks, {metrics.avg_similarity:.3f} avg similarity")
             except Exception as e:
                 logger.warning(f"Failed to calculate retrieval metrics: {e}")
-        
+
         # Build skills extraction (simple heuristic)
         skills_fragments: List[str] = [m for m in matches if "skill" in m.lower()]
         return {
@@ -198,18 +198,18 @@ class RagEngine:
     @trace_retrieval
     def retrieve_with_logging(self, query: str, message_id: int):
         """Retrieve with analytics logging (production method).
-        
+
         This method should be used in production `/api/chat` endpoint.
         It retrieves chunks AND logs the event for evaluation.
-        
+
         Args:
             query: User query
             message_id: ID from messages table (for linking retrieval logs)
             top_k: Number of chunks to retrieve
-            
+
         Returns:
             Same format as retrieve() but with logging
-            
+
         Why this matters:
         - Enables RAG evaluation metrics
         - Tracks which chunks are useful
@@ -226,7 +226,7 @@ class RagEngine:
                 )
                 matches = [c['content'] for c in chunks]
                 skills_fragments = [m for m in matches if "skill" in m.lower()]
-                
+
                 return {
                     "matches": matches,
                     "skills": skills_fragments if skills_fragments else ["No explicit skills extracted"],
@@ -237,7 +237,7 @@ class RagEngine:
             except Exception as e:
                 logger.error(f"Logged retrieval failed: {e}")
                 # Fall back to regular retrieve
-        
+
         # Fallback: regular retrieve without logging
         result = self.retrieve(query, top_k=3)
         result["logged"] = False
@@ -247,50 +247,50 @@ class RagEngine:
     @trace_generation
     def generate_response(self, query: str, chat_history: Optional[List[Dict[str, str]]] = None) -> str:
         """Generate an answer using RetrievalQA chain if available.
-        
+
         **Observability**: Full RAG pipeline traced with LangSmith
         - Retrieval metrics
         - Generation tokens and latency
         - Optional evaluation metrics
-        
+
         Args:
             query: The user's question
             chat_history: Previous conversation messages for context
         """
         start_time = time.time()
-        
+
         # Retrieve context
         retrieved = self.retrieve(query)
-        
+
         # Generate response with context and chat history
         response = self.response_generator.generate_basic_response(
-            query, 
+            query,
             fallback_docs=retrieved.get("matches", []),
             chat_history=chat_history
         )
-        
+
         latency_ms = int((time.time() - start_time) * 1000)
         logger.debug(f"Full RAG pipeline completed in {latency_ms}ms")
-        
+
         return response
 
     # ========== ADVANCED RETRIEVAL ==========
     @trace_retrieval
     def retrieve_with_code(self, query: str, role: str):
         """Enhanced retrieval that can include code snippets when allowed.
-        
+
         **NEW**: Uses pgvector's role-aware retrieval when available.
-        
+
         DEPRECATION: passing only `role` to trigger code inclusion will be removed in a future version.
         Callers should pass include_code=bool explicitly (RoleRouter now handles this).
         """
         include_code = None
         if include_code is None and role is not None:
             logger.debug("DEPRECATION: implicit role-based code inclusion – supply include_code explicitly.")
-        
+
         # Ensure latest code before searching (unless disabled)
         self.ensure_code_index_current()
-        
+
         # Use pgvector role-aware retrieval if available
         if self.use_pgvector and self.pgvector_retriever and role:
             try:
@@ -351,7 +351,7 @@ class RagEngine:
         if getattr(self, 'code_service', None):
             self.code_service.ensure_current()
             self._code_index_snapshot = self.code_service._snapshot
-    
+
     def code_index_version(self) -> str:
         """Return code index version hash for tracking changes."""
         if getattr(self, 'code_service', None):
@@ -361,7 +361,7 @@ class RagEngine:
     # ========== HEALTH & MONITORING ==========
     def health_check(self) -> Dict[str, Any]:
         """Check if RAG engine is operational.
-        
+
         Returns:
             Status dict with health indicators
         """
@@ -370,29 +370,29 @@ class RagEngine:
             "mode": "pgvector",
             "checks": {}
         }
-        
+
         try:
             # Check embeddings
             test_embedding = self.embed("health check")
             status["checks"]["embeddings"] = "ok" if test_embedding else "failed"
-            
+
             # Check retrieval
             test_retrieval = self.retrieve("test", top_k=1)
             status["checks"]["retrieval"] = "ok" if test_retrieval.get("matches") else "failed"
-            
+
             # Check pgvector
             if self.use_pgvector and self.pgvector_retriever:
                 pgv_health = self.pgvector_retriever.health_check()
                 status["checks"]["pgvector"] = pgv_health["status"]
-            
+
             # Overall status
             all_ok = all(v == "ok" or v == "healthy" for v in status["checks"].values())
             status["status"] = "healthy" if all_ok else "degraded"
-            
+
         except Exception as e:
             status["status"] = "unhealthy"
             status["error"] = str(e)
-        
+
         return status
 
 @dataclass

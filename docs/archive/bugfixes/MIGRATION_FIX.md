@@ -36,9 +36,9 @@ You should see: `Success. No rows returned`
 Run this query in SQL Editor:
 
 ```sql
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
   AND table_name IN ('confessions', 'sms_logs')
 ORDER BY table_name;
 ```
@@ -104,7 +104,7 @@ Migration 002 creates:
 **Solution**: Make sure you're using the **service_role** key, not anon key
 
 ### Still getting 404 errors after migration
-**Solution**: 
+**Solution**:
 1. Clear Vercel cache: Go to Vercel dashboard → Deployments → Redeploy
 2. Wait 30 seconds for deployment
 3. Test again

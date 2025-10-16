@@ -2,7 +2,7 @@
 
 **Purpose**: Complete guide for setting up API keys, configuring services, and integrating with frontend.
 
-**Status**: ✅ Production-ready  
+**Status**: ✅ Production-ready
 **Last Updated**: October 16, 2025
 
 ---
@@ -436,7 +436,7 @@ export function Chat() {
     if (!query.trim()) return;
 
     setLoading(true);
-    
+
     // Add user message to UI
     const newMessages = [...messages, { role: 'user' as const, content: query }];
     setMessages(newMessages);
@@ -462,10 +462,10 @@ export function Chat() {
           role: 'assistant',
           content: data.answer
         }]);
-        
+
         // Save session ID
         sessionStorage.setItem('session_id', data.session_id);
-        
+
         // Handle actions
         if (data.actions_taken?.includes('send_resume')) {
           alert('Resume sent! Check your email.');
@@ -489,7 +489,7 @@ export function Chat() {
           </div>
         ))}
       </div>
-      
+
       <div className="input-area">
         <input
           value={query}
@@ -518,7 +518,7 @@ export function ResumeButton({ userEmail, userName }: { userEmail: string; userN
 
   const requestResume = async () => {
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/email', {
         method: 'POST',
@@ -596,7 +596,7 @@ export function FeedbackForm({ messageId }: { messageId: string }) {
   return (
     <div className="feedback-form">
       <h3>How was this response?</h3>
-      
+
       <div className="star-rating">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
@@ -608,13 +608,13 @@ export function FeedbackForm({ messageId }: { messageId: string }) {
           </button>
         ))}
       </div>
-      
+
       <textarea
         placeholder="Additional comments (optional)"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
       />
-      
+
       <label>
         <input
           type="checkbox"
@@ -623,7 +623,7 @@ export function FeedbackForm({ messageId }: { messageId: string }) {
         />
         I'd like Noah to contact me
       </label>
-      
+
       {contactRequested && (
         <>
           <input
@@ -640,7 +640,7 @@ export function FeedbackForm({ messageId }: { messageId: string }) {
           />
         </>
       )}
-      
+
       <button onClick={submitFeedback}>Submit Feedback</button>
     </div>
   );
@@ -890,9 +890,9 @@ curl https://api.openai.com/v1/embeddings \
 -- Run: supabase/migrations/003_analytics_helpers.sql
 
 -- Verify functions exist:
-SELECT routine_name 
-FROM information_schema.routines 
-WHERE routine_type='FUNCTION' 
+SELECT routine_name
+FROM information_schema.routines
+WHERE routine_type='FUNCTION'
   AND specific_schema='public'
   AND routine_name LIKE '%summary%';
 ```
@@ -971,13 +971,13 @@ All endpoints validate required fields:
 def validate_chat_request(data):
     required = ["query", "role"]
     missing = [f for f in required if f not in data]
-    
+
     if missing:
         return False, f"Missing required fields: {', '.join(missing)}"
-    
+
     if not isinstance(data["query"], str) or len(data["query"]) > 5000:
         return False, "Invalid query: must be string under 5000 chars"
-    
+
     return True, None
 ```
 
@@ -998,10 +998,10 @@ redis_client = redis.from_url(os.getenv("REDIS_URL"))
 def check_rate_limit(ip: str, limit: int = 6, window: int = 60) -> bool:
     key = f"rate_limit:{ip}"
     count = redis_client.incr(key)
-    
+
     if count == 1:
         redis_client.expire(key, window)
-    
+
     return count <= limit
 ```
 
@@ -1054,6 +1054,6 @@ def check_rate_limit(ip: str, limit: int = 6, window: int = 60) -> bool:
 
 ---
 
-**Last Updated**: October 16, 2025  
-**Status**: ✅ Production-ready, fully documented  
+**Last Updated**: October 16, 2025
+**Status**: ✅ Production-ready, fully documented
 **Maintainer**: @noah

@@ -17,7 +17,7 @@ def response_formatter():
 def mock_memory():
     return Mock(spec=Memory)
 
-@pytest.fixture  
+@pytest.fixture
 def mock_rag_engine():
     mock = Mock(spec=RagEngine)
     mock.retrieve_code_info.return_value = []

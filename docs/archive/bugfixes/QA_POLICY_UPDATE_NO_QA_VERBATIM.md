@@ -2,8 +2,8 @@
 
 ## Issue Identified
 
-**Date:** October 16, 2025  
-**Severity:** HIGH - User-facing quality issue  
+**Date:** October 16, 2025
+**Severity:** HIGH - User-facing quality issue
 **Reported By:** User screenshot showing raw Q&A format in production
 
 ### Problem Description
@@ -21,8 +21,8 @@ A: Noah collaborates with project managers on generative AI initiatives...
 
 **Good Response (After Fix):**
 ```
-Noah typically bridges business and technical teams in projects, ensuring alignment 
-between user needs and technical feasibility. He brings both domain knowledge and 
+Noah typically bridges business and technical teams in projects, ensuring alignment
+between user needs and technical feasibility. He brings both domain knowledge and
 growing technical expertise to collaborations...
 ```
 
@@ -57,22 +57,22 @@ growing technical expertise to collaborations...
 
 #### In Section 4 (Presentation rules):
 ```markdown
-- **CRITICAL: Never return knowledge base entries in Q&A format verbatim** - 
-  always synthesize retrieved content into natural, conversational responses 
+- **CRITICAL: Never return knowledge base entries in Q&A format verbatim** -
+  always synthesize retrieved content into natural, conversational responses
   that flow naturally from the user's question.
 ```
 
 #### In Section 5 (Reasoning heuristics):
 ```markdown
-- **Synthesize, don't regurgitate**: When KB contains Q&A pairs, blend the 
-  information into a cohesive response that directly addresses the user's 
+- **Synthesize, don't regurgitate**: When KB contains Q&A pairs, blend the
+  information into a cohesive response that directly addresses the user's
   query without exposing the internal Q&A structure.
 ```
 
 #### In Section 6 (Grounding & hallucination controls):
 ```markdown
-- **Answer synthesis**: Retrieved context provides facts, but responses must 
-  feel conversational and tailored to the specific question asked, not 
+- **Answer synthesis**: Retrieved context provides facts, but responses must
+  feel conversational and tailored to the specific question asked, not
   copy-pasted from storage format.
 ```
 
@@ -90,7 +90,7 @@ CRITICAL RULES:
 - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
 ```
 
-**Why in CRITICAL RULES section:** 
+**Why in CRITICAL RULES section:**
 - Highest priority instruction
 - Appears early in prompt (before other guidelines)
 - Emphasized with bold markdown

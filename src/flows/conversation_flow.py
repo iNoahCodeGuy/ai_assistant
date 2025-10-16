@@ -30,9 +30,9 @@ def run_conversation_flow(
     session_id: str,
 ) -> ConversationState:
     """Execute the conversation pipeline in sequence.
-    
+
     Flow: handle_greeting → classify → retrieve → generate → plan → apply → execute → log
-    
+
     The greeting node short-circuits if user's first query is a simple "hello".
     """
     pipeline = nodes or (

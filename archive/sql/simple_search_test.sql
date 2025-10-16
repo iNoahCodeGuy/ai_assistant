@@ -2,7 +2,7 @@
 -- Run this in Supabase SQL Editor
 
 -- First, check if kb_chunks table has data
-SELECT 
+SELECT
     id,
     doc_id,
     LEFT(content, 50) as content_preview,
@@ -12,7 +12,7 @@ LIMIT 5;
 
 -- Test if we can compute similarity manually
 -- (This uses a dummy embedding - just zeros)
-SELECT 
+SELECT
     id,
     content,
     1 - (embedding <=> ARRAY[0.0, 0.0]::vector(1536)) as similarity

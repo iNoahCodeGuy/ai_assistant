@@ -1,7 +1,7 @@
 # Software Developer Query Classification Fix
 
-**Date**: October 12, 2025  
-**Issue**: "How does this product work?" query returning "no information"  
+**Date**: October 12, 2025
+**Issue**: "How does this product work?" query returning "no information"
 **Root Cause**: Query classification + missing knowledge bases in Supabase
 
 ---
@@ -48,7 +48,7 @@ This meant:
 ```python
 # Detect "how does [product/system/chatbot] work" queries as technical
 elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
-     or (("how does" in lowered or "how did" in lowered or "explain how" in lowered) 
+     or (("how does" in lowered or "how did" in lowered or "explain how" in lowered)
          and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "rag", "pipeline", "work", "built"])):
     state.stash("query_type", "technical")
 ```
@@ -175,7 +175,7 @@ chunks = pgvector_retriever.retrieve_for_role(
    ```
    Role: Software Developer
    Query: "How does this product work?"
-   
+
    Expected:
    - Returns RAG pipeline details
    - Shows architecture diagram (mermaid)

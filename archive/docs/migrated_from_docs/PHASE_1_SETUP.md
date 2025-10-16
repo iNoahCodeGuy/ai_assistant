@@ -61,17 +61,17 @@ Success. No rows returned
 Run this query in SQL Editor:
 ```sql
 -- Check tables exist
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
   AND table_name IN ('kb_chunks', 'messages', 'retrieval_logs', 'links', 'feedback');
 
 -- Check pgvector extension
 SELECT * FROM pg_extension WHERE extname = 'vector';
 
 -- Check search function exists
-SELECT routine_name 
-FROM information_schema.routines 
+SELECT routine_name
+FROM information_schema.routines
 WHERE routine_name = 'search_kb_chunks';
 ```
 
@@ -180,7 +180,7 @@ FROM kb_chunks
 LIMIT 5;
 
 -- Test similarity search
-SELECT 
+SELECT
     section,
     LEFT(content, 100) as content_preview,
     1 - (embedding <=> (SELECT embedding FROM kb_chunks LIMIT 1)) as similarity
@@ -219,14 +219,14 @@ OPENAI_API_KEY=sk-proj-...your-key
 
 ### Error: Rate limit (429)
 
-**Solution**: 
+**Solution**:
 - Script automatically retries with backoff
 - OpenAI free tier: 3 requests/minute
 - Wait a few minutes or upgrade to paid tier
 
 ### Warning: "Found X existing chunks"
 
-**Solution**: 
+**Solution**:
 - Data already migrated (safe to ignore)
 - Use `--force` flag to re-import if needed
 

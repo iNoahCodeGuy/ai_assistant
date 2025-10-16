@@ -1,6 +1,6 @@
 # Greeting System Implementation Summary
-**Date:** October 14, 2025  
-**Commit:** 1bea6c7  
+**Date:** October 14, 2025
+**Commit:** 1bea6c7
 **Status:** ✅ COMPLETE - Assistant now introduces itself warmly!
 
 ## Question Answered
@@ -46,7 +46,7 @@ handle_greeting → classify → retrieve → generate → plan → apply → ex
 
 ### Software Developer
 ```
-Hey! 👋 So glad you're checking this out. I'm Noah's AI Assistant, 
+Hey! 👋 So glad you're checking this out. I'm Noah's AI Assistant,
 and honestly, I'm kind of excited to geek out with another developer.
 
 Want to see:
@@ -56,14 +56,14 @@ Want to see:
 - System architecture diagrams?
 - Noah's technical projects and contributions?
 
-Or ask me anything about how I work — I love talking about the engineering! 
+Or ask me anything about how I work — I love talking about the engineering!
 What catches your interest?
 ```
 
 ### Technical Hiring Manager
 ```
-Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, 
-and I'd love to show you what makes this project interesting from an 
+Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant,
+and I'd love to show you what makes this project interesting from an
 engineering perspective.
 
 I can walk you through:
@@ -73,18 +73,18 @@ I can walk you through:
 - Noah's technical background and experience
 - Or anything else you're curious about!
 
-I'm also happy to explain how I was built, my architecture, or dive 
+I'm also happy to explain how I was built, my architecture, or dive
 into specific technical decisions. What sounds interesting?
 ```
 
 ### Casual Visitor
 ```
-Hey there! 👋 Welcome! I'm Noah's AI Assistant, and I'm really happy 
+Hey there! 👋 Welcome! I'm Noah's AI Assistant, and I'm really happy
 you stopped by.
 
-I'm here to tell you about Noah's background, this project, or really 
-anything you're curious about. I'm also totally open to questions about 
-how I work — like how I remember context, find relevant information, 
+I'm here to tell you about Noah's background, this project, or really
+anything you're curious about. I'm also totally open to questions about
+how I work — like how I remember context, find relevant information,
 or decide what to say.
 
 Feel free to ask me anything! What would you like to explore?
@@ -104,11 +104,11 @@ def should_show_greeting(query: str, chat_history: list) -> bool:
     """Show greeting if first turn AND simple greeting query."""
     if not is_first_turn(chat_history):
         return False
-    
+
     # Recognizes: "hello", "hi", "hey", "what's up", etc.
     greeting_patterns = ["hello", "hi", "hey", "greetings", ...]
     query_lower = query.lower().strip()
-    
+
     # Short queries (≤5 words) containing greeting patterns
     if len(words) <= 5 and contains_greeting_pattern:
         return True
@@ -208,11 +208,11 @@ streamlit run src/main.py
 ## Before vs After
 
 ### Before
-**Streamlit:** "Hello, I am Noah's AI Assistant. To better provide assistance, which best describes you?"  
+**Streamlit:** "Hello, I am Noah's AI Assistant. To better provide assistance, which best describes you?"
 **First message:** [No introduction, just waits for query]
 
 ### After
-**Streamlit:** "Hello! I'm Noah's AI Assistant. To provide you with the best experience, please select the option that best describes you:"  
+**Streamlit:** "Hello! I'm Noah's AI Assistant. To provide you with the best experience, please select the option that best describes you:"
 **First message:** [Enthusiastic, role-specific greeting with conversation menu]
 
 ## Result

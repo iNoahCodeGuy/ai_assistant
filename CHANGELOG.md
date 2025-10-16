@@ -213,13 +213,13 @@ and this project follows calendar-based versioning.
 
 ## Legend
 
-**[YYYY-MM-DD]** - Release/feature date  
-**Added** - New features  
-**Changed** - Changes to existing functionality  
-**Fixed** - Bug fixes  
-**Deprecated** - Features marked for removal  
-**Removed** - Deleted features  
-**Security** - Security-related changes  
+**[YYYY-MM-DD]** - Release/feature date
+**Added** - New features
+**Changed** - Changes to existing functionality
+**Fixed** - Bug fixes
+**Deprecated** - Features marked for removal
+**Removed** - Deleted features
+**Security** - Security-related changes
 
 ---
 

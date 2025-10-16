@@ -151,7 +151,7 @@ POST https://your-app.vercel.app/api/chat
   - import_retriever.py: ~8 KB
   - content_blocks additions: ~3 KB
   - conversation_nodes updates: ~2 KB
-  
+
 - **Impact**: Negligible (<0.2 MB increase)
 
 ### Runtime Performance
@@ -323,8 +323,8 @@ Deployment considered successful when:
 
 All verification tests pass. The new features integrate seamlessly with existing Vercel infrastructure. No configuration changes, environment variables, or dependency updates needed. The code display and import explanation features will work automatically once deployed.
 
-**Estimated deployment time**: 2-3 minutes  
-**Risk level**: LOW (all features have graceful fallbacks)  
+**Estimated deployment time**: 2-3 minutes
+**Risk level**: LOW (all features have graceful fallbacks)
 **Rollback time if needed**: <5 minutes
 
 Deploy with confidence! 🚀

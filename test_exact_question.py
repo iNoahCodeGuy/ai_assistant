@@ -15,7 +15,7 @@ for query in queries:
     chunks = r.retrieve(query, top_k=5, threshold=0.4)
     print(f"Query: '{query}'")
     print(f"Matches: {len(chunks)}\n")
-    
+
     for i, c in enumerate(chunks[:3], 1):
         print(f"{i}. {c['doc_id']} (similarity: {c['similarity']:.3f})")
         print(f"   Preview: {c['content'][:100]}...\n")

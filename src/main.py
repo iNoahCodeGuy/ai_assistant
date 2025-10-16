@@ -26,10 +26,10 @@ This file orchestrates the complete user interaction flow:
 Streamlit Session State Variables:
     role (str): User's selected role (None until first selection)
         Options: "Hiring Manager (technical)", "Software Developer", etc.
-    
+
     chat_history (List[Dict]): Conversation messages for display
         Format: [{"role": "user"|"assistant", "content": str}, ...]
-    
+
     session_id (str): UUID for tracking conversation in analytics
         Generated once per session, persists across reruns
 
@@ -39,12 +39,12 @@ Why Role Selection First:
     - Hiring Manager (technical): Career KB + code snippets, dual-audience format
     - Hiring Manager (nontechnical): Career KB only, business-focused
     - Casual Visitor: Lightweight retrieval, conversational tone
-    
+
     Without knowing the role, we can't optimize retrieval or formatting.
 
 Usage:
     streamlit run src/main.py
-    
+
     Then:
     1. Select your role from dropdown
     2. Click "Confirm Role"
@@ -90,10 +90,10 @@ USE_LANGGRAPH_FLOW = os.getenv("LANGGRAPH_FLOW_ENABLED", "true").lower() == "tru
 
 def init_state():
     """Initialize Streamlit session state variables.
-    
+
     Session state persists across Streamlit reruns (when user interacts).
     This ensures role selection and chat history survive page updates.
-    
+
     Why check 'not in': Streamlit reruns entire script on every interaction.
     Without this guard, we'd reset state to None on every rerun.
     """
@@ -108,10 +108,10 @@ def init_state():
 def main():
     """Main application flow: validate config → role selection → chat loop."""
     init_state()
-    
+
     # Validate Supabase configuration
     supabase_settings.validate_configuration()
-    
+
     memory = Memory()
     rag_engine = RagEngine(supabase_settings)
     role_router = RoleRouter()
@@ -126,7 +126,7 @@ def main():
         st.write("Hello! I'm Portfolia, Noah's AI Assistant.")
         st.write("To provide you with the best experience, please select the option that best describes you:")
         selected_role = st.selectbox("Select your role:", ROLE_OPTIONS)
-        
+
         if st.button("Confirm Role"):
             # Set role and show warm greeting immediately after role selection
             st.session_state.role = selected_role
@@ -155,7 +155,7 @@ def main():
     if user_input:
         # Start timing for analytics
         start_time = time.time()
-        
+
         # Append user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
@@ -223,7 +223,7 @@ def main():
             # Log failed interaction
             response_time = time.time() - start_time
             latency_ms = int(response_time * 1000)
-            
+
             interaction_data = UserInteractionData(
                 session_id=st.session_state.session_id,
                 role_mode=st.session_state.role,
@@ -233,9 +233,9 @@ def main():
                 latency_ms=latency_ms,
                 success=False
             )
-            
+
             supabase_analytics.log_interaction(interaction_data)
-            
+
             st.error(f"Sorry, I encountered an error: {str(e)}")
 
     # Supabase Analytics panel
@@ -269,8 +269,10 @@ def main():
                 st.warning("Message cannot be empty.")
             else:
                 import csv, os, datetime
-                os.makedirs("data", exist_ok=True)
-                path = "data/confessions.csv"
+                from config.supabase_config import supabase_settings
+
+                path = supabase_settings.confessions_path
+                os.makedirs(os.path.dirname(path), exist_ok=True)
                 write_header = not os.path.exists(path)
                 with open(path, "a", newline="", encoding="utf-8") as f:
                     w = csv.writer(f)

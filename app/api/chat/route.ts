@@ -13,17 +13,17 @@ type ChatRequest = {
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    
+
     // Call your Python backend (update this URL based on your deployment)
     // Option 1: If Python backend is on same Vercel deployment
     // const pythonBackendUrl = `${request.nextUrl.origin}/api/python/chat`
-    
+
     // Option 2: If Python backend is separate (Railway, Render, etc.)
     const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000/chat'
-    
+
     // Option 3: Call Python functions directly (requires Python on Vercel)
     // For now, we'll simulate a response for development
-    
+
     // TODO: Uncomment this when Python backend is deployed
     /*
     const response = await fetch(pythonBackendUrl, {
@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
       context: [],
       type: 'development_mode'
     })
-    
+
   } catch (error) {
     console.error('Chat API error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to process request',
         message: error instanceof Error ? error.message : 'Unknown error'
       },

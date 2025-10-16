@@ -39,12 +39,12 @@ class VectorStore:
         self.dimension = dimension
         self.index = faiss.IndexFlatL2(dimension)
         self.vectors = []
-    
+
     def add_vectors(self, vectors: List[np.ndarray], metadata: List[Any] = None):
         """Add vectors to the FAISS index."""
         self.index.add(np.array(vectors).astype('float32'))
         self.vectors.extend(metadata if metadata else [None] * len(vectors))
-    
+
     def search(self, query_vector: np.ndarray, k: int = 5) -> List[Any]:
         """Search for the top k nearest vectors to the query vector."""
         distances, indices = self.index.search(np.array([query_vector]).astype('float32'), k)

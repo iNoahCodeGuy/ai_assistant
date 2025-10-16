@@ -23,9 +23,9 @@ print("-" * 70)
 try:
     from openai import OpenAI
     from config.supabase_config import supabase_settings
-    
+
     client = OpenAI(api_key=supabase_settings.api_key)
-    
+
     # Test embedding
     print("Testing embedding generation...")
     response = client.embeddings.create(
@@ -33,7 +33,7 @@ try:
         input="test query"
     )
     print(f"✅ Embedding API works! Dimension: {len(response.data[0].embedding)}")
-    
+
     # Test chat completion
     print("\nTesting chat completion...")
     response = client.chat.completions.create(
@@ -46,7 +46,7 @@ try:
     )
     answer = response.choices[0].message.content
     print(f"✅ Chat API works! Response: {answer}")
-    
+
 except Exception as e:
     print(f"❌ OpenAI API FAILED: {e}")
     print("\nPossible causes:")
@@ -62,34 +62,34 @@ print("-" * 70)
 
 try:
     from config.supabase_config import get_supabase_client
-    
+
     supabase = get_supabase_client()
-    
+
     # Check if career_kb chunks exist
     result = supabase.table('kb_chunks').select('*').eq('doc_id', 'career_kb').execute()
-    
+
     if not result.data:
         print("❌ NO CAREER_KB CHUNKS FOUND IN DATABASE!")
         print("\nThis is the root cause! The database has no career information.")
         print("\nFix: Run migration script:")
         print("  python scripts/migrate_data_to_supabase.py")
         sys.exit(1)
-    
+
     print(f"✅ Found {len(result.data)} career_kb chunks")
     print("\nSample chunks:")
     for i, chunk in enumerate(result.data[:3], 1):
         print(f"  {i}. {chunk['section'][:60]}...")
-    
+
     # Test retrieval with actual query
     print("\nTesting vector search with career query...")
-    
+
     # Generate embedding for test query
     test_query = "what is noah's professional background?"
     embedding = client.embeddings.create(
         model="text-embedding-3-small",
         input=test_query
     ).data[0].embedding
-    
+
     # Search using RPC function
     search_result = supabase.rpc(
         'search_kb_chunks',
@@ -99,7 +99,7 @@ try:
             'match_count': 3
         }
     ).execute()
-    
+
     if not search_result.data:
         print("❌ NO CHUNKS RETRIEVED! Similarity scores too low.")
         print("\nPossible causes:")
@@ -110,7 +110,7 @@ try:
         print(f"✅ Retrieved {len(search_result.data)} chunks")
         for i, chunk in enumerate(search_result.data, 1):
             print(f"  {i}. Similarity: {chunk.get('similarity', 'N/A'):.3f} - {chunk['section'][:50]}...")
-    
+
 except Exception as e:
     print(f"❌ Career KB retrieval FAILED: {e}")
     import traceback
@@ -126,27 +126,27 @@ try:
     from core.rag_engine import RagEngine
     from agents.role_router import RoleRouter
     from core.memory import Memory
-    
+
     # Initialize components
     rag_engine = RagEngine()
     role_router = RoleRouter()
     memory = Memory()
-    
+
     # Test query
     query = "what is noah's professional background?"
     role = "Hiring Manager (nontechnical)"  # Match exact role name
-    
+
     print(f"Query: {query}")
     print(f"Role: {role}")
     print("\nProcessing...")
-    
+
     # Get response through role router
     result = role_router.route(role, query, memory, rag_engine)
-    
+
     print("\n📋 Response Preview:")
     print("-" * 70)
     response = result.get('response', '')
-    
+
     # Check for degraded mode indicators
     if '[DEGRADED MODE SYNTHESIS]' in response or 'User question:' in response:
         print("❌ DEGRADED MODE DETECTED!")
@@ -159,13 +159,13 @@ try:
     else:
         print("✅ Response looks good!")
         print(response[:300] + "...")
-    
+
     # Check context
     if result.get('context'):
         print(f"\n✅ Context included: {len(result['context'])} chunks")
     else:
         print("\n⚠️  No context in response")
-    
+
 except Exception as e:
     print(f"❌ Response generation FAILED: {e}")
     import traceback
@@ -179,9 +179,9 @@ print("-" * 70)
 
 try:
     from core.response_generator import ResponseGenerator
-    
+
     generator = ResponseGenerator()
-    
+
     # Simulate retrieved context
     mock_context = [
         {
@@ -191,16 +191,16 @@ try:
             'section': 'Professional Background'
         }
     ]
-    
+
     test_query = "What is Noah's background?"
-    
+
     print("Testing direct LLM call...")
     response = generator.generate_response(
         query=test_query,
         context=mock_context,
         role="Hiring Manager"
     )
-    
+
     if isinstance(response, str):
         if '[DEGRADED MODE' in response or 'User question:' in response:
             print("❌ DEGRADED MODE in direct generator call!")
@@ -213,7 +213,7 @@ try:
     else:
         print(f"⚠️  Unexpected response type: {type(response)}")
         print(response)
-    
+
 except Exception as e:
     print(f"❌ Direct generator test FAILED: {e}")
     import traceback

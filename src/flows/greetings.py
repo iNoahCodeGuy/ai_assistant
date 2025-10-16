@@ -6,7 +6,7 @@ enthusiastic greeting that invites exploration and questions.
 
 Usage:
     from src/flows.greetings import get_role_greeting
-    
+
     greeting = get_role_greeting("Software Developer")
     # Returns personalized welcome message
 """
@@ -16,16 +16,16 @@ from typing import Dict
 
 def get_role_greeting(role: str) -> str:
     """Get an enthusiastic, role-appropriate greeting.
-    
+
     Implements the personality guidance from CONVERSATION_PERSONALITY.md:
     - Warm and genuinely excited
     - Offers conversation starters tailored to role
     - Invites questions about how the assistant works
     - Balances friendliness with professionalism
-    
+
     Args:
         role: User's selected role (e.g., "Software Developer")
-        
+
     Returns:
         Personalized greeting string with conversation menu
     """
@@ -36,7 +36,7 @@ def get_role_greeting(role: str) -> str:
         "Just looking around": _casual_visitor_greeting(),
         "Looking to confess crush": _confession_greeting(),
     }
-    
+
     # Return role-specific greeting, or default if role not recognized
     return greetings.get(role, _default_greeting())
 
@@ -126,16 +126,16 @@ What would you like to explore?"""
 
 def is_first_turn(chat_history: list) -> bool:
     """Check if this is the first turn of the conversation.
-    
+
     Args:
         chat_history: List of conversation messages
-        
+
     Returns:
         True if this is the first user query (no assistant messages yet)
     """
     if not chat_history:
         return True
-    
+
     # Check if there are any assistant messages
     assistant_messages = [msg for msg in chat_history if msg.get("role") == "assistant"]
     return len(assistant_messages) == 0
@@ -143,35 +143,35 @@ def is_first_turn(chat_history: list) -> bool:
 
 def should_show_greeting(query: str, chat_history: list) -> bool:
     """Determine if we should show a greeting instead of answering the query.
-    
+
     Show greeting if:
     1. This is the first turn AND
     2. The query is a simple greeting/hello (not a substantive question)
-    
+
     Args:
         query: User's query text
         chat_history: Conversation history
-        
+
     Returns:
         True if we should respond with a greeting
     """
     if not is_first_turn(chat_history):
         return False
-    
+
     # Simple greetings that warrant a warm introduction
     greeting_patterns = [
-        "hello", "hi", "hey", "greetings", "good morning", 
+        "hello", "hi", "hey", "greetings", "good morning",
         "good afternoon", "good evening", "what's up", "sup",
         "how are you", "how do you do"
     ]
-    
+
     query_lower = query.lower().strip()
-    
+
     # Check if query is primarily a greeting (≤5 words and contains greeting)
     words = query_lower.split()
     if len(words) <= 5:
         for pattern in greeting_patterns:
             if pattern in query_lower:
                 return True
-    
+
     return False

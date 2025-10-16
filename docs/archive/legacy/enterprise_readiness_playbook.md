@@ -176,4 +176,3 @@ When showing code, be prepared to explain enterprise replacements:
   - **Code transparency**: Shows implementation on request with proper formatting and security
 
 Use this playbook as the single source of truth whenever positioning the product for enterprise-minded audiences.
-

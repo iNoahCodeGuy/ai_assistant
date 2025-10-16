@@ -58,7 +58,7 @@ code_display_keywords = [
 
 ---
 
-#### C. **NEW: Proactive Code Detection** 
+#### C. **NEW: Proactive Code Detection**
 ```python
 proactive_code_topics = [
     # Implementation questions (even without "show me")
@@ -71,7 +71,7 @@ proactive_code_topics = [
     "pgvector", "supabase query", "database", "migration",
     "prompt engineering", "llm call", "generation",
     # Patterns that need examples
-    "pattern", "approach", "technique", "strategy" 
+    "pattern", "approach", "technique", "strategy"
 ]
 
 # Only for technical roles
@@ -157,7 +157,7 @@ if state.fetch("needs_longer_response", False) or state.fetch("teaching_moment",
 
 # EXPLICIT code request - user specifically asked
 if state.fetch("code_display_requested", False) and state.role in [
-    "Software Developer", 
+    "Software Developer",
     "Hiring Manager (technical)"
 ]:
     extra_instructions.append(
@@ -202,10 +202,10 @@ These instructions are passed to the LLM via the `extra_instructions` parameter.
 **Updated `generate_contextual_response()` signature:**
 ```python
 def generate_contextual_response(
-    self, 
-    query: str, 
-    context: List[Dict[str, Any]], 
-    role: str = None, 
+    self,
+    query: str,
+    context: List[Dict[str, Any]],
+    role: str = None,
     chat_history: List[Dict[str, str]] = None,
     extra_instructions: str = None  # NEW PARAMETER
 ) -> str:
@@ -214,10 +214,10 @@ def generate_contextual_response(
 **Updated `_build_role_prompt()` to inject instructions:**
 ```python
 def _build_role_prompt(
-    self, 
-    query: str, 
-    context_str: str, 
-    role: str = None, 
+    self,
+    query: str,
+    context_str: str,
+    role: str = None,
     chat_history: List[Dict[str, str]] = None,
     extra_instructions: str = None  # NEW PARAMETER
 ) -> str:
@@ -225,13 +225,13 @@ def _build_role_prompt(
     instruction_addendum = ""
     if extra_instructions:
         instruction_addendum = f"\n\nIMPORTANT GUIDANCE: {extra_instructions}\n"
-    
+
     # Then inject {instruction_addendum} into each role's prompt template
 ```
 
 **Injected in all role prompts:**
 - Hiring Manager (technical)
-- Software Developer  
+- Software Developer
 - General (Just looking around, etc.)
 
 ---
@@ -269,8 +269,8 @@ def _build_role_prompt(
 ### From `DATA_COLLECTION_AND_SCHEMA_REFERENCE.md`:
 
 > **Reasoning heuristics (what to show and when)**
-> - If the question is **how/why** → long narrative with diagrams/code if needed.  
-> - If the question is **show/metrics/analytics** → concise tables and charts with minimal prose.  
+> - If the question is **how/why** → long narrative with diagrams/code if needed.
+> - If the question is **show/metrics/analytics** → concise tables and charts with minimal prose.
 > - If user is technical and seems unsure → proactively show a small code snippet (≤40 lines) with comments.
 
 ✅ **IMPLEMENTED** via:

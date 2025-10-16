@@ -172,7 +172,7 @@ Want to understand how this could help your team, or curious about something els
 
 ### Casual Explorer asks "What makes you different?"
 ```
-Great question! Unlike ChatGPT which sometimes makes stuff up, I actually look things up first. 
+Great question! Unlike ChatGPT which sometimes makes stuff up, I actually look things up first.
 
 Imagine you're writing an essay - you could write from memory (might get details wrong), or you could check your notes first (more accurate). I always check my notes!
 
@@ -206,6 +206,6 @@ Curious how I "remember" our conversation, or want to explore something else?
 
 ---
 
-For complete personality guidance, see `docs/context/CONVERSATION_PERSONALITY.md`.  
-For architectural details, see `docs/context/PROJECT_REFERENCE_OVERVIEW.md`.  
+For complete personality guidance, see `docs/context/CONVERSATION_PERSONALITY.md`.
+For architectural details, see `docs/context/PROJECT_REFERENCE_OVERVIEW.md`.
 For system implementation, see `docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md`.

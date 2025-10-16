@@ -10,7 +10,7 @@ class ResponseFormatter:
         response = response_data.get("response", "")
         rtype = response_data.get("type", "general")
         context = response_data.get("context", [])
-        
+
         # Convert context dict to list if needed
         if isinstance(context, dict):
             # Extract matches from the dict returned by retrieve()
@@ -33,15 +33,15 @@ class ResponseFormatter:
     def _format_technical_response(self, response: str, context: List[Document]) -> str:
         """Enhanced technical formatting with code snippets and proper citations."""
         sections = []
-        
+
         # Engineer Detail Section
         sections.append("## 🔧 Engineer Detail")
         sections.append(response)
-        
+
         # Ensure context is a list
         if not isinstance(context, list):
             context = []
-        
+
         # Code Examples Section (if context contains code snippets)
         code_snippets = [doc for doc in context if hasattr(doc, 'metadata') and doc.metadata.get('type') == 'code']
         if code_snippets:
@@ -53,11 +53,11 @@ class ResponseFormatter:
                 sections.append(f"```python\n{snippet.page_content}\n```")
                 if metadata.get('github_url'):
                     sections.append(f"[View on GitHub]({metadata['github_url']})")
-        
+
         # Plain-English Summary
         sections.append("\n## 📋 Plain-English Summary")
         sections.append(self._generate_summary(response))
-        
+
         # Citations Section
         if context and isinstance(context, list):
             sections.append("\n## 📚 Citations")
@@ -69,7 +69,7 @@ class ResponseFormatter:
                     sections.append(f"{i}. `{source}{line_info}`")
                 else:
                     sections.append(f"{i}. {str(doc)[:100]}...")
-        
+
         return "\n".join(sections)
 
     def _generate_summary(self, technical_text: str) -> str:
@@ -77,7 +77,7 @@ class ResponseFormatter:
         # Simple heuristic - take first 2 sentences and simplify
         sentences = technical_text.split('. ')[:2]
         summary = '. '.join(sentences)
-        
+
         # Replace technical terms with simpler alternatives
         replacements = {
             'FAISS': 'a search system',
@@ -88,10 +88,10 @@ class ResponseFormatter:
             'AST': 'code analysis',
             'API': 'programming interface'
         }
-        
+
         for tech_term, simple_term in replacements.items():
             summary = summary.replace(tech_term, simple_term)
-        
+
         return summary
 
     def _format_mma_response(self, data: Dict[str, Any]) -> str:
@@ -106,7 +106,7 @@ class ResponseFormatter:
         # Ensure context is a list
         if not isinstance(context, list):
             context = []
-        
+
         # Build better source citations
         if context:
             sources_list = []
@@ -129,7 +129,7 @@ class ResponseFormatter:
                     similarity = doc.get('similarity', 0)
                 else:
                     continue
-                
+
                 # Format source with more detail
                 if section and doc_id:
                     sources_list.append(f"{i}. **{doc_id}** - {section} (similarity: {similarity:.2f})")
@@ -137,11 +137,11 @@ class ResponseFormatter:
                     sources_list.append(f"{i}. **{doc_id}** (similarity: {similarity:.2f})")
                 else:
                     sources_list.append(f"{i}. **{source}** (similarity: {similarity:.2f})")
-            
+
             sources_text = "\n".join(sources_list) if sources_list else "- (no sources)"
         else:
             sources_text = "- (no sources)"
-        
+
         return f"{response}\n\n---\n\n### 📚 Sources\n{sources_text}"
 
     def _format_fun_response(self, response: str) -> str:

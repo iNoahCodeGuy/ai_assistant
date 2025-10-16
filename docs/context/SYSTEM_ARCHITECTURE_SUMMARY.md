@@ -13,7 +13,7 @@ This system exists to **teach how generative AI applications work** by using its
 
 ### Conceptual Flow (What's Happening)
 ```
-Classify user intent → Retrieve relevant knowledge → Generate grounded answer → 
+Classify user intent → Retrieve relevant knowledge → Generate grounded answer →
 Enhance with role context → Execute side effects → Log for observability
 ```
 
@@ -23,42 +23,42 @@ Enhance with role context → Execute side effects → Log for observability
 handle_greeting
   → Detects first-turn "hello" and returns greeting without RAG
   → Short-circuits pipeline if user just said hi (efficiency!)
-  
+
 classify_query
   → Analyzes user intent: teaching moment? code request? data request?
   → Sets flags: needs_longer_response, code_would_help, data_would_help
   → Source: src/flows/query_classification.py
-  
+
 retrieve_chunks (THIS IS RAG!)
   → Converts query to embedding via text-embedding-3-small (768 dims)
   → Searches Supabase kb_chunks using pgvector cosine similarity
   → Returns top-k relevant context chunks with similarity scores
   → Source: src/flows/core_nodes.py → src/retrieval/pgvector_retriever.py
-  
+
 generate_answer
   → Calls OpenAI GPT-4o-mini with retrieved context
   → Injects dynamic instructions based on query classification
   → Handles narrative (explain concepts) and code display (show implementation)
   → Uses role-specific prompts (Technical HM, Developer, General)
   → Source: src/flows/core_nodes.py → src/core/response_generator.py
-  
+
 plan_actions
   → Determines side effects needed: send analytics? offer contact? log feedback?
   → Creates action plan without executing yet (separation of concerns)
   → Source: src/flows/conversation_nodes.py
-  
+
 apply_role_context
   → Adds role-specific enhancements (follow-ups, contact offers, personality)
   → Software Developer → technical follow-ups + code examples
   → Hiring Manager → business value + Noah's contact offer
   → Just exploring → fun facts + casual tone
   → Source: src/flows/conversation_nodes.py
-  
+
 execute_actions
   → Runs planned side effects: email via Resend, SMS via Twilio, analytics logging
   → Handles failures gracefully (degraded mode - logs errors but doesn't crash)
   → Source: src/flows/action_execution.py
-  
+
 log_and_notify
   → Logs interaction to Supabase messages + retrieval_logs tables
   → Tracks latency, tokens, success/failure for observability
@@ -100,16 +100,16 @@ log_and_notify
 - **Storage:** Private bucket for résumé (signed URLs); public for headshot.
 
 ## 4) Frontend (Vercel)
-- Single‑page chat with role selector.  
-- Professional tables for analytics (fixed column sets, ISO timestamps, units).  
-- Buttons for **Send Résumé**, **Open LinkedIn**, **Request Contact** (logs event + optional notifications).  
+- Single‑page chat with role selector.
+- Professional tables for analytics (fixed column sets, ISO timestamps, units).
+- Buttons for **Send Résumé**, **Open LinkedIn**, **Request Contact** (logs event + optional notifications).
 - Error states and loading spinners; retries on transient fetch errors.
 
 ## 5) Backend/API
-- **/api/chat:** Role → retrieve → generate → log → respond.  
-- **/api/analytics:** Returns inventory & last‑50 rows per table with PII redaction.  
-- **/api/email:** Generates signed résumé URL and sends via Resend.  
-- **/api/sms:** Twilio wrapper for alerts (resume sent, contact requested).  
+- **/api/chat:** Role → retrieve → generate → log → respond.
+- **/api/analytics:** Returns inventory & last‑50 rows per table with PII redaction.
+- **/api/email:** Generates signed résumé URL and sends via Resend.
+- **/api/sms:** Twilio wrapper for alerts (resume sent, contact requested).
 - **/api/feedback:** Persists rating/comment; flags contact intent.
 
 ## 6) Reasoning about presentation - **Teaching Through Demonstration**
@@ -175,9 +175,9 @@ This architecture maps directly to common enterprise use cases:
 
 ---
 
-**Want to explore?** 
+**Want to explore?**
 - "Show me the pipeline architecture"
-- "Display the /api/analytics contract" 
+- "Display the /api/analytics contract"
 - "How does vector search work?"
 - "What's the cost per query?"
 
