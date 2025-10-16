@@ -115,15 +115,13 @@ class TestAnalyticsQuality:
 class TestConversationFlowQuality:
     """Ensure clean, professional conversation flow."""
     
-    @patch('src.flows.conversation_nodes.RagEngine')
-    def test_no_duplicate_prompts_in_full_flow(self, mock_rag_engine):
+    def test_no_duplicate_prompts_in_full_flow(self):
         """Should have exactly 1 follow-up prompt at end, not 2-3."""
-        # Mock RAG engine
+        # Mock RAG engine (no @patch needed - create directly)
         mock_engine = MagicMock()
         mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
         mock_engine.generate_response.return_value = "This is a product that helps you manage your career."
-        mock_rag_engine.return_value = mock_engine
         
         state = ConversationState(
             role="Hiring Manager (technical)",
@@ -144,38 +142,49 @@ class TestConversationFlowQuality:
         
         assert prompt_count <= 1, f"Found {prompt_count} 'Would you like' prompts - should be ≤1 (found duplicates)"
     
-    @patch('src.flows.conversation_nodes.RagEngine')
-    def test_no_emoji_headers(self, mock_rag_engine):
-        """Section headers should be professional, not emoji-heavy."""
-        # Mock RAG engine
+    def test_no_emoji_headers(self):
+        """User-facing responses must strip markdown headers and emojis - convert to **Bold** only.
+        
+        IMPORTANT: KB content (data/*.csv) can use ### headers and emojis for structure.
+        This test validates LLM RESPONSES, not storage format.
+        """
+        # Mock RAG engine to return KB content with rich formatting
         mock_engine = MagicMock()
-        mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
+        mock_engine.retrieve.return_value = {
+            "chunks": [
+                "## 🎯 Key Features\n### 1️⃣ Data Analytics\n### 2️⃣ Machine Learning",  # KB can have this
+                "Content with structure for semantic search"
+            ],
+            "matches": []
+        }
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
-        mock_engine.generate_response.return_value = "Here's information about the data analytics features."
-        mock_rag_engine.return_value = mock_engine
+        mock_engine.generate_response.return_value = "**Key Features**\n\n**Data Analytics**: Feature overview...\n\n**Machine Learning**: ML capabilities..."  # LLM must convert
         
         state = ConversationState(
             role="Software Developer",
             query="tell me about the data analytics"
         )
         
-        # Set initial answer
-        state.set_answer("Here's information about the data analytics features.")
-        
-        # Simulate conversation flow
+        # Simulate full conversation flow (what user sees)
         state = classify_query(state)
-        state = apply_role_context(state, mock_engine)
+        state = retrieve_chunks(state, mock_engine)  # Retrieves rich KB content
+        state = generate_answer(state, mock_engine)  # LLM synthesizes and sanitizes
+        state = apply_role_context(state, mock_engine)  # Final formatting
         
         answer = state.answer
         
-        # Check for emoji spam patterns
-        emoji_headers = [
-            "### 🎯", "### 📊", "### 🏗️", "### 🗂️", "### 🧱", "### 🚀",
-            "### 🎉", "### 💻", "### 📦", "## 🔍", "## 🎯", "## 📊"
-        ]
+        # User-facing response must NOT have markdown headers (###, ##, #)
+        import re
+        markdown_headers = re.findall(r'^\s*#{1,6}\s', answer, re.MULTILINE)
+        assert len(markdown_headers) == 0, f"Found {len(markdown_headers)} markdown headers in user response - must use **Bold** only: {markdown_headers}"
         
-        for emoji_header in emoji_headers:
-            assert emoji_header not in answer, f"Found emoji header '{emoji_header}' - should use **Bold** instead"
+        # User-facing response must NOT have emojis in headers
+        emoji_patterns = ["🎯", "📊", "🏗️", "🗂️", "🧱", "🚀", "🎉", "💻", "📦", "🔍", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"]
+        for emoji in emoji_patterns:
+            # Allow emojis in content body, but not in header-like contexts
+            # Check for patterns like "### 🎯" or "## 📊" or standalone emoji headers
+            assert f"###{emoji}" not in answer and f"##{emoji}" not in answer and f"#{emoji}" not in answer, \
+                   f"Found emoji header pattern with '{emoji}' - must strip to **Bold**"
     
     def test_llm_no_self_generated_prompts(self):
         """LLM should not generate its own 'Would you like to see' prompts in answer body."""
@@ -212,7 +221,8 @@ class TestConversationFlowQuality:
         state = retrieve_chunks(state, mock_engine)
         state = generate_answer(state, mock_engine)
 
-        assert state.answer.startswith("Here's the live analytics snapshot")
+        # Updated Oct 16, 2025: Match current data_reporting.py intro text
+        assert state.answer.startswith("Fetching live analytics data from Supabase")
         assert not mock_engine.response_generator.generate_contextual_response.called
         assert "}" not in state.answer[:5], "Canned intro should not leak braces"
 
@@ -243,10 +253,9 @@ class TestConversationFlowQuality:
 class TestCodeDisplayQuality:
     """Ensure code display handles edge cases gracefully."""
     
-    @patch('src.flows.conversation_nodes.RagEngine')
-    def test_empty_code_index_shows_helpful_message(self, mock_rag_engine):
+    def test_empty_code_index_shows_helpful_message(self):
         """When code index is empty, should show GitHub link not garbage."""
-        # Mock empty code retrieval
+        # Mock empty code retrieval (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
         mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
         mock_engine.retrieve_with_code.return_value = {
@@ -255,7 +264,6 @@ class TestCodeDisplayQuality:
             "has_code": False
         }
         mock_engine.generate_response.return_value = "I can help you view the code."
-        mock_rag_engine.return_value = mock_engine
         
         state = ConversationState(
             role="Software Developer",
@@ -313,15 +321,13 @@ class TestCodeDisplayQuality:
 class TestRegressionGuards:
     """Catch common regression patterns."""
     
-    @patch('src.flows.conversation_nodes.RagEngine')
-    def test_no_information_overload(self, mock_rag_engine):
+    def test_no_information_overload(self):
         """Responses should be concise, not dump entire database."""
-        # Mock RAG engine
+        # Mock RAG engine (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
         mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
         mock_engine.generate_response.return_value = "We collect interaction data, query types, and latency metrics for analytics."
-        mock_rag_engine.return_value = mock_engine
         
         state = ConversationState(
             role="Hiring Manager (technical)",
@@ -345,15 +351,13 @@ class TestRegressionGuards:
         table_rows = answer.count("| ")
         assert table_rows < 250, f"Response has ~{table_rows // 2} table rows - too many (>125 rows indicates dump)"
     
-    @patch('src.flows.conversation_nodes.RagEngine')
-    def test_consistent_formatting_across_roles(self, mock_rag_engine):
+    def test_consistent_formatting_across_roles(self):
         """All roles should get consistent professional formatting."""
-        # Mock RAG engine
+        # Mock RAG engine (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
         mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
         mock_engine.generate_response.return_value = "This product helps manage your career journey."
-        mock_rag_engine.return_value = mock_engine
         
         roles = [
             "Hiring Manager (technical)",

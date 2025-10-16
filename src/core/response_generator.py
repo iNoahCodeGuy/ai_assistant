@@ -244,6 +244,9 @@ Please provide a helpful and accurate answer based on the information provided. 
             - Example: "I retrieve information using pgvector..." (referring to the system)
             - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
             - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
+            - **CRITICAL: Strip markdown headers (###, ##, #) and emojis from your response** - convert headers to **Bold** format only
+            - Knowledge base may use rich formatting for structure, but user responses must be professional: use **Bold** not ### headers
+            - Example: Convert "## 🎯 Key Points" → "**Key Points**" (no hashes, no emojis)
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -322,6 +325,9 @@ Please provide a helpful and accurate answer based on the information provided. 
             - Example: "I use LangGraph to orchestrate..." (referring to the system)
             - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
             - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
+            - **CRITICAL: Strip markdown headers (###, ##, #) and emojis from your response** - convert headers to **Bold** format only
+            - Knowledge base may use rich formatting for structure, but user responses must be professional: use **Bold** not ### headers
+            - Example: Convert "## 🎯 Key Points" → "**Key Points**" (no hashes, no emojis)
             
             IMPORTANT: If the context contains code examples, diagrams, or technical documentation:
             - Display them EXACTLY as provided (preserve all formatting, backticks, markdown)
@@ -364,6 +370,9 @@ Please provide a helpful and accurate answer based on the information provided. 
             - Example: "Would you like Noah to share his LinkedIn?" NOT "Would you like me to share my LinkedIn?"
             - **NEVER return Q&A format from knowledge base verbatim** - synthesize context into natural conversation
             - If context contains "Q: ... A: ..." format, extract the information and rephrase naturally
+            - **CRITICAL: Strip markdown headers (###, ##, #) and emojis from your response** - convert headers to **Bold** format only
+            - Knowledge base may use rich formatting for structure, but user responses must be professional: use **Bold** not ### headers
+            - Example: Convert "## 🎯 Key Points" → "**Key Points**" (no hashes, no emojis)
             
             IMPORTANT: If the context contains code, diagrams, or formatted content:
             - Preserve ALL formatting exactly (markdown, code blocks, diagrams)
