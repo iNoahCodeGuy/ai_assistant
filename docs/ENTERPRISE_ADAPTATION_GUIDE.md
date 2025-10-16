@@ -566,7 +566,7 @@ GROUP BY role_mode;
 
 - **Architecture deep dive**: [docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md](context/SYSTEM_ARCHITECTURE_SUMMARY.md)
 - **Data pipeline**: [docs/context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md](context/DATA_COLLECTION_AND_SCHEMA_REFERENCE.md)
-- **Analytics setup**: [LIVE_ANALYTICS_IMPLEMENTATION.md](../LIVE_ANALYTICS_IMPLEMENTATION.md)
+- **Analytics setup**: [docs/features/ANALYTICS_IMPLEMENTATION.md](features/ANALYTICS_IMPLEMENTATION.md)
 - **Cost optimization**: [docs/EXTERNAL_SERVICES.md](EXTERNAL_SERVICES.md)
 - **Testing patterns**: [tests/README.md](../tests/README.md)
 

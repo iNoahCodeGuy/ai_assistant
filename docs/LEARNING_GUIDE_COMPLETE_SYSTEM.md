@@ -679,7 +679,7 @@ Try these queries to explore specific components:
 - **Role Behaviors:** `ROLE_FEATURES.md`
 - **Conversation Style:** `docs/context/CONVERSATION_PERSONALITY.md`
 - **Enterprise Adaptation:** `docs/ENTERPRISE_ADAPTATION_GUIDE.md`
-- **Analytics Implementation:** `LIVE_ANALYTICS_IMPLEMENTATION.md`
+- **Analytics Implementation:** `docs/features/ANALYTICS_IMPLEMENTATION.md`
 - **Data Pipelines:** `scripts/migrate_data_to_supabase.py`
 
 ---
