@@ -302,7 +302,11 @@
     </div>
 
     <script>
-        const API_URL = 'https://noahsaiassistant.vercel.app/api/chat';
+        // Auto-detect API URL based on environment
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000/api/chat'  // Local development
+            : '/api/chat';  // Production (relative URL, same domain)
+        
         const messagesContainer = document.getElementById('messages');
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
