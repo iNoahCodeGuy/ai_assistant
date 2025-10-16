@@ -6,17 +6,160 @@
 
 ---
 
-## Table of Contents
-1. [Current Quality Standards](#current-quality-standards)
-2. [Automated Testing](#automated-testing)
-3. [**NEW: Documentation Alignment Testing**](#documentation-alignment-testing)
-4. [**NEW: Feature Development Documentation Workflow**](#feature-development-documentation-workflow)
-5. [Pre-Commit Hooks](#pre-commit-hooks)
-6. [CI/CD Pipeline](#cicd-pipeline)
-7. [Documentation Quality Standards](#documentation-quality-standards)
-8. [Quarterly Documentation Audit](#quarterly-documentation-audit)
-9. [**NEW: Testing Best Practices & Common Issues**](#testing-best-practices--common-issues)
-10. [**NEW: Manual Testing Procedures**](#manual-testing-procedures)
+## 📑 Table of Contents
+
+### Quick Navigation
+- [🎯 For New Developers](#for-new-developers-start-here) - Start here if onboarding
+- [🧪 Running Tests](#quick-test-commands) - How to run tests locally
+- [📊 Current Status](#current-test-status) - See what's passing/failing
+- [🚀 For Feature Development](#feature-development-checklist) - Adding new features
+
+### Core Sections
+
+#### 1. [Quality Standards & Testing](#current-quality-standards)
+   - 1.1 [Conversation Quality Tests (18 tests)](#1-conversation-quality-18-tests---current-status-12-passing-6-need-updates)
+   - 1.2 [Content Storage vs User Presentation](#content-storage-vs-user-presentation-standards)
+   - 1.3 [Test Coverage Map](#test-coverage-map)
+
+#### 2. [Automated Testing](#automated-testing)
+   - 2.1 [Running Tests Locally](#running-tests-locally)
+   - 2.2 [Test Organization](#test-organization)
+
+#### 3. [Documentation Alignment Testing](#documentation-alignment-testing)
+   - 3.1 [The Problem We're Solving](#the-problem-were-solving)
+   - 3.2 [Test Suite Overview](#test-suite-documentation-alignment)
+   - 3.3 [Running Alignment Tests](#running-documentation-alignment-tests)
+
+#### 4. [Feature Development Workflow](#feature-development-documentation-workflow)
+   - 4.1 [Decision Tree: Where to Document](#decision-tree-where-to-document-changes)
+   - 4.2 [Scenario 1: Adding New Features](#-scenario-1-adding-a-new-feature)
+   - 4.3 [Scenario 2: Changing Implementation](#-scenario-2-changing-existing-feature-implementation)
+   - 4.4 [Scenario 3: Architecture Changes](#-scenario-3-changing-system-behaviorarchitecture)
+   - 4.5 [Scenario 4: Adding New Roles](#-scenario-4-adding-new-role-or-query-type)
+   - 4.6 [Documentation Anti-Patterns](#documentation-anti-patterns-dont-do-this)
+
+#### 5. [Pre-Commit Hooks](#pre-commit-hooks)
+
+#### 6. [CI/CD Pipeline](#cicd-pipeline)
+
+#### 7. [Documentation Quality](#documentation-quality-standards)
+   - 7.1 [Single Source of Truth Principle](#1-single-source-of-truth-ssot-principle)
+   - 7.2 [Code-First Updates](#2-code-first-documentation-updates)
+   - 7.3 [Documentation Hygiene](#3-documentation-hygiene-checklist)
+   - 7.4 [Master Doc Updates](#4-master-documentation-update-process)
+
+#### 8. [Quarterly Audit](#quarterly-documentation-audit)
+
+#### 9. [Testing Best Practices](#testing-best-practices--common-issues)
+   - 9.1 [Core Testing Principles](#core-testing-principles)
+   - 9.2 [Common Test Failures](#common-test-failures--how-to-fix)
+   - 9.3 [Adding New Quality Standards](#adding-new-quality-standards)
+
+#### 10. [Manual Testing](#manual-testing-procedures)
+   - 10.1 [Testing Pyramid](#testing-pyramid-manual-vs-automated)
+   - 10.2 [Role Functionality Checklists](#role-functionality-checklists)
+   - 10.3 [Cross-Role Consistency Tests](#cross-role-consistency-tests)
+   - 10.4 [Pre-Release Protocol](#pre-release-testing-protocol)
+
+#### 11. [Anti-Drift Protection](#preventing-documentation-file-misalignment)
+   - 11.1 [The Problem: New .md Files](#the-problem-new-md-files-create-drift)
+   - 11.2 [Solution: 3-Layer Protection](#solution-automated-documentation-registration)
+   - 11.3 [Pre-Commit Hook Implementation](#step-1-add-pre-commit-hook-for-new-md-files)
+
+---
+
+## For New Developers (Start Here)
+
+### What This Document Covers
+This QA Strategy ensures:
+- ✅ **Conversation quality** remains professional and helpful (18 automated tests)
+- ✅ **Documentation stays in sync** with code (12 alignment tests)
+- ✅ **New features don't break existing behavior** (regression protection)
+- ✅ **Team alignment** on quality standards
+
+### Quick Onboarding Path
+
+**Step 1: Understand the Testing Philosophy** (5 min)
+- Read [Content Storage vs User Presentation](#content-storage-vs-user-presentation-standards)
+- Key principle: KB can have rich formatting, user responses must be professional
+
+**Step 2: Run the Tests** (3 min)
+```bash
+# Run all tests (30 total: 18 conversation + 12 alignment)
+pytest tests/ -v
+
+# Should see: 28/30 passing (93% overall)
+```
+
+**Step 3: Before Adding Features** (2 min)
+- Check [Feature Development Decision Tree](#decision-tree-where-to-document-changes)
+- Follow [Documentation Anti-Patterns](#documentation-anti-patterns-dont-do-this)
+
+**Step 4: Read Your Role-Specific Section**
+- Backend dev? → [Testing Best Practices](#testing-best-practices--common-issues)
+- Documentation? → [Documentation Quality Standards](#documentation-quality-standards)
+- QA engineer? → [Manual Testing Procedures](#manual-testing-procedures)
+
+---
+
+## Quick Test Commands
+
+```bash
+# Run everything (recommended before committing)
+pytest tests/ -v
+
+# Run only conversation quality tests (18 tests)
+pytest tests/test_conversation_quality.py -v
+
+# Run only documentation alignment tests (12 tests)
+pytest tests/test_documentation_alignment.py -v
+
+# Run specific test
+pytest tests/test_conversation_quality.py::test_no_emoji_headers -v
+
+# Run with detailed output (useful for debugging)
+pytest tests/ -vv
+
+# Run tests matching pattern
+pytest tests/ -k "emoji" -v
+```
+
+---
+
+## Current Test Status
+
+| Test Suite | Tests | Passing | Status |
+|------------|-------|---------|--------|
+| **Conversation Quality** | 18 | 18 | ✅ 100% |
+| **Documentation Alignment** | 12 | 10 | ⚠️ 83% (1 failing, 1 skipped) |
+| **TOTAL** | **30** | **28** | **93% overall** |
+
+**Last Run**: October 16, 2025  
+**Target**: 100% pass rate
+
+---
+
+## Feature Development Checklist
+
+**Before starting work:**
+- [ ] Read relevant test file (`test_conversation_quality.py` or alignment tests)
+- [ ] Understand current quality standards
+- [ ] Check if feature requires new documentation
+
+**During development:**
+- [ ] Write tests first (TDD) or alongside feature
+- [ ] Run tests frequently: `pytest tests/ -v`
+- [ ] Update documentation if behavior changes
+
+**Before committing:**
+- [ ] All tests passing: `pytest tests/ -v`
+- [ ] Documentation updated (see [Workflow](#feature-development-documentation-workflow))
+- [ ] No anti-patterns (see [Documentation Anti-Patterns](#documentation-anti-patterns-dont-do-this))
+
+**In pull request:**
+- [ ] Include test results in PR description
+- [ ] Reference related documentation updates
+- [ ] Note any intentional test changes
 
 ---
 
