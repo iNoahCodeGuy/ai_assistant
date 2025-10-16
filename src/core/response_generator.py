@@ -69,8 +69,27 @@ Please provide a helpful and accurate answer based on the information provided. 
             # Fallback: return the first retrieved document
             return fallback_docs[0] if fallback_docs else "I'm having trouble generating a response right now."
 
-    def generate_contextual_response(self, query: str, context: List[Dict[str, Any]], role: str = None, chat_history: List[Dict[str, str]] = None) -> str:
-        """Generate response with explicit context and role awareness."""
+    def generate_contextual_response(
+        self, 
+        query: str, 
+        context: List[Dict[str, Any]], 
+        role: str = None, 
+        chat_history: List[Dict[str, str]] = None,
+        extra_instructions: str = None
+    ) -> str:
+        """Generate response with explicit context and role awareness.
+        
+        Args:
+            query: User's question
+            context: Retrieved knowledge chunks
+            role: User's selected role
+            chat_history: Previous conversation turns
+            extra_instructions: Optional guidance for response style/length
+                (e.g., "provide comprehensive explanation", "include code examples")
+        
+        Returns:
+            Generated response text
+        """
         context_parts = []
         for item in context:
             if isinstance(item, dict):
@@ -80,7 +99,7 @@ Please provide a helpful and accurate answer based on the information provided. 
                 context_parts.append(str(item))
         
         context_str = "\n".join(context_parts)
-        prompt = self._build_role_prompt(query, context_str, role, chat_history)
+        prompt = self._build_role_prompt(query, context_str, role, chat_history, extra_instructions)
         
         try:
             if self.qa_chain and not self.degraded_mode:
@@ -136,8 +155,27 @@ Please provide a helpful and accurate answer based on the information provided. 
             logger.error(f"Technical response generation failed: {e}")
             return "Technical details are temporarily unavailable. Please try again."
 
-    def _build_role_prompt(self, query: str, context_str: str, role: str = None, chat_history: List[Dict[str, str]] = None) -> str:
-        """Build role-specific prompt with conversation history."""
+    def _build_role_prompt(
+        self, 
+        query: str, 
+        context_str: str, 
+        role: str = None, 
+        chat_history: List[Dict[str, str]] = None,
+        extra_instructions: str = None
+    ) -> str:
+        """Build role-specific prompt with conversation history and optional display guidance.
+        
+        Args:
+            query: User's question
+            context_str: Retrieved context chunks
+            role: User's selected role
+            chat_history: Previous conversation turns
+            extra_instructions: Optional guidance for response style
+                (e.g., "provide comprehensive explanation with code examples")
+        
+        Returns:
+            Formatted prompt string for LLM
+        """
         # Build conversation history string for context continuity
         history_context = ""
         if chat_history and len(chat_history) > 0:
@@ -151,8 +189,13 @@ Please provide a helpful and accurate answer based on the information provided. 
                     # Truncate long assistant messages for token efficiency
                     content = msg['content'][:300] + "..." if len(msg['content']) > 300 else msg['content']
                     history_parts.append(f"Assistant: {content}")
-            if history_parts:
+            if history_context:
                 history_context = "\n\nPrevious conversation:\n" + "\n".join(history_parts) + "\n"
+        
+        # Add extra instructions if provided (for display intelligence)
+        instruction_addendum = ""
+        if extra_instructions:
+            instruction_addendum = f"\n\nIMPORTANT GUIDANCE: {extra_instructions}\n"
         
         if role == "Hiring Manager (technical)":
             return f"""
@@ -206,7 +249,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             - Keep code blocks intact within ``` code ``` blocks
             - Do not summarize or paraphrase code/diagrams - show them in full
             - EXPLAIN THE CODE in terms of generative AI patterns and enterprise value
-            
+            {instruction_addendum}
             Keep it professional and educational - help them understand GenAI through real examples.
             """
         elif role == "Software Developer":
@@ -284,7 +327,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             - Do not summarize or paraphrase code/diagrams - show them in full
             - ADD EDUCATIONAL COMMENTARY explaining how this code demonstrates GenAI patterns
             - CONNECT to enterprise applications: "This same pattern is used in production chatbots like..."
-            
+            {instruction_addendum}
             Be technical and educational - help them learn by doing.
             """
         else:
@@ -295,7 +338,7 @@ Please provide a helpful and accurate answer based on the information provided. 
             Context: {context_str}
             
             Question: {query}
-            
+            {instruction_addendum}
             EDUCATIONAL OPPORTUNITY:
             If the user asks about AI, technology, or how you work, explain in accessible terms:
             - How RAG (Retrieval-Augmented Generation) makes AI accurate (like giving AI a textbook to reference)
@@ -351,8 +394,7 @@ Please provide a helpful and accurate answer based on the information provided. 
     def build_basic_prompt(self) -> PromptTemplate:
         """Build basic Noah assistant prompt template."""
         template = (
-            "You are Portfolia, Noah's AI Assistant. Use the provided context about Noah to answer the question.
-\n"
+            "You are Portfolia, Noah's AI Assistant. Use the provided context about Noah to answer the question.\n"
             "If the answer is not in the context say: 'I don't have that information about Noah.'\n\n"
             "IMPORTANT: Provide a complete, informative answer. Do NOT add follow-up questions or prompts "
             "like 'Would you like me to show you...' at the end - the system handles those automatically.\n\n"

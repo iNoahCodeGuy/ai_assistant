@@ -150,11 +150,44 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         return state
     
     # Use the LLM to generate a response with retrieved context
+    # Add display intelligence based on query classification
+    extra_instructions = []
+    
+    # When teaching/explaining, provide comprehensive depth
+    if state.fetch("needs_longer_response", False) or state.fetch("teaching_moment", False):
+        extra_instructions.append(
+            "This is a teaching moment - provide a comprehensive, well-structured explanation. "
+            "Break down concepts clearly, connect technical details to business value, and "
+            "help the user truly understand. Use examples where helpful."
+        )
+    
+    # When code is requested, technical users want implementation details
+    if state.fetch("code_display_requested", False) and state.role in [
+        "Software Developer", 
+        "Hiring Manager (technical)"
+    ]:
+        extra_instructions.append(
+            "The user has requested code. After your explanation, include relevant code snippets "
+            "with comments explaining key decisions. Keep code blocks under 40 lines and focus "
+            "on the most interesting parts."
+        )
+    
+    # When data is requested, be concise and table-focused
+    if state.fetch("data_display_requested", False):
+        extra_instructions.append(
+            "The user wants data/analytics. Be brief with narrative - focus on presenting clean "
+            "tables with proper formatting. Include source attribution."
+        )
+    
+    # Build the instruction suffix
+    instruction_suffix = " ".join(extra_instructions) if extra_instructions else None
+    
     answer = rag_engine.response_generator.generate_contextual_response(
         query=state.query,
         context=retrieved_chunks,
         role=state.role,
-        chat_history=state.chat_history
+        chat_history=state.chat_history,
+        extra_instructions=instruction_suffix
     )
     
     # Clean up any SQL artifacts that leaked from retrieval

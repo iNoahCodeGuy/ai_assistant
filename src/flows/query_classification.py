@@ -104,6 +104,7 @@ def classify_query(state: ConversationState) -> ConversationState:
     - MMA queries (fight references)
     - Data display requests (show analytics, display data)
     - Fun queries (fun facts, hobbies)
+    - Response length needs (teaching, why/how questions need longer explanations)
     
     Args:
         state: Current conversation state with the user's query
@@ -124,6 +125,20 @@ def classify_query(state: ConversationState) -> ConversationState:
         logger.info(f"Expanded vague query: '{original_query}' → '{expanded_query}'")
     
     lowered = state.query.lower()
+    
+    # Detect when a longer teaching-focused response is needed
+    # These queries require depth, explanation, and educational context
+    teaching_keywords = [
+        "why", "how does", "how did", "how do", "explain", "walk me through",
+        "what is", "what are", "what's the difference", "compare",
+        "help me understand", "break down", "teach me", "show me how",
+        "architecture", "design", "pattern", "principle", "strategy",
+        "trade-off", "tradeoff", "benefit", "advantage", "disadvantage",
+        "when to use", "when should", "best practice", "enterprise"
+    ]
+    if any(keyword in lowered for keyword in teaching_keywords):
+        state.stash("needs_longer_response", True)
+        state.stash("teaching_moment", True)
     
     # Code display triggers (explicit requests to see code)
     code_display_keywords = [
