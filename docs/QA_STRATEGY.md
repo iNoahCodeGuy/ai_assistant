@@ -1577,7 +1577,7 @@ logger.debug(f"Debug info: {variable}")  # Won't appear in production logs (leve
 **Audit Context**: Comprehensive audit (October 17, 2025) found:
 - ✅ **Code quality excellent**: Comprehensive try/except coverage across services, RAG engine, API endpoints
 - ⚠️ **Documentation gap**: Error handling patterns not formalized in QA policy
-- 📊 **Test coverage**: 5 core error handling tests added (76/76 passing, 100%)
+- 📊 **Test coverage**: 6 core error handling tests added (76/77 passing, 99%)
 
 **Related Documentation**: See `docs/archive/analysis/QA_AUDIT_FINDINGS_ERROR_HANDLING.md` for full audit report
 
@@ -1883,12 +1883,12 @@ class handler(BaseHTTPRequestHandler):
 #### API Validation Checklist
 
 For each API endpoint:
-- [ ] JSON parsing errors → 400 with "Invalid JSON" message
-- [ ] Missing required fields → 400 with field name
+- [ ] JSON parsing errors → 400 error with "Invalid JSON" message
+- [ ] Missing required fields → 400 error with field name
 - [ ] Invalid field values → 400 with validation error
 - [ ] Service unavailable → 500 with "Service temporarily unavailable"
 - [ ] Unexpected exceptions → 500 with generic message + full log
-- [ ] CORS preflight handled (OPTIONS requests)
+- [ ] CORS preflight handling (OPTIONS requests)
 
 ---
 
@@ -1974,7 +1974,7 @@ def validate_email(email: str) -> Optional[str]:
 
     # XSS check
     if any(char in email for char in ['<', '>', 'script', 'javascript']):
-        logger.warning(f"Suspicious email rejected: {email[:20]}...")
+        logger.warning(f"Suspicious email rejected: {email}")
         return None
 
     # Format validation
@@ -2355,8 +2355,8 @@ def check_langsmith_traces():
 ```python
 # Before (crashes on failure)
 def send_notification(user_email: str):
-    service = EmailService()  # Crashes if API key missing
-    service.send(user_email, "Your resume has been sent!")
+    client = EmailService()  # Crashes if API key missing
+    client.send(user_email, "Your resume has been sent!")
 ```
 
 **Step 2: Add Factory Pattern**
@@ -2640,8 +2640,8 @@ def check_master_doc_registration(filepath):
 You added: {filepath}
 
 ACTION REQUIRED:
-1. Add reference to docs/QA_STRATEGY.md §7 "Master Documentation Update Process"
-2. Add to "Quick Reference: Documentation Types" table
+1. Add reference to \`docs/QA_STRATEGY.md\` §7 "Master Documentation Update Process"
+2. Add to "Quick Reference: Documentation Types" table in QA_STRATEGY.md
 3. Consider adding alignment test in tests/test_documentation_alignment.py
 
 Example:
