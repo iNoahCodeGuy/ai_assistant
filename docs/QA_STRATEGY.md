@@ -77,6 +77,14 @@
    - 12.7 [Maintainability & Testability](#7-maintainability--testability)
    - 12.8 [Simplicity (KISS, DRY, YAGNI)](#8-simplicity-kiss-dry-yagni)
 
+#### 13. [Phase 2: Production Monitoring](#phase-2-production-monitoring-with-langsmith) 🆕
+   - 13.1 [The Hybrid QA Approach](#the-hybrid-qa-approach)
+   - 13.2 [What LangSmith Monitors](#what-well-monitor)
+   - 13.3 [Implementation Plan](#implementation-plan)
+   - 13.4 [Alert Thresholds](#alert-thresholds)
+   - 13.5 [Daily Reports](#daily-report-example)
+   - 13.6 [Cost Analysis](#cost-analysis)
+
 ---
 
 ## For New Developers (Start Here)
@@ -139,16 +147,109 @@ pytest tests/ -k "emoji" -v
 
 ## Current Test Status
 
-| Test Suite | Tests | Passing | Status |
-|------------|-------|---------|--------|
-| **Conversation Quality** | 19 | 19 | ✅ 100% *(+1 new test: pushy resume offers)* |
-| **Documentation Alignment** | 15 | 14 | ✅ 93% (1 skipped) *(+3 resume distribution tests)* |
-| **Resume Distribution** | 37 | 37 | ✅ 100% *(NEW - hybrid approach validation)* |
-| **Error Handling** | 6 | 6 | ✅ 100% *(+1 Oct 17: RAG pipeline resilience)* |
-| **TOTAL** | **77** | **76** | **✅ 99% pass rate (active tests)** |
+### Test Suite Overview
 
-**Last Run**: October 17, 2025
-**Target**: ✅ ACHIEVED - 99% pass rate on all active tests (1 intentionally skipped)
+**Last Updated**: October 17, 2025
+**Overall Status**: ✅ **99% pass rate** (76/77 active tests passing, 1 intentionally skipped)
+**Target**: ✅ ACHIEVED - Maintain 99% pass rate through LangGraph migration
+
+| Test Suite | Tests | Passing | Status | Test File |
+|------------|-------|---------|--------|-----------|
+| **Conversation Quality** | 19 | 19 | ✅ 100% | `tests/test_conversation_quality.py` (512 lines) |
+| **Documentation Alignment** | 15 | 14 | ✅ 93% (1 skipped) | `tests/test_documentation_alignment.py` |
+| **Resume Distribution** | 37 | 37 | ✅ 100% | `tests/test_resume_distribution.py` |
+| **Error Handling** | 6 | 6 | ✅ 100% | `tests/test_error_handling.py` (~450 lines) |
+| **TOTAL** | **77** | **76** | **✅ 99% pass rate** | 4 test suites |
+
+### Suite Descriptions
+
+#### 1. Conversation Quality (19 tests) - 100% ✅
+**Purpose**: Ensure conversation quality remains professional and helpful
+**Key Policies Tested**:
+- KB content can use `###` headers/emojis (teaching structure)
+- LLM responses must strip to professional `**Bold**` format only
+- No Q&A verbatim responses (synthesis required)
+- No pushy resume offers (subtle availability mentions only)
+- Single follow-up prompts (no duplicate CTAs)
+
+**Recent Updates**:
+- ✅ Oct 16: Added `test_no_pushy_resume_offers` for hybrid resume distribution
+- ✅ Oct 16: Updated `test_no_emoji_headers` to check LLM responses (not KB files)
+- ✅ Oct 15: Added `test_no_qa_verbatim_responses` and `test_response_synthesis_in_prompts`
+
+#### 2. Documentation Alignment (15 tests) - 93% ✅
+**Purpose**: Ensure documentation matches code implementation (no phantom functions, no outdated paths)
+**Key Checks**:
+- Conversation flow documented correctly
+- File references valid (no 404s)
+- Role names match implementation
+- Temperature/model settings accurate
+- Master docs exist and non-empty
+
+**Note**: 1 test intentionally skipped (`test_count_documented_correctly`) - changes too frequently during active development
+
+#### 3. Resume Distribution (37 tests) - 100% ✅
+**Purpose**: Validate hybrid resume distribution system (education mode + hiring signals mode)
+**Key Features Tested**:
+- Hiring signal detection (keywords, company, position, timeline)
+- Mode switching (education vs availability mention)
+- Resume offering after 2 turns (not immediately)
+- Email sending integration
+- Storage service integration
+
+**New**: Oct 16, 2025 - Entire suite created for intelligent resume distribution feature
+
+#### 4. Error Handling (6 tests) - 100% ✅
+**Purpose**: Validate production-grade error handling and resilience
+**Key Patterns Tested**:
+- Service degradation (Twilio, Resend fail gracefully)
+- LLM failure handling (OpenAI rate limits)
+- Input sanitization (XSS, SQL injection rejected)
+- API error handling (malformed JSON → 400/500 responses)
+- RAG pipeline resilience (low-quality retrieval → fallback suggestions)
+- Observability (all errors logged to LangSmith)
+
+**Recent Updates**:
+- ✅ Oct 17: Added `test_low_quality_retrieval_fallback` for RAG resilience
+- ✅ Oct 17: All 6 tests passing after Phase 1.5 implementation
+
+### Running Tests
+
+```bash
+# Run all tests (recommended before committing)
+pytest tests/ -v
+
+# Run specific suite
+pytest tests/test_conversation_quality.py -v      # 19 tests
+pytest tests/test_documentation_alignment.py -v   # 15 tests
+pytest tests/test_resume_distribution.py -v       # 37 tests
+pytest tests/test_error_handling.py -v            # 6 tests
+
+# Run specific test
+pytest tests/test_conversation_quality.py::test_no_emoji_headers -v
+
+# Run with detailed output
+pytest tests/ -vv
+
+# Run tests matching pattern
+pytest tests/ -k "emoji" -v
+```
+
+### Expected Output
+
+```
+============================== test session starts ==============================
+collected 77 items
+
+tests/test_conversation_quality.py::test_no_emoji_headers PASSED        [  1%]
+tests/test_conversation_quality.py::test_no_qa_verbatim_responses PASSED [  2%]
+...
+tests/test_error_handling.py::test_low_quality_retrieval_fallback PASSED [100%]
+
+============================== 76 passed, 1 skipped in 2.34s ==============================
+```
+
+**Success Criteria**: ✅ 76 passing, 1 skipped (99% active test pass rate)
 
 ---
 
@@ -859,6 +960,293 @@ def test_graph_simplicity():
             state = graph.invoke({"query": "test", "role": "Developer"})
             # (Check execution trace to ensure node was called)
 ```
+
+---
+
+## Phase 2: Production Monitoring with LangSmith
+
+**Status**: 📅 Planned (after LangGraph migration completes)
+**Purpose**: Complement pytest testing with production observability
+**Reference**: Originally documented in `QA_LANGSMITH_INTEGRATION.md` (now archived)
+
+---
+
+### The Hybrid QA Approach
+
+**Philosophy**: Testing catches bugs before deployment, monitoring catches edge cases after deployment.
+
+| Tool | Purpose | When | What It Catches |
+|------|---------|------|-----------------|
+| **pytest** | Pre-deployment testing | Before code merges | 90% of bugs (logic errors, policy violations) |
+| **LangSmith** | Post-deployment monitoring | After production deploy | 10% of bugs (edge cases, performance, real LLM behavior) |
+
+**Why Both?**
+- **pytest** = Fast, deterministic, blocks bad code from merging
+- **LangSmith** = Real behavior, edge cases from actual user queries, performance metrics
+- **Together** = Comprehensive QA (test what you can control, monitor what you can't)
+
+---
+
+### What LangSmith IS (Production Observability)
+
+✅ **Production observability tool**
+- Traces every LLM call in real-time
+- Shows actual prompts, responses, latency, costs
+- Detects patterns across thousands of queries
+- Root cause analysis for production issues
+
+### What LangSmith is NOT
+
+❌ **Not a testing framework**
+- Can't mock dependencies
+- Can't control inputs (depends on real user queries)
+- Not deterministic (LLM responses vary)
+- Not a pytest replacement (complements it)
+
+---
+
+### What We'll Monitor
+
+| Quality Standard | pytest Test | LangSmith Check | Why Both? |
+|-----------------|-------------|-----------------|-----------|
+| **No emoji headers** | `test_no_emoji_headers()` | ✅ Scan responses for `###` | Test uses mocks, LangSmith sees real LLM output |
+| **Response length** | `test_no_information_overload()` | ✅ Alert if >15k chars | Test checks logic, LangSmith catches prompt engineering bugs |
+| **Duplicate prompts** | `test_no_duplicate_prompts()` | ✅ Count "would you like" | Test validates code, LangSmith finds edge cases |
+| **Latency** | ❌ No test | ✅ Track p50, p95, p99 | Requires real production traffic |
+| **Error rate** | ❌ No test | ✅ Track exceptions | Runtime errors only appear in production |
+| **Token costs** | ❌ No test | ✅ Cost per query | Budget monitoring requires production data |
+
+---
+
+### Implementation Plan
+
+#### Step 1: Setup (Week 2 - After Phase 1 Complete)
+```bash
+# Get LangSmith API key
+# Visit: https://smith.langchain.com/
+
+# Add to .env
+echo "LANGCHAIN_API_KEY=lsv2_pt_..." >> .env
+echo "LANGCHAIN_TRACING_V2=true" >> .env
+echo "LANGCHAIN_PROJECT=noahs-ai-assistant" >> .env
+
+# Deploy to Vercel (auto-detects env vars)
+vercel --prod
+```
+
+#### Step 2: Enhanced Quality Monitor
+**File**: `scripts/quality_monitor.py`
+
+```python
+from langsmith import Client
+from src.observability import get_langsmith_client
+
+def check_langsmith_traces():
+    """Check production LLM traces for quality violations."""
+    client = get_langsmith_client()
+
+    if not client:
+        print("⚠️  LangSmith not configured, skipping trace checks")
+        return []
+
+    # Get last 24 hours
+    runs = client.list_runs(
+        project_name="noahs-ai-assistant",
+        start_time=datetime.now() - timedelta(hours=24)
+    )
+
+    violations = []
+
+    for run in runs:
+        if not run.outputs or "answer" not in run.outputs:
+            continue
+
+        answer = run.outputs["answer"]
+
+        # Policy 1: No markdown headers
+        if re.search(r'#{1,6}\s', answer):
+            violations.append(f"🔴 CRITICAL: Markdown headers in trace {run.id}")
+
+        # Policy 2: No information overload
+        if len(answer) > 15000:
+            violations.append(f"⚠️  WARNING: Response {len(answer)} chars in trace {run.id}")
+
+        # Policy 3: Performance
+        if run.total_time and run.total_time > 3000:
+            violations.append(f"⚠️  WARNING: Slow query {run.total_time}ms in trace {run.id}")
+
+    return violations
+
+def main():
+    """Run all quality checks."""
+    all_violations = []
+
+    # Check 1: Supabase metrics (existing)
+    supabase_violations = check_supabase_metrics()
+    all_violations.extend(supabase_violations)
+
+    # Check 2: LangSmith traces (NEW - Phase 2)
+    langsmith_violations = check_langsmith_traces()
+    all_violations.extend(langsmith_violations)
+
+    # Report results
+    if all_violations:
+        print(f"\n❌ {len(all_violations)} quality violations found:\n")
+        for violation in all_violations:
+            print(f"  {violation}")
+        sys.exit(1)
+    else:
+        print("\n✅ All quality checks passed!")
+        sys.exit(0)
+```
+
+#### Step 3: Alert Thresholds
+
+```python
+ALERT_RULES = {
+    "emoji_headers": {
+        "severity": "CRITICAL",
+        "threshold": "> 0 occurrences in 24h",
+        "action": "Email + Slack + Create GitHub issue"
+    },
+    "response_length": {
+        "severity": "WARNING",
+        "threshold": "> 5 responses >15k chars in 24h",
+        "action": "Email summary"
+    },
+    "error_rate": {
+        "severity": "CRITICAL",
+        "threshold": "> 1% error rate",
+        "action": "Email + Slack + Page on-call"
+    },
+    "latency_p95": {
+        "severity": "WARNING",
+        "threshold": "> 3s p95 latency",
+        "action": "Email summary"
+    },
+    "daily_cost": {
+        "severity": "INFO",
+        "threshold": "> $5/day token costs",
+        "action": "Email summary"
+    }
+}
+```
+
+---
+
+### Daily Report Example
+
+```
+📊 Quality Report - October 17, 2025
+
+✅ Overall Status: HEALTHY
+
+Metrics (24h):
+  - 234 queries processed
+  - 1.2s avg latency (p95: 2.1s)
+  - $0.45 total cost ($0.0019/query)
+  - 0 errors (0%)
+
+Policy Compliance:
+  ✅ No markdown headers detected
+  ✅ All responses <15k chars
+  ✅ Single follow-up prompts only
+  ⚠️  3 queries >3s latency (1.3%)
+
+Top Queries:
+  1. "explain conversation nodes" - 45 times
+  2. "show me code examples" - 32 times
+  3. "what are noah's skills" - 28 times
+
+Slowest Query:
+  - Query: "explain the full technical architecture"
+  - Latency: 4.2s
+  - Trace: https://smith.langchain.com/...
+  - Action: Optimize prompt length
+```
+
+---
+
+### Cost Analysis
+
+**LangSmith Pricing**:
+- Free tier: 5,000 traces/month (good for development)
+- Team tier: $39/month for 100k traces (recommended for production)
+
+**Break-Even Analysis**:
+- If LangSmith catches **1 production bug/month** → Saves 2-4 hours debugging → Worth $39
+- If it prevents **1 user complaint** → Maintains reputation → Priceless
+
+**Current Usage** (estimated):
+- ~234 queries/day × 30 days = 7,020 traces/month
+- **Recommendation**: Start with Team tier ($39/month)
+
+---
+
+### Why This Matters for KB vs Response Policy
+
+**The Problem**: Our policy separates KB formatting (rich markdown) from user responses (professional bold only).
+
+**pytest validates this with mocks** ✅
+```python
+def test_no_emoji_headers():
+    mock_engine.generate_response.return_value = "**Bold Header**\n\nContent..."
+    assert "###" not in state.answer  # ✅ Test passes
+```
+
+**But what if in production...**
+- ❌ LLM ignores the prompt instruction?
+- ❌ New OpenAI model behaves differently?
+- ❌ Edge case query triggers unexpected formatting?
+- ❌ Prompt injection bypasses sanitization?
+
+**LangSmith catches these** 🔍
+```python
+# Scenario: New GPT-4-turbo ignores our "strip ###" instruction
+# pytest: ✅ PASSES (mocks return clean output)
+# Production: 🔴 Users see ### headers!
+
+# LangSmith alert:
+{
+    "severity": "CRITICAL",
+    "violation": "markdown_headers_in_production",
+    "trace_id": "abc-123",
+    "query": "explain conversation nodes",
+    "response": "### Node 1: handle_greeting...",  # Uh oh!
+    "model": "gpt-4-turbo-2024-10-15",  # New model version
+    "action": "Rollback to gpt-4 or update prompt"
+}
+```
+
+---
+
+### Implementation Timeline
+
+| Week | Phase | Tasks | Status |
+|------|-------|-------|--------|
+| **Week 1** | Phase 1 Testing | 77 automated tests, 99% pass rate | ✅ COMPLETE |
+| **Week 2-3** | LangGraph Migration | Convert to StateGraph, update tests | 🚧 IN PROGRESS |
+| **Week 4** | Phase 2 Monitoring | LangSmith setup, quality monitor | 📅 PLANNED |
+| **Ongoing** | Refinement | Adjust thresholds, add new checks | 📅 PLANNED |
+
+---
+
+### Summary: The Winning Formula
+
+```
+Phase 1 (Testing):  pytest (77 tests, 99% pass) ← Prevents 90% of bugs
+                           ↓ Deploy
+Phase 2 (Monitoring): LangSmith ← Catches the other 10%
+                           ↓ Learn
+Phase 3 (Improve):  Add new pytest tests for patterns found in production
+                           ↓ Repeat
+```
+
+**Key Takeaways**:
+1. **pytest** = Pre-deployment quality gate (fast, deterministic, blocks bad code)
+2. **LangSmith** = Post-deployment safety net (real behavior, edge cases, performance)
+3. **Together** = Comprehensive QA (test what you can control, monitor what you can't)
+4. **Cost**: $39/month is worth it if it catches 1 production bug/month
 
 ---
 
@@ -2253,7 +2641,7 @@ logger.debug(f"Debug info: {variable}")  # Won't appear in production logs (leve
 
 ### Related Documentation
 
-- **Cleanup Progress**: See `docs/QA_IMPLEMENTATION_SUMMARY.md` → Phase 1.5 section
+- **Cleanup Progress**: See [Current Test Status](#current-test-status) → Error Handling (6 tests, 100%)
 - **Testing Standards**: See [Testing Best Practices & Common Issues](#testing-best-practices--common-issues)
 - **Pre-Commit Hooks**: See [Pre-Commit Hooks](#pre-commit-hooks) section above
 
@@ -3126,7 +3514,7 @@ When reviewing code that involves external services or user input:
 - **Error Handling Audit**: `docs/archive/analysis/QA_AUDIT_FINDINGS_ERROR_HANDLING.md` (856 lines, comprehensive analysis)
 - **Test Implementation**: `tests/test_error_handling.py` (400 lines, 15 tests)
 - **Service Patterns**: See individual services in `src/services/` (Twilio, Resend, Storage)
-- **LangSmith Integration**: `docs/QA_LANGSMITH_INTEGRATION.md`
+- **Production Monitoring (Phase 2)**: See [Phase 2: Production Monitoring with LangSmith](#phase-2-production-monitoring-with-langsmith)
 - **Observability Guide**: `docs/OBSERVABILITY.md`
 
 ---
@@ -4378,8 +4766,8 @@ These tests verify consistent behavior across ALL roles:
 
 **Files Involved**:
 1. `docs/QA_STRATEGY.md` (2,807 lines) - Master SSOT
-2. `docs/QA_IMPLEMENTATION_SUMMARY.md` (456 lines) - 90% redundant
-3. `docs/QA_LANGSMITH_INTEGRATION.md` (535 lines) - Phase 2 monitoring
+2. ~~`docs/QA_IMPLEMENTATION_SUMMARY.md` (456 lines)~~ - **ARCHIVED Oct 17, 2025** → Content in [Current Test Status](#current-test-status)
+3. ~~`docs/QA_LANGSMITH_INTEGRATION.md` (535 lines)~~ - **ARCHIVED Oct 17, 2025** → Content in [Phase 2: Production Monitoring](#phase-2-production-monitoring-with-langsmith)
 4. `QA_POLICY_KB_VS_RESPONSE_SEPARATION.md` (319 lines) - Policy update
 5. `QA_COMPLIANCE_AND_VERCEL_DEPLOYMENT.md` (503 lines) - Task 11 report
 

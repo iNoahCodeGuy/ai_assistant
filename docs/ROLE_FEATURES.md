@@ -407,7 +407,7 @@ Curious how I "remember" our conversation across multiple questions, or want to 
 
 **Quality assurance:**
 - `docs/QA_STRATEGY.md` - Testing philosophy and standards
-- `docs/QA_IMPLEMENTATION_SUMMARY.md` - Current test suite status
+- `docs/QA_STRATEGY.md` - Master QA documentation, includes test status and monitoring strategy
 - `tests/test_conversation_quality.py` - 19 conversation quality tests
 - `tests/test_resume_distribution.py` - 37 resume distribution tests
 

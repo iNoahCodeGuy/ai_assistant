@@ -1,5 +1,20 @@
 # Quality Assurance Implementation Summary
 
+> **⚠️ DEPRECATION NOTICE - Archived October 17, 2025**
+>
+> This file has been **consolidated into [QA_STRATEGY.md](QA_STRATEGY.md)** to maintain a single source of truth for QA documentation.
+>
+> **Content moved to**:
+> - Test suite overview → [QA_STRATEGY.md § Current Test Status](QA_STRATEGY.md#current-test-status)
+> - Test descriptions → [QA_STRATEGY.md § Suite Descriptions](QA_STRATEGY.md#suite-descriptions)
+> - Usage commands → [QA_STRATEGY.md § Running Tests](QA_STRATEGY.md#running-tests)
+>
+> **This file will be moved to `docs/archive/qa/` after verification.**
+>
+> Please update your bookmarks to use QA_STRATEGY.md instead.
+
+---
+
 ## What We Built
 
 Created a **comprehensive quality assurance system** with **30 automated tests** to ensure conversation quality and documentation alignment remain intact as the codebase grows.

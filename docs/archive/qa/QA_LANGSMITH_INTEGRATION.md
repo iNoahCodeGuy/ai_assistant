@@ -1,5 +1,21 @@
 # LangSmith Integration into QA Strategy
 
+> **⚠️ DEPRECATION NOTICE - Archived October 17, 2025**
+>
+> This file has been **consolidated into [QA_STRATEGY.md](QA_STRATEGY.md)** to maintain a single source of truth for QA documentation.
+>
+> **Content moved to**:
+> - Hybrid approach (pytest + LangSmith) → [QA_STRATEGY.md § Phase 2: Production Monitoring](QA_STRATEGY.md#phase-2-production-monitoring-with-langsmith)
+> - What LangSmith monitors → [QA_STRATEGY.md § What We'll Monitor](QA_STRATEGY.md#what-well-monitor)
+> - Implementation plan → [QA_STRATEGY.md § Implementation Plan](QA_STRATEGY.md#implementation-plan)
+> - Cost analysis → [QA_STRATEGY.md § Cost Analysis](QA_STRATEGY.md#cost-analysis)
+>
+> **This file will be moved to `docs/archive/qa/` after verification.**
+>
+> Please update your bookmarks to use QA_STRATEGY.md instead.
+
+---
+
 **Date:** October 16, 2025
 **Question:** "Should we incorporate LangSmith into our QA?"
 **Answer:** **YES - As Phase 2 production monitoring, NOT as replacement for pytest**

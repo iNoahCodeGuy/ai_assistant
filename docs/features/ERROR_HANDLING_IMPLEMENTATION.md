@@ -495,7 +495,7 @@ LangSmith Dashboard: https://smith.langchain.com/...
 - **Conversation Flow:** `src/flows/conversation_nodes.py`, `src/flows/action_execution.py`
 
 ### External Resources
-- **LangSmith Integration:** `docs/QA_LANGSMITH_INTEGRATION.md` (Phase 2 monitoring plan)
+- **Production Monitoring (Phase 2):** [QA_STRATEGY.md § Phase 2: Production Monitoring](../QA_STRATEGY.md#phase-2-production-monitoring-with-langsmith)
 - **Observability Guide:** `docs/OBSERVABILITY.md` (tracing, logging, metrics)
 - **External Services:** `docs/EXTERNAL_SERVICES.md` (Twilio, Resend, Supabase setup)
 
