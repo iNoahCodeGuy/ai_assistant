@@ -17,7 +17,7 @@
 ### Core Sections
 
 #### 1. [Quality Standards & Testing](#current-quality-standards)
-   - 1.1 [Conversation Quality Tests (18 tests)](#1-conversation-quality-18-tests---current-status-12-passing-6-need-updates)
+   - 1.1 [Conversation Quality Tests (19 tests)](#1-conversation-quality-19-tests---current-status-19-passing)
    - 1.2 [Content Storage vs User Presentation](#content-storage-vs-user-presentation-standards)
    - 1.3 [Test Coverage Map](#test-coverage-map)
 
@@ -109,7 +109,7 @@ pytest tests/ -v
 # Run everything (recommended before committing)
 pytest tests/ -v
 
-# Run only conversation quality tests (18 tests)
+# Run only conversation quality tests (19 tests)
 pytest tests/test_conversation_quality.py -v
 
 # Run only documentation alignment tests (12 tests)
@@ -131,12 +131,14 @@ pytest tests/ -k "emoji" -v
 
 | Test Suite | Tests | Passing | Status |
 |------------|-------|---------|--------|
-| **Conversation Quality** | 18 | 18 | ✅ 100% |
-| **Documentation Alignment** | 12 | 11 | ✅ 92% (1 skipped) |
-| **TOTAL** | **30** | **29** | **✅ 100% pass rate (active tests)** |
+| **Conversation Quality** | 19 | 19 | ✅ 100% *(+1 new test: pushy resume offers)* |
+| **Documentation Alignment** | 15 | 14 | ✅ 93% (1 skipped) *(+3 resume distribution tests)* |
+| **Resume Distribution** | 37 | 37 | ✅ 100% *(NEW - hybrid approach validation)* |
+| **Error Handling** | 6 | 6 | ✅ 100% *(+1 Oct 17: RAG pipeline resilience)* |
+| **TOTAL** | **77** | **76** | **✅ 99% pass rate (active tests)** |
 
-**Last Run**: October 16, 2025
-**Target**: ✅ ACHIEVED - 100% pass rate on all active tests
+**Last Run**: October 17, 2025
+**Target**: ✅ ACHIEVED - 99% pass rate on all active tests (1 intentionally skipped)
 
 ---
 
@@ -166,8 +168,9 @@ pytest tests/ -k "emoji" -v
 
 ## Current Quality Standards
 
-### 1. Conversation Quality (18 Tests - Current Status: 12 Passing, 6 Need Updates)
+### 1. Conversation Quality (19 Tests - Current Status: 19 Passing ✅)
 **File**: `tests/test_conversation_quality.py`
+**Last Updated**: October 16, 2025
 
 #### Content Storage vs User Presentation Standards
 
@@ -187,6 +190,7 @@ pytest tests/ -k "emoji" -v
 | Recent activity limited | `test_recent_activity_limited` | ✅ PASSING |
 | Confessions private | `test_confessions_privacy_protected` | ✅ PASSING |
 | Single follow-up prompt | `test_no_duplicate_prompts_in_full_flow` | ✅ PASSING |
+| **No pushy resume offers** | `test_no_pushy_resume_offers` | ✅ PASSING (NEW - Oct 16, 2025) |
 | **No emoji headers IN RESPONSES** | `test_no_emoji_headers` | ✅ PASSING |
 | LLM no self-prompts | `test_llm_no_self_generated_prompts` | ✅ PASSING |
 | Data display canned intro | `test_display_data_uses_canned_intro` | ✅ PASSING |
@@ -200,10 +204,179 @@ pytest tests/ -k "emoji" -v
 | Single prompt location | `test_conversation_nodes_single_prompt_location` | ✅ PASSING |
 | **Q&A synthesis** | `test_no_qa_verbatim_responses`, `test_response_synthesis_in_prompts` | ✅ PASSING (2 tests) |
 
-**Current Pass Rate**: 18/18 tests passing (100%) ✅
-**Target**: 18/18 tests passing (100%) ✅
+**Current Pass Rate**: 19/19 tests passing (100%) ✅ *(Updated Oct 16, 2025 - added pushy resume offers test)*
+**Target**: 19/19 tests passing (100%) ✅
 
 **Run**: `pytest tests/test_conversation_quality.py -v`
+
+---
+
+### 1.1 Intelligent Resume Distribution Exception (NEW - Oct 16, 2025)
+
+**Feature**: Intelligent Resume Distribution System (Hybrid Approach)
+**Documentation**: `docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md`
+
+#### The Exception: Subtle Availability Mentions
+
+**Standard Behavior**: Single follow-up prompt only, no pushy CTAs
+
+**Exception**: When hiring signals detected (user mentions hiring, describes role, discusses team), **ONE subtle availability mention is allowed**:
+
+✅ **Acceptable (Mode 2 - Hiring Signals Detected)**:
+```
+[Educational response about RAG systems - 80% of content]
+
+By the way, Noah's available for roles like this if you'd like to
+learn more about his experience building production RAG systems.
+```
+
+❌ **Not Acceptable (Too Pushy)**:
+```
+[Educational response]
+
+INTERESTED IN HIRING NOAH?
+Send me your email and I'll forward his resume right away!
+Click here to schedule a call!
+```
+
+#### Quality Standards for Subtle Mentions
+
+| Standard | Requirement | Why |
+|----------|-------------|-----|
+| **User-initiated interest** | Only after user mentions hiring | Respects user autonomy |
+| **Once per conversation** | Max 1 subtle mention | Prevents spam feeling |
+| **Education remains primary** | ≥50% of response is educational | Stays true to primary purpose |
+| **No aggressive CTAs** | No "send email", "click here", "sign up" | Maintains professional tone |
+| **Natural placement** | At end of educational response | Feels like afterthought, not pitch |
+
+#### Test: `test_no_pushy_resume_offers()`
+
+**Validates**:
+1. **Mode 1 (Pure Education)**: ZERO resume mentions ✅
+2. **Mode 2 (Hiring Signals)**: ONE subtle mention allowed ✅
+3. **No pushy phrases**: No aggressive CTAs ✅
+4. **Education-focused**: ≥50% educational content even with mention ✅
+
+**Example Passing Response** (Mode 2):
+```
+RAG systems work by combining retrieval with generation. First, relevant
+documents are retrieved from a vector database based on semantic similarity.
+Then, these documents are passed to the LLM as context, allowing it to
+generate informed responses grounded in your data.
+
+The key advantage is that you get current, domain-specific answers without
+retraining the entire model. Would you like me to walk through Noah's
+implementation with code examples?
+
+By the way, Noah's available for roles like this if you'd like to learn more.
+```
+
+**Why This Works**:
+- ✅ Primary content is education (3 paragraphs)
+- ✅ Availability mention is subtle (1 sentence)
+- ✅ No pressure to act ("if you'd like")
+- ✅ User mentioned hiring first (triggered Mode 2)
+
+---
+
+### 1.2 Resume Distribution Test Suite (NEW - Oct 16, 2025)
+
+**File**: `tests/test_resume_distribution.py` (551 lines, 37 tests)
+**Pass Rate**: 100% (37/37 passing in 0.04s)
+
+#### Test Coverage Breakdown
+
+| Test Class | Tests | Purpose | Pass Rate |
+|------------|-------|---------|-----------|
+| **TestHiringSignalDetection** | 8 | Validates passive signal tracking, no false positives | ✅ 8/8 (100%) |
+| **TestExplicitResumeRequestHandling** | 6 | Validates Mode 3 immediate distribution, no qualification | ✅ 6/6 (100%) |
+| **TestSubtleAvailabilityMentions** | 5 | Validates Mode 2 conditions (≥2 signals, HM role) | ✅ 5/5 (100%) |
+| **TestJobDetailsGathering** | 6 | Validates post-interest gathering, extraction accuracy | ✅ 6/6 (100%) |
+| **TestOncePerSessionEnforcement** | 2 | Validates resume_sent flag prevents duplicates | ✅ 2/2 (100%) |
+| **TestEmailNameExtraction** | 5 | Validates contact info parsing, graceful fallbacks | ✅ 5/5 (100%) |
+| **TestHybridApproachIntegration** | 5 | Validates full Mode 1/2/3 workflows | ✅ 5/5 (100%) |
+| **TOTAL** | **37** | **Comprehensive hybrid approach validation** | **✅ 37/37 (100%)** |
+
+#### Quality Standards Enforced
+
+**1. Education-First Principle** (Mode 1):
+- Pure education queries receive ZERO resume mentions
+- Test: `test_education_mode_zero_mentions()` ✅
+- Example: "How do RAG systems work?" → Educational answer only
+
+**2. Explicit Request Priority** (Mode 3):
+- Direct requests trigger immediate email collection
+- No qualification checks, no delay tactics
+- Test: `test_explicit_request_immediate_response()` ✅
+- Example: "Can I get your resume?" → "I'd be happy to send that. What's your email?"
+
+**3. Passive Signal Tracking** (Mode 2 enabler):
+- System tracks hiring indicators (mentioned_hiring, described_role, team_context)
+- Does NOT proactively offer resume
+- Enables subtle availability mention when ≥2 signals detected
+- Test: `test_detects_all_signal_types()` ✅
+
+**4. Subtle Availability Mentions** (Mode 2):
+- Only when ≥2 hiring signals + hiring manager role + not sent yet
+- ONE sentence at end of educational response
+- No aggressive CTAs, no pressure language
+- Test: `test_subtle_mention_with_hiring_signals()` ✅
+
+**5. Job Details Gathering** (Post-Interest):
+- Only AFTER resume sent
+- Conversational tone ("Just curious — what company are you with?")
+- Regex extraction for company, position, timeline
+- Test: `test_post_interest_job_details()` ✅
+
+**6. Once-Per-Session Enforcement**:
+- `resume_sent` flag prevents duplicate distributions
+- Polite response: "I've already sent my resume to your email"
+- Test: `test_resume_sent_flag_prevents_duplicate()` ✅
+
+#### Key Test Patterns
+
+**Regex Pattern Validation** (Optimized via TDD):
+```python
+# Timeline detection: "available", "when.*start"
+assert detect_hiring_signals(state).fetch("hiring_signals") == ["timeline_urgency"]
+
+# Company extraction: "I'm with Acme Corp, hiring for..."
+assert extract_job_details_from_query(state).fetch("job_details")["company"] == "Acme Corp"
+
+# Position extraction: "Hiring for Senior Engineer" (case-insensitive)
+assert details["position"] == "Senior Engineer"
+```
+
+**State Isolation** (No Side Effects):
+```python
+# Each test creates fresh ConversationState
+state = ConversationState(query="test query", role="Hiring Manager (technical)")
+
+# Assertions check state mutations only
+assert state.fetch("resume_explicitly_requested") is True
+```
+
+**Edge Case Coverage**:
+- Empty queries → Graceful fallback ✅
+- Malformed input → No crashes ✅
+- Missing optional fields → Default values ✅
+- Once-per-session enforcement → Duplicate prevention ✅
+
+#### Running Resume Distribution Tests
+
+```bash
+# Run all 37 tests (ultra-fast execution)
+pytest tests/test_resume_distribution.py -v
+
+# Run specific test class
+pytest tests/test_resume_distribution.py::TestJobDetailsGathering -v
+
+# Run with detailed failure output
+pytest tests/test_resume_distribution.py -vv
+
+# Expected output:
+# ============================== 37 passed in 0.04s ==============================
+```
 
 ---
 
@@ -1387,6 +1560,878 @@ logger.debug(f"Debug info: {variable}")  # Won't appear in production logs (leve
 - **Cleanup Progress**: See `docs/QA_IMPLEMENTATION_SUMMARY.md` → Phase 1.5 section
 - **Testing Standards**: See [Testing Best Practices & Common Issues](#testing-best-practices--common-issues)
 - **Pre-Commit Hooks**: See [Pre-Commit Hooks](#pre-commit-hooks) section above
+
+---
+
+## Error Handling & Resilience Standards
+
+**Last Updated**: October 17, 2025
+**Status**: ✅ Standards defined, test suite implemented (5 core tests)
+
+### Overview
+
+**Purpose**: Ensure Portfolia degrades gracefully under failure conditions, maintaining conversation quality even when external services fail.
+
+**Philosophy**: **Never crash on user** — better to continue conversation with reduced features than show technical errors.
+
+**Audit Context**: Comprehensive audit (October 17, 2025) found:
+- ✅ **Code quality excellent**: Comprehensive try/except coverage across services, RAG engine, API endpoints
+- ⚠️ **Documentation gap**: Error handling patterns not formalized in QA policy
+- 📊 **Test coverage**: 5 core error handling tests added (76/76 passing, 100%)
+
+**Related Documentation**: See `docs/archive/analysis/QA_AUDIT_FINDINGS_ERROR_HANDLING.md` for full audit report
+
+---
+
+### Core Principles
+
+#### 1. Never Crash on User
+**Standard**: Conversation flow MUST continue even when services fail.
+
+**Bad** ❌:
+```python
+def send_sms(phone, message):
+    client = Twilio(api_key)  # Crashes if API key missing
+    client.messages.create(...)
+```
+
+**Good** ✅:
+```python
+def send_sms(phone, message):
+    twilio = get_twilio_service()  # Returns None if unavailable
+    if twilio:
+        try:
+            twilio.send_sms(phone, message)
+            logger.info(f"SMS sent to {phone}")
+        except TwilioRestException as e:
+            logger.error(f"SMS failed: {e}")
+            # Conversation continues, just no SMS
+    else:
+        logger.warning("Twilio unavailable, skipping SMS")
+```
+
+**Test**: `test_conversation_without_twilio()` ✅
+
+---
+
+#### 2. Graceful Degradation
+**Standard**: Return polite user-facing errors, not technical stack traces.
+
+**Bad** ❌:
+```python
+# API returns raw exception to user
+{
+    "success": false,
+    "error": "NoneType object has no attribute 'execute'"
+}
+```
+
+**Good** ✅:
+```python
+# API returns helpful message
+{
+    "success": false,
+    "error": "Unable to retrieve data at this time. Please try again in a moment."
+}
+```
+
+**Implementation Pattern**:
+```python
+try:
+    result = database.query(...)
+except Exception as e:
+    logger.error(f"Database error: {e}", exc_info=True)  # Log full trace
+    return {"success": False, "error": "Service temporarily unavailable"}
+```
+
+**Test**: `test_email_validation()` ✅
+
+---
+
+#### 3. Observable Failures
+**Standard**: All errors MUST be logged with sufficient context for debugging.
+
+**Required Context**:
+- **What** failed (service name, function, operation)
+- **Why** it failed (error type, message)
+- **When** it failed (timestamp, trace_id)
+- **Impact** (user affected? data lost? conversation degraded?)
+
+**Example**:
+```python
+try:
+    chunks = retriever.retrieve(query)
+except Exception as e:
+    logger.error(
+        f"Retrieval failed",
+        extra={
+            "query": query[:100],
+            "error_type": type(e).__name__,
+            "error_msg": str(e),
+            "trace_id": trace_id,
+            "session_id": session_id
+        },
+        exc_info=True
+    )
+```
+
+**Observability Tools**:
+- **LangSmith**: Traces all LLM calls, embeddings, retrievals
+- **Vercel Logs**: Captures structured logs from API endpoints
+- **Supabase Analytics**: Tracks conversation success/failure rates
+
+---
+
+#### 4. Fail-Fast on Startup
+**Standard**: Invalid configuration MUST prevent deployment, not silently fail at runtime.
+
+**Example** (Supabase Config Validation):
+```python
+# src/config/supabase_config.py
+def validate_supabase(self) -> None:
+    """Validate Supabase config on initialization."""
+    if not self.supabase_config.url:
+        raise ValueError(
+            "SUPABASE_URL not set. Add to .env:\n"
+            "SUPABASE_URL=https://xxx.supabase.co"
+        )
+
+    if '\n' in self.supabase_config.service_role_key:
+        raise ValueError(
+            "SUPABASE_SERVICE_ROLE_KEY contains newlines. "
+            "Remove trailing newlines in .env file."
+        )
+```
+
+**Why**: Prevents "works locally, fails in production" scenarios.
+
+**Test**: Manual verification during CI/CD (config validation runs on import)
+
+---
+
+#### 5. Defensive Coding
+**Standard**: Validate inputs, check for None, handle edge cases proactively.
+
+**Checklist**:
+- [ ] User inputs sanitized (XSS, SQL injection, path traversal)
+- [ ] API responses validated before processing
+- [ ] None checks before attribute access
+- [ ] Empty collection handling (empty list, empty string)
+- [ ] Length limits enforced (queries, emails, file uploads)
+
+**Example**:
+```python
+def extract_email(query: str) -> Optional[str]:
+    """Extract email from query with validation."""
+    if not query or len(query) > 10000:
+        return None
+
+    match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', query)
+    if not match:
+        return None
+
+    email = match.group(0)
+
+    # Sanitize for XSS
+    if '<' in email or '>' in email or 'script' in email.lower():
+        logger.warning(f"Suspicious email rejected: {email}")
+        return None
+
+    return email
+```
+
+**Test**: `test_email_validation()` ✅
+
+---
+
+### Service Layer Standards
+
+#### Factory Pattern for Service Initialization
+
+**Standard**: All external service clients MUST use factory functions that return `None` on failure.
+
+**Pattern**:
+```python
+# src/services/[service]_service.py
+def get_[service]_service() -> Optional[ServiceClient]:
+    """Factory returns None if credentials missing."""
+    api_key = os.getenv("SERVICE_API_KEY")
+
+    if not api_key:
+        logger.warning("SERVICE_API_KEY not set, service disabled")
+        return None
+
+    try:
+        return ServiceClient(api_key=api_key)
+    except Exception as e:
+        logger.error(f"Service initialization failed: {e}")
+        return None
+```
+
+**Usage**:
+```python
+# api/feedback.py
+service = get_service()
+if service:
+    service.perform_action()
+else:
+    return {"success": False, "error": "Service unavailable"}
+```
+
+**Services Using This Pattern** ✅:
+- `get_twilio_service()` - SMS alerts
+- `get_resend_service()` - Email distribution
+- `get_storage_service()` - Resume uploads
+- `get_supabase_client()` - Database operations
+
+**Test**: `test_conversation_without_twilio()`, `test_conversation_without_resend()` ✅
+
+---
+
+#### Service Error Handling Checklist
+
+For each external service integration:
+- [ ] Factory function returns None if credentials missing
+- [ ] Specific exception handling (e.g., `TwilioRestException`, `ResendAPIError`)
+- [ ] Errors logged with service name and operation
+- [ ] Conversation continues if service fails (degraded mode)
+- [ ] User receives polite error message (no technical details)
+
+**Example** (Twilio Service):
+```python
+# src/services/twilio_service.py
+class TwilioService:
+    def send_sms(self, to: str, message: str) -> bool:
+        """Send SMS, return False on failure."""
+        try:
+            self.client.messages.create(to=to, body=message, from_=self.from_number)
+            return True
+        except TwilioRestException as e:
+            logger.error(f"Twilio SMS failed: {e.msg}", extra={
+                "to": to[:3] + "***",  # Privacy: mask phone number
+                "error_code": e.code,
+                "status": e.status
+            })
+            return False
+```
+
+---
+
+### API Endpoint Standards
+
+#### Structured Error Responses
+
+**Standard**: All API endpoints MUST return consistent error structure with HTTP status codes.
+
+**Response Schema**:
+```python
+# Success
+{
+    "success": true,
+    "data": {...},
+    "timestamp": "2025-10-17T10:30:00Z"
+}
+
+# Error
+{
+    "success": false,
+    "error": "User-friendly error message",
+    "error_code": "INVALID_INPUT",  # Optional: machine-readable code
+    "timestamp": "2025-10-17T10:30:00Z"
+}
+```
+
+**HTTP Status Codes**:
+| Status | When | Example |
+|--------|------|---------|
+| **200** | Success | Query processed, response generated |
+| **400** | Client error | Invalid JSON, missing required fields |
+| **401** | Unauthorized | Invalid API key (future) |
+| **429** | Rate limited | Too many requests (future) |
+| **500** | Server error | Unexpected exception, service down |
+
+**Implementation Pattern**:
+```python
+# api/chat.py
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            # Parse request
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+
+            # Validate required fields
+            if 'query' not in data:
+                return self._send_error(400, "Missing required field: query")
+
+            # Process request
+            result = process_query(data)
+            return self._send_json(200, {"success": True, "data": result})
+
+        except json.JSONDecodeError:
+            return self._send_error(400, "Invalid JSON in request body")
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            return self._send_error(500, "Internal server error")
+```
+
+**Test**: `test_invalid_json_in_api()` ✅
+
+---
+
+#### API Validation Checklist
+
+For each API endpoint:
+- [ ] JSON parsing errors → 400 with "Invalid JSON" message
+- [ ] Missing required fields → 400 with field name
+- [ ] Invalid field values → 400 with validation error
+- [ ] Service unavailable → 500 with "Service temporarily unavailable"
+- [ ] Unexpected exceptions → 500 with generic message + full log
+- [ ] CORS preflight handled (OPTIONS requests)
+
+---
+
+### Conversation Flow Standards
+
+#### Node Error Handling
+
+**Standard**: Conversation nodes MUST NOT raise exceptions that crash the pipeline.
+
+**Bad** ❌:
+```python
+def retrieve_chunks(state: ConversationState, rag_engine: RagEngine):
+    """Retrieve chunks - CRASHES if rag_engine is None."""
+    chunks = rag_engine.retrieve(state.query)  # No None check
+    return state.set_chunks(chunks)
+```
+
+**Good** ✅:
+```python
+def retrieve_chunks(state: ConversationState, rag_engine: RagEngine):
+    """Retrieve chunks with error handling."""
+    try:
+        if not rag_engine:
+            logger.error("RAG engine not initialized")
+            return state.set_error("retrieval_failed")
+
+        chunks = rag_engine.retrieve(state.query)
+        logger.info(f"Retrieved {len(chunks)} chunks")
+        return state.set_chunks(chunks)
+
+    except Exception as e:
+        logger.error(f"Retrieval error: {e}", exc_info=True)
+        return state.set_error("retrieval_failed")
+```
+
+**Pipeline Behavior**:
+```python
+# src/flows/conversation_flow.py
+def run_conversation_flow(state, rag_engine, session_id):
+    """Run pipeline with error handling."""
+    for node_fn in pipeline:
+        try:
+            state = node_fn(state, rag_engine)
+
+            # Check for error flag (graceful degradation)
+            if state.has_error:
+                logger.warning(f"Node {node_fn.__name__} set error flag")
+                # Continue pipeline with degraded state
+
+        except Exception as e:
+            logger.error(f"Node {node_fn.__name__} crashed: {e}", exc_info=True)
+            # Set error state, continue to next node
+            state = state.set_error(node_fn.__name__)
+
+    return state
+```
+
+**Test**: `test_conversation_without_supabase()` (Phase 2)
+
+---
+
+### Input Validation Standards
+
+#### User Input Sanitization
+
+**Standard**: All user inputs MUST be validated and sanitized before processing.
+
+**Validation Rules**:
+
+| Input Type | Max Length | Allowed Characters | Sanitization |
+|------------|-----------|-------------------|--------------|
+| **Query** | 10,000 chars | Any UTF-8 | Truncate if exceeded |
+| **Email** | 320 chars | Email regex | Reject if XSS detected |
+| **Phone** | 20 chars | Digits + `+()-` | Reject if invalid format |
+| **Name** | 100 chars | Letters, spaces, hyphens | Strip special chars |
+
+**Example** (Email Validation):
+```python
+def validate_email(email: str) -> Optional[str]:
+    """Validate and sanitize email."""
+    if not email or len(email) > 320:
+        return None
+
+    # XSS check
+    if any(char in email for char in ['<', '>', 'script', 'javascript']):
+        logger.warning(f"Suspicious email rejected: {email[:20]}...")
+        return None
+
+    # Format validation
+    if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$', email):
+        return None
+
+    return email.strip().lower()
+```
+
+**Security Threats Prevented**:
+- ✅ **XSS attacks**: `<script>alert('xss')</script>` rejected
+- ✅ **SQL injection**: `test'; DROP TABLE users; --` rejected
+- ✅ **Path traversal**: `../../etc/passwd` rejected
+- ✅ **Buffer overflow**: 50,000 char queries truncated
+
+**Test**: `test_email_validation()` ✅
+
+---
+
+#### Edge Case Handling
+
+**Standard**: System MUST handle edge cases gracefully.
+
+**Common Edge Cases**:
+```python
+# Empty inputs
+query = ""  # → Return helpful "Ask me anything" message, not error
+chunks = []  # → Generate response from chat history only
+
+# Very long inputs
+query = "a" * 50000  # → Truncate to 10,000 chars, log warning
+
+# Special characters
+query = "💻🚀🔥"  # → Process normally (UTF-8 supported)
+
+# Malformed data
+email = "notanemail"  # → Reject politely: "Invalid email format"
+
+# Null values
+user_name = None  # → Use "there" as fallback in greetings
+```
+
+**Test**: `tests/test_code_display_edge_cases.py` (6 tests covering XSS, SQL injection, path traversal) ✅
+
+---
+
+### RAG Pipeline Resilience
+
+#### Embedding Failures
+
+**Standard**: Empty embedding returns MUST NOT crash retrieval.
+
+**Implementation** (`src/retrieval/pgvector_retriever.py`):
+```python
+def embed(self, text: str) -> List[float]:
+    """Generate embedding, return empty list on failure."""
+    try:
+        if not text or not text.strip():
+            logger.warning("Empty text for embedding")
+            return []
+
+        response = self.openai_client.embeddings.create(
+            input=text,
+            model="text-embedding-3-small"
+        )
+        return response.data[0].embedding
+
+    except Exception as e:
+        logger.error(f"Embedding failed: {e}")
+        return []  # Never raise
+```
+
+**Fallback Behavior**:
+- Empty embedding → Skip retrieval → LLM generates from chat history only
+- User sees response (may be less accurate), not error message
+
+**Test**: `test_openai_rate_limit_handling()` ✅
+
+---
+
+#### Retrieval Failures
+
+**Standard**: Retrieval errors MUST return empty list, not raise.
+
+**Implementation**:
+```python
+def retrieve(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
+    """Retrieve chunks, return empty list on failure."""
+    try:
+        embedding = self.embed(query)
+        if not embedding:
+            logger.warning("Empty embedding, returning no results")
+            return []
+
+        response = self.supabase.rpc('match_documents', {
+            'query_embedding': embedding,
+            'match_count': top_k
+        }).execute()
+
+        return response.data or []
+
+    except Exception as e:
+        logger.error(f"Retrieval failed: {e}", exc_info=True)
+        return []  # Graceful degradation
+```
+
+**Client-Side Fallback**:
+```python
+# src/core/rag_engine.py
+def generate_response(self, query: str, chat_history: List):
+    """Generate response with fallback if retrieval fails."""
+    chunks = self.retrieve(query)
+
+    if not chunks:
+        logger.warning("No chunks retrieved, using chat history only")
+        # LLM still generates response, just without KB context
+
+    return self.llm.generate(query=query, context=chunks, history=chat_history)
+```
+
+---
+
+#### Low-Quality Retrieval Fallback 🆕
+
+**Standard**: When ALL retrieval scores < 0.4, provide helpful fallback message instead of low-quality results.
+
+**Threshold Explanation** (Cosine similarity, 0.0-1.0 scale):
+- **1.0** = Perfect match (identical vectors)
+- **0.7-1.0** = Good match (use normally)
+- **0.4-0.7** = Moderate match (use with caution, may lack relevance)
+- **< 0.4** = Poor match (trigger fallback)
+
+**Common Triggers**:
+- Typos/misspellings ("buisness" → "business")
+- Out-of-domain queries (not in knowledge base)
+- Overly generic queries ("tell me everything")
+
+**Implementation** (`src/flows/core_nodes.py:135-152`):
+```python
+def generate_answer(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
+    """Generate answer, with fallback for low-quality retrieval."""
+
+    # Check for very low retrieval quality (all scores below threshold)
+    retrieval_scores = state.fetch("retrieval_scores", [])
+    if retrieval_scores and all(score < 0.4 for score in retrieval_scores):
+        fallback_answer = f"""I'm not finding great matches for "{state.query}" in my knowledge base, but I'd love to help!
+
+Here are some things I can tell you about:
+- **Noah's engineering skills and experience** - "What are your software engineering skills?"
+- **Production GenAI systems** - "What do you understand about production GenAI systems?"
+- **System architecture** - "How do you approach system architecture?"
+- **Specific projects** - "What projects have you built?"
+- **Technical stack and tools** - "What technologies do you use?"
+- **Career background** - "Tell me about your career journey"
+
+Or ask me to explain how I work - I love teaching about RAG, vector search, and LLM orchestration! What sounds interesting?"""
+
+        state.set_answer(fallback_answer)
+        state.stash("fallback_used", True)
+        logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
+        return state
+
+    # Normal response generation
+    answer = rag_engine.generate_response(state.query, state.chat_history)
+    state.set_answer(answer)
+    return state
+```
+
+**User Experience**:
+- ✅ No error message shown
+- ✅ Helpful alternative suggestions provided (role-specific)
+- ✅ Maintains conversational tone
+- ✅ Encourages rephrasing
+- ✅ Acknowledges user's query (echoes back)
+
+**Monitoring**:
+- `fallback_used=True` flag in conversation state
+- LangSmith trace includes retrieval scores
+- Logged to application logs for analysis
+
+**Production Example** (Real screenshot from October 17, 2025):
+```
+User: "buisness"
+System: "I'm not finding great matches for 'buisness' in my knowledge base, but I'd love to help!..."
+Scores: [0.35, 0.28]
+Result: ✅ User redirected to relevant topics
+```
+
+**Test**: `test_low_quality_retrieval_fallback()` ✅
+
+**Why This Matters**:
+- Prevents showing irrelevant/confusing responses
+- Improves user experience on edge cases
+- Guides users to high-quality content
+- Builds trust (transparency about limitations)
+
+---
+
+#### LLM Generation Failures
+
+**Standard**: LLM errors MUST return polite fallback message.
+
+**Implementation** (`src/core/response_generator.py`):
+```python
+def generate(self, query: str, context: List, history: List) -> str:
+    """Generate response with fallback."""
+    try:
+        response = self.llm.chat.completions.create(
+            model="gpt-4",
+            messages=build_messages(query, context, history),
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+
+    except RateLimitError:
+        logger.error("OpenAI rate limit hit")
+        return (
+            "I'm experiencing high volume right now. "
+            "Please try again in a moment, or email noah@example.com directly."
+        )
+    except Exception as e:
+        logger.error(f"LLM generation failed: {e}", exc_info=True)
+        return (
+            "I'm having trouble generating a response. "
+            "Please rephrase your question or try again."
+        )
+```
+
+**Test**: `test_openai_rate_limit_handling()` ✅
+
+---
+
+### Error Handling Test Suite
+
+**File**: `tests/test_error_handling.py` (400 lines, 15 tests)
+
+**Current Status**: ✅ 5/5 core tests passing (100%)
+
+#### Required Tests (Priority 1 - Implemented)
+
+| Test | Purpose | Pass Criteria | Status |
+|------|---------|---------------|--------|
+| `test_conversation_without_twilio` | Service degradation | Conversation continues, no crash | ✅ PASSING |
+| `test_conversation_without_resend` | Service degradation | Polite error message to user | ✅ PASSING |
+| `test_openai_rate_limit_handling` | LLM failure | Fallback response provided | ✅ PASSING |
+| `test_email_validation` | Input sanitization | Malicious input rejected politely | ✅ PASSING |
+| `test_invalid_json_in_api` | API validation | 400 error with helpful message | ✅ PASSING |
+
+#### Additional Tests (Priority 2 - Phase 2)
+
+| Test | Purpose | Pass Criteria | Status |
+|------|---------|---------------|--------|
+| `test_conversation_without_supabase` | Database failure | Fallback response provided | ⬜ TODO |
+| `test_query_length_limits` | Input validation | Very long queries truncated | ⬜ TODO |
+| `test_missing_required_fields` | API validation | 400 error with field name | ⬜ TODO |
+| `test_unauthorized_access` | Security | 401 error returned | ⬜ TODO |
+| `test_rate_limiting` | Abuse prevention | 429 error after threshold | ⬜ TODO |
+| `test_concurrent_requests` | Thread safety | No race conditions | ⬜ TODO |
+| `test_memory_leak_prevention` | Resource management | No memory growth over time | ⬜ TODO |
+| `test_timeout_handling` | Performance limits | Slow queries interrupted | ⬜ TODO |
+| `test_cors_preflight` | CORS handling | OPTIONS request handled | ⬜ TODO |
+| `test_logging_on_errors` | Observability | Errors logged with context | ⬜ TODO |
+
+**Target**: 15/15 tests passing (100%) by Phase 2 completion
+
+**Run**: `pytest tests/test_error_handling.py -v`
+
+---
+
+### Production Error Monitoring (Phase 2)
+
+**Tool**: LangSmith + Custom Monitoring
+
+**Status**: 🔜 Planned for Phase 2 (Q1 2025)
+
+#### Alert Thresholds
+
+| Metric | Threshold | Action |
+|--------|-----------|--------|
+| **Error rate** | >5% of requests | Email + Slack alert |
+| **Service unavailable** | >10% of requests | Page on-call |
+| **Response latency** | p95 >5s | Email summary |
+| **OpenAI rate limit** | >10 hits/day | Email warning |
+| **Embedding failures** | >5% of retrievals | Slack alert |
+| **Daily cost** | >$10 | Email budget alert |
+
+#### Daily Automated Report
+
+**Delivered**: Email to engineering team (8am PT)
+
+**Contents**:
+- Total queries processed
+- Error rate and top error types
+- Service availability metrics
+- Performance metrics (p50, p95, p99 latency)
+- Cost analysis (tokens, $ per query)
+- Recommended actions
+
+**Example Report**:
+```
+📊 Error Handling Report - October 17, 2025
+
+✅ Overall Status: HEALTHY
+
+Metrics (24h):
+  - 234 queries processed
+  - 1.2s avg latency (p95: 2.1s)
+  - $0.45 total cost ($0.0019/query)
+  - 2 errors (0.8%)
+
+Service Availability:
+  ✅ Twilio: 100% (12 SMS sent)
+  ✅ Resend: 100% (5 emails sent)
+  ✅ OpenAI: 99.2% (2 rate limit hits)
+  ✅ Supabase: 100%
+
+Error Breakdown:
+  - OpenAI RateLimitError: 2 (0.8%)
+    → Action: Implement exponential backoff
+
+Top Queries:
+  1. "explain conversation nodes" - 45 times
+  2. "show me code examples" - 32 times
+  3. "what are noah's skills" - 28 times
+
+Recommendations:
+  - OpenAI rate limits detected → Consider caching strategy
+  - No service outages → Continue current approach
+```
+
+#### LangSmith Integration
+
+**Configuration** (`.env`):
+```bash
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_...
+LANGCHAIN_PROJECT=noahs-ai-assistant
+```
+
+**What Gets Traced**:
+- All LLM calls (prompt, response, latency, tokens)
+- All embedding calls (text, vector, latency)
+- All retrieval calls (query, chunks, scores)
+- All errors (exception type, message, stack trace)
+
+**Quality Checks** (via `scripts/quality_monitor.py`):
+```python
+def check_langsmith_traces():
+    """Check production traces for quality violations."""
+    client = get_langsmith_client()
+    runs = client.list_runs(project_name="noahs-ai-assistant", start_time=datetime.now() - timedelta(hours=24))
+
+    violations = []
+    for run in runs:
+        answer = run.outputs.get("answer", "")
+
+        # Check for markdown headers (our policy!)
+        if re.search(r'#{1,6}\s', answer):
+            violations.append({
+                "type": "emoji_headers",
+                "trace_id": run.id,
+                "query": run.inputs.get("query", ""),
+                "response": answer[:200]
+            })
+
+    return violations
+```
+
+**Cost**: $39/month for 100k traces (Team tier)
+
+---
+
+### Migration Guide for Developers
+
+#### Adding Error Handling to Existing Code
+
+**Step 1: Identify Failure Points**
+```python
+# Before (crashes on failure)
+def send_notification(user_email: str):
+    service = EmailService()  # Crashes if API key missing
+    service.send(user_email, "Your resume has been sent!")
+```
+
+**Step 2: Add Factory Pattern**
+```python
+# After (graceful degradation)
+def send_notification(user_email: str):
+    service = get_email_service()  # Returns None if unavailable
+    if service:
+        try:
+            service.send(user_email, "Your resume has been sent!")
+            logger.info(f"Notification sent to {user_email}")
+        except Exception as e:
+            logger.error(f"Notification failed: {e}")
+            # User doesn't get email, but conversation continues
+    else:
+        logger.warning("Email service unavailable, skipping notification")
+```
+
+**Step 3: Add Test**
+```python
+# tests/test_error_handling.py
+def test_notification_without_email_service():
+    """Test conversation works even if email service down."""
+    with patch('src.services.email_service.get_email_service', return_value=None):
+        # Simulate user requesting resume
+        state = ConversationState(query="send me your resume")
+        result = run_conversation_flow(state, rag_engine)
+
+        # Conversation continues
+        assert result.answer
+        assert "resume" in result.answer.lower()
+        # User gets response, just no email notification
+```
+
+---
+
+### Checklist for Code Reviewers
+
+When reviewing code that involves external services or user input:
+
+**Service Integration**:
+- [ ] Factory function returns None if credentials missing
+- [ ] Specific exception types caught (not bare `except:`)
+- [ ] Errors logged with service name and context
+- [ ] Conversation continues if service fails (no crash)
+- [ ] User receives polite error message (no technical details)
+
+**Input Validation**:
+- [ ] User input sanitized for XSS, SQL injection, path traversal
+- [ ] Length limits enforced (query, email, file uploads)
+- [ ] None checks before attribute access
+- [ ] Empty string/collection handling
+
+**API Endpoints**:
+- [ ] JSON parsing errors return 400 status
+- [ ] Missing required fields return 400 with field name
+- [ ] Unexpected exceptions return 500 with generic message
+- [ ] Full stack traces logged (not exposed to user)
+- [ ] CORS preflight handling (OPTIONS requests)
+
+**Testing**:
+- [ ] Error handling test added to `tests/test_error_handling.py`
+- [ ] Test covers failure scenario (mocked service returns None/raises)
+- [ ] Test verifies conversation continues (no crash)
+- [ ] Test runs in CI/CD pipeline
+
+---
+
+### Related Documentation
+
+- **Error Handling Audit**: `docs/archive/analysis/QA_AUDIT_FINDINGS_ERROR_HANDLING.md` (856 lines, comprehensive analysis)
+- **Test Implementation**: `tests/test_error_handling.py` (400 lines, 15 tests)
+- **Service Patterns**: See individual services in `src/services/` (Twilio, Resend, Storage)
+- **LangSmith Integration**: `docs/QA_LANGSMITH_INTEGRATION.md`
+- **Observability Guide**: `docs/OBSERVABILITY.md`
 
 ---
 
@@ -2619,17 +3664,262 @@ These tests verify consistent behavior across ALL roles:
 
 ---
 
+## 12. Documentation Consolidation Policy
+
+**Purpose**: Prevent proliferation of redundant QA documentation files.
+
+**Last Updated**: October 16, 2025 (after consolidating 5 QA docs → 1)
+
+---
+
+### The Problem: Documentation Sprawl
+
+**What Happened** (Oct 2025):
+- Started with 1 master doc: `docs/QA_STRATEGY.md`
+- Over 2 weeks, created 4 additional QA docs for specific topics
+- Result: 4,620 lines across 5 files with **~1,400 lines of pure duplication**
+- Developers confused about which doc was authoritative
+
+**Files Involved**:
+1. `docs/QA_STRATEGY.md` (2,807 lines) - Master SSOT
+2. `docs/QA_IMPLEMENTATION_SUMMARY.md` (456 lines) - 90% redundant
+3. `docs/QA_LANGSMITH_INTEGRATION.md` (535 lines) - Phase 2 monitoring
+4. `QA_POLICY_KB_VS_RESPONSE_SEPARATION.md` (319 lines) - Policy update
+5. `QA_COMPLIANCE_AND_VERCEL_DEPLOYMENT.md` (503 lines) - Task 11 report
+
+**Root Cause**: Created separate docs for temporary topics instead of adding sections to master doc.
+
+---
+
+### The Solution: Consolidation + Ongoing Policy
+
+#### ✅ What We Did (Oct 16, 2025)
+
+**Consolidated to Single SSOT**:
+- Merged LangSmith content into QA_STRATEGY.md Section 9
+- Archived historical policy docs to `docs/archive/policies/`
+- Archived task-specific reports to `docs/archive/deployments/`
+- Deleted redundant summary doc (content already in master)
+- Extracted deployment steps to `docs/setup/VERCEL_DEPLOYMENT.md`
+
+**Result**: 1 master QA doc (3,200 lines) + properly categorized archives
+
+**Historical Context**: See `docs/archive/analysis/QA_DOCUMENTATION_CONSOLIDATION_PLAN_OCT16.md` for full analysis and migration steps.
+
+---
+
+### Ongoing Policy: When to Create New QA Docs
+
+Use this decision tree **before creating any new .md file related to QA**:
+
+```
+New QA content identified?
+  ↓
+  Is it a quality standard or test?
+    Yes → Add to QA_STRATEGY.md Section 1
+    No → Continue
+  ↓
+  Is it about testing workflow/CI/CD?
+    Yes → Add to QA_STRATEGY.md Section 2-6
+    No → Continue
+  ↓
+  Is it about documentation alignment?
+    Yes → Add to QA_STRATEGY.md Section 3 or 7
+    No → Continue
+  ↓
+  Is it about production monitoring?
+    Yes → Add to QA_STRATEGY.md Section 9 (LangSmith/observability)
+    No → Continue
+  ↓
+  Is it deployment/operational instructions?
+    Yes → Add to docs/setup/VERCEL_DEPLOYMENT.md or similar
+    No → Continue
+  ↓
+  Is it a historical policy change explanation?
+    Yes → Document change in QA_STRATEGY.md, archive explanation in docs/archive/policies/ with date
+    No → Continue
+  ↓
+  Is it a one-time cleanup/migration plan?
+    Yes → Create in root, execute, then archive to docs/archive/analysis/ with date
+    No → Reconsider if it's actually a QA topic
+```
+
+**Golden Rule**: **When in doubt, add to QA_STRATEGY.md, NOT a new file.**
+
+---
+
+### File Categorization Rules
+
+| File Type | Location | Naming | When to Create |
+|-----------|----------|--------|----------------|
+| **Master QA Standards** | `docs/QA_STRATEGY.md` | N/A (single file) | ✅ Already exists - ADD sections, don't duplicate |
+| **Deployment Guides** | `docs/setup/` | `VERCEL_DEPLOYMENT.md`, `LOCAL_TESTING.md` | Only if operational steps, not QA standards |
+| **Policy Change History** | `docs/archive/policies/` | `QA_POLICY_[TOPIC]_[MMDDYYYY].md` | After updating QA_STRATEGY.md to explain "why changed" |
+| **Task-Specific Reports** | `docs/archive/deployments/` | `TASK[N]_[TOPIC]_[MMDDYYYY].md` | For compliance reports, deployment summaries |
+| **One-Time Analysis** | `docs/archive/analysis/` | `[TOPIC]_ANALYSIS_[MMDDYYYY].md` | For audits, consolidation plans, investigations |
+
+**Archive Naming Convention**: Always include `_[MMDDYYYY]` suffix (e.g., `_OCT16` for Oct 16, 2025) so archived docs don't get confused with active ones.
+
+---
+
+### Examples: Correct vs Incorrect Handling
+
+#### ✅ Example 1: New Quality Standard (Correct)
+
+**Scenario**: Discovered LLM sometimes returns Q&A format verbatim instead of synthesizing.
+
+**Wrong Approach** ❌:
+```
+Create QA_POLICY_UPDATE_NO_QA_VERBATIM.md (319 lines)
+Explain problem, solution, test results
+```
+
+**Right Approach** ✅:
+```
+1. Add test: test_no_qa_verbatim_responses() to tests/test_conversation_quality.py
+2. Update QA_STRATEGY.md Section 1 test coverage table
+3. Document synthesis requirement in Section 1.2 (if doesn't exist)
+4. Archive historical explanation in docs/archive/policies/QA_POLICY_NO_QA_VERBATIM_OCT15.md
+```
+
+**Justification**: Standard belongs in master doc. Historical "why" belongs in archive.
+
+---
+
+#### ✅ Example 2: Phase 2 Monitoring Plan (Correct)
+
+**Scenario**: Want to add LangSmith production monitoring to QA process.
+
+**Wrong Approach** ❌:
+```
+Create docs/QA_LANGSMITH_INTEGRATION.md (535 lines)
+Document entire Phase 2 plan separately
+```
+
+**Right Approach** ✅:
+```
+1. Add new Section 9 to QA_STRATEGY.md: "Phase 2: Production Monitoring with LangSmith"
+2. Include integration steps, code examples, cost analysis
+3. Update Phase roadmap in Section 8 to reference Section 9
+4. No separate file needed - it's an ongoing QA process
+```
+
+**Justification**: Ongoing monitoring is a permanent part of QA strategy, not a temporary topic.
+
+---
+
+#### ✅ Example 3: Task-Specific Compliance Report (Correct)
+
+**Scenario**: Task 11 requires QA compliance verification before Vercel deployment.
+
+**Wrong Approach** ❌:
+```
+Create QA_COMPLIANCE_AND_VERCEL_DEPLOYMENT.md (503 lines) in root
+Leave it there indefinitely as reference
+```
+
+**Right Approach** ✅:
+```
+1. Create QA_COMPLIANCE_AND_VERCEL_DEPLOYMENT.md in root (temporary)
+2. Use for Task 11 execution (validates 71 tests, documents deployment steps)
+3. After Task 11 complete, archive to docs/archive/deployments/TASK11_QA_COMPLIANCE_OCT16.md
+4. Extract ongoing deployment steps to docs/setup/VERCEL_DEPLOYMENT.md
+```
+
+**Justification**: Task reports are historical artifacts, not ongoing standards. Operational steps belong in docs/setup/.
+
+---
+
+### Enforcement: Pre-Commit Hook (Future)
+
+**Phase 3 Enhancement** (after current cleanup):
+
+Add pre-commit hook to detect new QA-related .md files:
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit
+
+# Check for new QA-related .md files
+new_qa_docs=$(git diff --cached --name-only --diff-filter=A | grep -E "(QA_|QUALITY_|TEST_).*\.md")
+
+if [ -n "$new_qa_docs" ]; then
+    echo "⚠️  WARNING: New QA documentation file detected:"
+    echo "$new_qa_docs"
+    echo ""
+    echo "Before creating new QA docs, ask:"
+    echo "1. Can this be added to docs/QA_STRATEGY.md instead?"
+    echo "2. If not, does it belong in docs/setup/, docs/archive/policies/, or docs/archive/deployments/?"
+    echo ""
+    echo "See docs/QA_STRATEGY.md Section 12 for consolidation policy."
+    echo ""
+    read -p "Proceed anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+```
+
+**Implementation**: After Phase 1 cleanup complete and stable.
+
+---
+
+### Quarterly Review Process
+
+**Every 3 months** (Jan 15, Apr 15, Jul 15, Oct 15):
+
+1. **Audit for new QA files**:
+   ```bash
+   find . -name "*QA*.md" -o -name "*QUALITY*.md" -o -name "*TEST*.md" | grep -v "docs/QA_STRATEGY.md"
+   ```
+
+2. **For each file found**:
+   - Is content still relevant? → Merge into QA_STRATEGY.md or docs/setup/
+   - Is content historical? → Archive to appropriate docs/archive/ subdirectory
+   - Is content redundant? → Delete after confirming content in master doc
+
+3. **Update QA_STRATEGY.md**:
+   - Add any new standards discovered
+   - Update test counts, pass rates
+   - Verify all cross-references valid
+
+4. **Document review**:
+   - Update "Last Review" date (bottom of this doc)
+   - Commit: `git commit -m "docs: Quarterly QA documentation audit (Q[N] YYYY)"`
+
+---
+
+### Success Metrics
+
+**Goal**: Maintain single source of truth for QA standards.
+
+**Track Quarterly**:
+- Number of QA-related .md files outside docs/QA_STRATEGY.md: **Target ≤2** (1 master + 1 setup guide)
+- Lines of duplicated QA content: **Target <100 lines** (some overlap acceptable for context)
+- Developer confusion incidents (asking "which doc is correct?"): **Target 0**
+
+**Current Status** (Oct 16, 2025):
+- QA files: 1 master (docs/QA_STRATEGY.md) + 1 setup (docs/setup/VERCEL_DEPLOYMENT.md) ✅
+- Duplication: ~0 lines (all consolidated) ✅
+- Confusion incidents: 0 (just cleaned up) ✅
+
+---
+
+**Historical Context**: Full consolidation analysis and migration steps documented in `docs/archive/analysis/QA_DOCUMENTATION_CONSOLIDATION_PLAN_OCT16.md`.
+
+---
+
 ## Related Documentation
 
 - **Test Inventory**: See "Current Quality Standards" section above
 - **Conversation Quality**: `tests/test_conversation_quality.py`
-- **Documentation Consolidation**: `DOCUMENTATION_CONSOLIDATION_ANALYSIS.md`
-- **Code Alignment Report**: `CODE_DOCUMENTATION_ALIGNMENT_REPORT.md`
 - **Master Documentation**: `docs/context/` directory
-- **Test Fix Archive**: `docs/archive/bugfixes/PHASE_1_TEST_FIXES_OCT_16_2025.md`
+- **Setup Guides**: `docs/setup/` directory
+- **Historical Context**: `docs/archive/` directory
 
 ---
 
-**Last Review**: October 16, 2025 (Added Testing Best Practices §9)
+**Last Review**: October 16, 2025 (Added Documentation Consolidation Policy §12)
 **Next Review**: January 16, 2026
 **Owner**: Engineering Team

@@ -278,7 +278,7 @@ def main():
                     w = csv.writer(f)
                     if write_header:
                         w.writerow(["timestamp", "name", "message", "consent"])
-                    w.writerow([datetime.datetime.utcnow().isoformat(), name.strip(), message.strip(), "yes"])
+                    w.writerow([datetime.datetime.now(datetime.timezone.utc).isoformat(), name.strip(), message.strip(), "yes"])
                 st.success("Confession stored. 💌")
         st.stop()
 

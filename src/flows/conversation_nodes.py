@@ -34,6 +34,16 @@ from src.flows.code_validation import (
     sanitize_generated_answer
 )
 from src.flows.greetings import get_role_greeting, should_show_greeting, is_first_turn
+from src.flows.resume_distribution import (
+    detect_hiring_signals,
+    handle_resume_request,
+    should_add_availability_mention,
+    extract_email_from_query,
+    extract_name_from_query,
+    should_gather_job_details,
+    get_job_details_prompt,
+    extract_job_details_from_query
+)
 
 
 def handle_greeting(state, rag_engine):
@@ -71,4 +81,13 @@ __all__ = [
     "should_show_greeting",
     "is_valid_code_snippet",
     "sanitize_generated_answer",
+    # Resume distribution nodes (NEW - Intelligent Resume Distribution System)
+    "detect_hiring_signals",
+    "handle_resume_request",
+    "should_add_availability_mention",
+    "extract_email_from_query",
+    "extract_name_from_query",
+    "should_gather_job_details",
+    "get_job_details_prompt",
+    "extract_job_details_from_query",
 ]

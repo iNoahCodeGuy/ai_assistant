@@ -19,7 +19,7 @@ Why these metrics:
 import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import statistics
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class RetrievalMetrics:
     avg_similarity: float
     latency_ms: int
     chunk_sources: List[str] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @classmethod
     def from_retrieval_result(
@@ -99,7 +99,7 @@ class GenerationMetrics:
     latency_ms: int
     model: str
     cost_usd: float = 0.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @classmethod
     def from_openai_response(
@@ -177,7 +177,7 @@ class EvaluationMetrics:
     groundedness: float = 0.0
     citation_accuracy: float = 0.0
     explanation: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def overall_score(self) -> float:
         """Calculate overall quality score (0-1).

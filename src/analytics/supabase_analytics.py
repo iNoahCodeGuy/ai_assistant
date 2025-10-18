@@ -14,7 +14,7 @@ Cost savings: ~$100-200/month (GCP) → ~$25-50/month (Supabase)
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 import uuid
@@ -52,7 +52,7 @@ class UserInteractionData:
     def __post_init__(self):
         """Set timestamp if not provided."""
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc)
 
 
 @dataclass
@@ -240,7 +240,7 @@ class SupabaseAnalytics:
             }
         """
         try:
-            cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
             # Get messages from the last N days
             messages = self.client.table('messages')\
@@ -306,7 +306,7 @@ class SupabaseAnalytics:
                 .execute()
 
             # Get recent message count
-            recent_cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+            recent_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
             recent = self.client.table('messages')\
                 .select('id', count='exact')\
                 .gte('created_at', recent_cutoff)\
@@ -317,7 +317,7 @@ class SupabaseAnalytics:
                 "database_connected": True,
                 "total_messages": result.count if hasattr(result, 'count') else 0,
                 "recent_messages_24h": recent.count if hasattr(recent, 'count') else 0,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         except Exception as e:
@@ -325,7 +325,7 @@ class SupabaseAnalytics:
                 "status": "unhealthy",
                 "database_connected": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
 

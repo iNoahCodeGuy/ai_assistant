@@ -132,6 +132,123 @@ class ActionExecutor:
             message_preview=f"Resume dispatched to {contact_email or 'recipient'}."
         )
 
+    def execute_send_resume_and_notify(self, state: ConversationState, action: Dict[str, Any]) -> None:
+        """Send resume via email AND notify Noah via SMS (Intelligent Resume Distribution).
+
+        This is the primary action handler for the Intelligent Resume Distribution System.
+        It handles Mode 3 (explicit request) by:
+        1. Checking once-per-session enforcement (resume_sent flag)
+        2. Sending resume PDF to hiring manager via Resend
+        3. Notifying Noah via SMS with job details (if available)
+        4. Logging to Supabase analytics
+        5. Setting resume_sent flag to prevent duplicates
+
+        Args:
+            state: ConversationState with user_email, user_name, job_details
+            action: Action dictionary with optional resume_path, expires_in
+
+        Returns:
+            None (modifies state in-place)
+
+        Example:
+            action = {
+                "type": "send_resume_and_notify",
+                "resume_path": "resumes/noah_resume.pdf",
+                "expires_in": 86400  # 24 hours
+            }
+        """
+        # Enforcement: Once per session
+        if state.resume_sent:
+            logger.info("Resume already sent in this session, skipping duplicate")
+            state.update_analytics("resume_duplicate_prevented", True)
+            return
+
+        # Validate required fields
+        if not state.user_email:
+            logger.warning("Cannot send resume: no email provided")
+            state.update_analytics("resume_send_failed", "no_email")
+            return
+
+        # Step 1: Generate signed resume URL
+        storage_service = self._ensure_storage()
+        if not storage_service:
+            logger.error("Cannot send resume: storage service unavailable")
+            state.update_analytics("resume_send_failed", "storage_unavailable")
+            return
+
+        resume_path = action.get("resume_path", "resumes/noah_resume.pdf")
+        expires_in = action.get("expires_in", 86400)  # 24 hours default
+
+        try:
+            resume_url = storage_service.get_signed_url(resume_path, expires_in=expires_in)
+            state.stash("resume_signed_url", resume_url)
+        except Exception as exc:
+            logger.error("Failed to generate signed URL: %s", exc)
+            state.update_analytics("resume_send_failed", "url_generation_failed")
+            return
+
+        # Step 2: Send resume email to hiring manager
+        resend_service = self._ensure_resend()
+        if not resend_service:
+            logger.error("Cannot send resume: Resend service unavailable")
+            state.update_analytics("resume_send_failed", "resend_unavailable")
+            return
+
+        recipient_name = state.user_name or "Hiring Manager"
+        custom_message = action.get("message", "")
+
+        try:
+            email_response = resend_service.send_resume_email(
+                to_email=state.user_email,
+                to_name=recipient_name,
+                resume_url=resume_url,
+                message=custom_message
+            )
+            state.update_analytics("resume_email_sent", True)
+            state.update_analytics("resume_email_status", email_response.get("status", "unknown"))
+            logger.info("Resume sent to %s (%s)", recipient_name, state.user_email)
+        except Exception as exc:
+            logger.error("Failed to send resume email: %s", exc)
+            state.update_analytics("resume_send_failed", "email_send_failed")
+            return
+
+        # Step 3: Notify Noah via SMS with job details
+        twilio_service = self._ensure_twilio()
+        if twilio_service:
+            # Build SMS message with job details if available
+            job_company = state.job_details.get("company", "Unknown Company")
+            job_position = state.job_details.get("position", "Unknown Position")
+            job_timeline = state.job_details.get("timeline", "Not specified")
+
+            sms_message = (
+                f"🎯 Resume Sent!\n\n"
+                f"To: {recipient_name} ({state.user_email})\n"
+                f"Company: {job_company}\n"
+                f"Position: {job_position}\n"
+                f"Timeline: {job_timeline}"
+            )
+
+            try:
+                twilio_service.send_contact_alert(
+                    from_name=recipient_name,
+                    from_email=state.user_email,
+                    message_preview=sms_message[:160]  # SMS length limit
+                )
+                state.update_analytics("noah_notified_via_sms", True)
+                logger.info("Noah notified via SMS about resume send")
+            except Exception as exc:
+                logger.error("Failed to send SMS notification: %s", exc)
+                state.update_analytics("sms_notification_failed", str(exc))
+                # Don't fail the whole action if SMS fails - email already sent
+        else:
+            logger.warning("Twilio service unavailable, Noah not notified via SMS")
+            state.update_analytics("sms_notification_skipped", "twilio_unavailable")
+
+        # Step 4: Mark resume as sent (once-per-session enforcement)
+        state.mark_resume_sent()
+        state.update_analytics("resume_distribution_completed", True)
+        logger.info("Resume distribution completed successfully")
+
     def execute_notify_contact_request(self, state: ConversationState, action: Dict[str, Any]) -> None:
         """Send email and SMS notifications for contact requests.
 
@@ -192,6 +309,8 @@ class ActionExecutor:
             try:
                 if action_type == "send_resume":
                     self.execute_send_resume(state, action)
+                elif action_type == "send_resume_and_notify":  # NEW - Intelligent Resume Distribution
+                    self.execute_send_resume_and_notify(state, action)
                 elif action_type == "notify_resume_sent":
                     self.execute_notify_resume_sent(state, action)
                 elif action_type == "notify_contact_request":

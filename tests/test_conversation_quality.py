@@ -142,6 +142,66 @@ class TestConversationFlowQuality:
 
         assert prompt_count <= 1, f"Found {prompt_count} 'Would you like' prompts - should be ≤1 (found duplicates)"
 
+    def test_no_pushy_resume_offers(self):
+        """Subtle availability mentions allowed when hiring signals detected, but must not be pushy.
+
+        CONTEXT: Intelligent Resume Distribution (Hybrid Approach)
+        - Mode 1 (Education): NO resume mentions (0 mentions) ✅
+        - Mode 2 (Hiring Signals): ONE subtle mention allowed ✅
+        - Mode 3 (Explicit Request): Resume distribution flow ✅
+
+        This test ensures Mode 2 stays subtle and user-centric, not salesy.
+        """
+        # Mode 1: Pure education - NO resume mention
+        mock_engine_edu = MagicMock()
+        mock_engine_edu.retrieve.return_value = {"chunks": ["RAG systems combine retrieval and generation"], "matches": []}
+        mock_engine_edu.generate_response.return_value = "RAG systems work by retrieving relevant documents and using them to generate responses. Would you like to explore how Noah implemented this?"
+
+        state_edu = ConversationState(
+            role="Hiring Manager (technical)",
+            query="How do RAG systems work?"
+        )
+        state_edu.hiring_signals = []  # No signals detected
+        state_edu.set_answer(mock_engine_edu.generate_response.return_value)
+
+        answer_edu = state_edu.answer
+
+        # Assert NO resume/availability mention in pure education mode
+        resume_keywords = ["resume", "résumé", "cv", "available", "hire", "looking for"]
+        found_keywords = [kw for kw in resume_keywords if kw in answer_edu.lower()]
+        assert len(found_keywords) == 0, f"Mode 1 (Education): Found resume keywords {found_keywords} - should be 0 in pure education mode"
+
+        # Mode 2: Hiring signals detected - ONE subtle mention allowed
+        mock_engine_hiring = MagicMock()
+        mock_engine_hiring.retrieve.return_value = {"chunks": ["RAG systems combine retrieval and generation"], "matches": []}
+        mock_engine_hiring.generate_response.return_value = "RAG systems work by retrieving relevant documents and using them to generate responses. Would you like to explore how Noah implemented this?\n\nBy the way, Noah's available for roles like this if you'd like to learn more about his experience."
+
+        state_hiring = ConversationState(
+            role="Hiring Manager (technical)",
+            query="We're hiring a GenAI engineer. How do RAG systems work?"
+        )
+        state_hiring.hiring_signals = ["mentioned_hiring", "described_role"]  # Signals detected
+        state_hiring.set_answer(mock_engine_hiring.generate_response.return_value)
+
+        answer_hiring = state_hiring.answer
+
+        # Assert ONE subtle mention (not multiple)
+        availability_mentions = answer_hiring.lower().count("available") + answer_hiring.lower().count("noah's")
+        assert 1 <= availability_mentions <= 3, f"Mode 2 (Hiring Signals): Found {availability_mentions} availability mentions - should be 1-3 for subtle mention"
+
+        # Assert NOT pushy (must not have aggressive CTAs)
+        pushy_phrases = ["send me your email", "provide your contact", "fill out this form", "click here", "sign up"]
+        found_pushy = [phrase for phrase in pushy_phrases if phrase in answer_hiring.lower()]
+        assert len(found_pushy) == 0, f"Mode 2 (Hiring Signals): Found pushy phrases {found_pushy} - must stay subtle and user-centric"
+
+        # Assert still education-focused (educational content should be 80%+ of response)
+        lines = answer_hiring.split('\n')
+        educational_lines = [line for line in lines if len(line) > 50 and not any(kw in line.lower() for kw in ["available", "hire", "resume"])]
+        total_substantial_lines = [line for line in lines if len(line) > 50]
+        if len(total_substantial_lines) > 0:
+            education_ratio = len(educational_lines) / len(total_substantial_lines)
+            assert education_ratio >= 0.5, f"Mode 2 (Hiring Signals): Only {education_ratio:.0%} educational content - should be ≥50% even with availability mention"
+
     def test_no_emoji_headers(self):
         """User-facing responses must strip markdown headers and emojis - convert to **Bold** only.
 

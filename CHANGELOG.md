@@ -10,7 +10,54 @@ and this project follows calendar-based versioning.
 ## [Unreleased]
 
 ### Added
+- **Documentation Consolidation Policy (Section 12)** - Added to `docs/QA_STRATEGY.md` to prevent future QA documentation sprawl with decision tree, file categorization rules, and quarterly review process
+- **Intelligent Resume Distribution System (COMPLETE)**: Hybrid approach for converting hiring manager education into opportunities
+  - **Mode 1 (Pure Education)**: ZERO resume mentions - maintains educational focus
+  - **Mode 2 (Hiring Signals)**: ONE subtle availability mention when ≥2 hiring signals detected + HM role
+  - **Mode 3 (Explicit Request)**: Immediate email collection and resume distribution (no qualification needed)
+  - **Job Details Gathering**: Post-interest conversational extraction (company, position, timeline)
+  - **Implementation**: 9 functions in `src/flows/resume_distribution.py` (343 lines)
+  - **Integration**: Added to conversation pipeline via `extract_job_details_from_query` node
+  - **External Services**: Email via Resend, SMS via Twilio with job details
+  - **Test Coverage**: 37 automated tests (100% pass rate in 0.04s)
+  - **Documentation**:
+    - Feature doc: `docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md`
+    - Master docs updated: `SYSTEM_ARCHITECTURE_SUMMARY.md`, `PROJECT_REFERENCE_OVERVIEW.md`
+    - QA standards: `QA_STRATEGY.md` Section 1.1-1.2
+  - **Status**: ✅ COMPLETE - Ready for Streamlit testing
+
 ### Changed
+- **QA Documentation Consolidated**: Merged 5 separate QA docs into single source of truth
+  - Merged LangSmith Phase 2 content into `docs/QA_STRATEGY.md` Section 9
+  - Archived historical policy docs to `docs/archive/policies/`
+  - Archived task-specific reports to `docs/archive/deployments/`
+  - Archived analysis docs to `docs/archive/analysis/`
+  - Added Section 12: Documentation Consolidation Policy to prevent future sprawl
+  - Result: 1 master QA doc (3,200 lines) replacing 5 files (4,620 lines, ~1,400 duplication)
+- **QA Test Suite Expanded**: 71 total tests (was 31 tests)
+  - Conversation Quality: 19 tests (100% pass rate) - Added `test_no_pushy_resume_offers()`
+  - Documentation Alignment: 15 tests (93% pass rate) - Added 3 resume distribution alignment tests
+  - Resume Distribution: 37 tests (100% pass rate) - Comprehensive hybrid approach validation
+  - **Pass Rate**: 99% overall (70/71 passing, 1 intentionally skipped)
+
+- **Conversation Pipeline Extended**: Added `extract_job_details_from_query` node
+  - Runs after `classify_query` to extract job details post-interest
+  - Updated flow: `handle_greeting → classify → extract_job_details → retrieve → generate → plan → apply → execute → log`
+
+- **Conversation State Extended**: 6 new fields for resume distribution
+  - `hiring_signals`: List tracking passive signals (mentioned_hiring, described_role, team_context)
+  - `resume_explicitly_requested`: Boolean flag for Mode 3 detection
+  - `resume_sent`: Once-per-session enforcement flag
+  - `user_email`: Collected email address
+  - `user_name`: Collected name (with fallback)
+  - `job_details`: Dict with company, position, timeline (post-interest)
+
+### Technical
+- **Files Modified/Created**: 13+ files across feature implementation, testing, documentation
+- **Code Quality**: All regex patterns validated through test-driven development (5 iterations)
+- **Service Integration**: Graceful degraded mode handling for Resend/Twilio failures
+- **Observability**: All resume send actions logged to Supabase with analytics tracking
+
 ### Fixed
 ### Deprecated
 

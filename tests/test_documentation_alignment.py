@@ -288,6 +288,86 @@ class TestQADocumentation:
         pytest.skip("Test count changes frequently during development")
 
 
+class TestResumeDistributionAlignment:
+    """Verify Intelligent Resume Distribution System is properly documented."""
+
+    def test_resume_distribution_functions_documented(self):
+        """All resume_distribution.py functions are documented in SYSTEM_ARCHITECTURE."""
+
+        # Get actual functions from code
+        from src.flows import resume_distribution
+        actual_functions = [
+            "detect_hiring_signals",
+            "handle_resume_request",
+            "should_add_availability_mention",
+            "extract_email_from_query",
+            "extract_name_from_query",
+            "should_gather_job_details",
+            "get_job_details_prompt",
+            "extract_job_details_from_query",
+        ]
+
+        # Read documentation
+        doc_path = "docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md"
+        with open(doc_path) as f:
+            doc_content = f.read()
+
+        # Verify each function is documented
+        missing_functions = []
+        for func in actual_functions:
+            if func not in doc_content:
+                missing_functions.append(func)
+
+        assert len(missing_functions) == 0, (
+            f"Resume distribution functions not documented in {doc_path}:\n"
+            f"  {', '.join(missing_functions)}\n"
+            f"Add these functions to the conversation pipeline documentation."
+        )
+
+    def test_resume_distribution_feature_doc_exists(self):
+        """Feature doc INTELLIGENT_RESUME_DISTRIBUTION.md exists and is complete."""
+
+        feature_doc = "docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md"
+        assert os.path.exists(feature_doc), (
+            f"{feature_doc} not found. This should document the hybrid approach."
+        )
+
+        with open(feature_doc) as f:
+            content = f.read()
+
+        # Verify key sections exist
+        required_sections = [
+            "Mode 1",  # Education mode
+            "Mode 2",  # Hiring signals
+            "Mode 3",  # Explicit request
+            "hybrid",  # Hybrid approach
+            "resume_distribution.py",  # Implementation file
+        ]
+
+        missing_sections = [s for s in required_sections if s not in content]
+
+        assert len(missing_sections) == 0, (
+            f"Feature doc missing sections: {', '.join(missing_sections)}\n"
+            f"Ensure {feature_doc} documents all 3 modes and implementation."
+        )
+
+    def test_qa_policy_updated_for_resume_distribution(self):
+        """QA_STRATEGY.md includes exception for subtle availability mentions."""
+
+        qa_doc = "docs/QA_STRATEGY.md"
+        with open(qa_doc) as f:
+            content = f.read()
+
+        # Check for intelligent resume distribution exception
+        assert "Intelligent Resume Distribution" in content, (
+            f"{qa_doc} should document exception for subtle availability mentions"
+        )
+
+        assert "test_no_pushy_resume_offers" in content, (
+            f"{qa_doc} should reference the new test_no_pushy_resume_offers test"
+        )
+
+
 class TestChangelogIntegrity:
     """Verify CHANGELOG.md exists and is structured correctly."""
 

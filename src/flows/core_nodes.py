@@ -196,6 +196,13 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "include source attribution. This is proactive - help the user with concrete numbers."
         )
 
+    # Job details gathering (AFTER resume sent) - Task 9
+    # Import here to avoid circular dependency
+    from src.flows.resume_distribution import should_gather_job_details, get_job_details_prompt
+
+    if should_gather_job_details(state):
+        extra_instructions.append(get_job_details_prompt())
+
     # Build the instruction suffix
     instruction_suffix = " ".join(extra_instructions) if extra_instructions else None
 

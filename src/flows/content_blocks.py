@@ -269,3 +269,135 @@ def role_switch_suggestion(target_role: str) -> str:
         "you'll see code snippets, architecture snapshots, and implementation details."
     )
     return "\n" + format_callout(message)
+
+
+# ============================================================================
+# INTELLIGENT RESUME DISTRIBUTION - SUBTLE AVAILABILITY MENTIONS (Mode 2)
+# ============================================================================
+# These functions generate natural, non-pushy availability mentions when
+# hiring signals are detected. See docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md
+# and docs/context/CONVERSATION_PERSONALITY.md Section 6.1 for full specification.
+
+
+def get_subtle_availability_mention(hiring_signals: list[str]) -> str:
+    """Generate subtle availability mention based on detected hiring signals.
+
+    This function creates ONE natural, non-pushy sentence that informs hiring
+    managers Noah is available, but ONLY when they've already mentioned active
+    hiring. The mention is designed to feel like an afterthought, not a pitch.
+
+    Mode 2 Guardrails (from QA standards):
+    - User-initiated interest: Only after user mentions hiring first
+    - Once per conversation: Max 1 subtle mention
+    - Education remains primary: ≥50% of response is educational
+    - No aggressive CTAs: No "send email", "click here", "sign up"
+    - Natural placement: At end of educational response
+
+    Args:
+        hiring_signals: List of detected signals (e.g., ["mentioned_hiring", "described_role"])
+
+    Returns:
+        Natural, single-sentence availability mention
+
+    Examples:
+        >>> get_subtle_availability_mention(["mentioned_hiring", "described_role"])
+        "By the way, Noah's available for roles like this if you'd like to learn more about his experience."
+
+        >>> get_subtle_availability_mention(["described_role", "team_context"])
+        "Noah specializes in building production RAG systems—happy to share more if you're interested."
+    """
+    # Variation 1: General hiring mention
+    if "mentioned_hiring" in hiring_signals and "described_role" in hiring_signals:
+        return (
+            "\n\nBy the way, Noah's available for roles like this if you'd like to "
+            "learn more about his experience building production GenAI systems."
+        )
+
+    # Variation 2: Role-specific mention
+    if "described_role" in hiring_signals:
+        return (
+            "\n\nNoah specializes in building production RAG systems and LLM orchestration—"
+            "happy to share more about his experience if you're interested."
+        )
+
+    # Variation 3: Team context mentioned
+    if "team_context" in hiring_signals and len(hiring_signals) >= 2:
+        return (
+            "\n\nIf your team is exploring GenAI applications, Noah's available to discuss "
+            "how this architecture could adapt to your use case."
+        )
+
+    # Variation 4: Timeline/urgency mentioned
+    if "asked_timeline" in hiring_signals:
+        return (
+            "\n\nNoah's currently available and could discuss timeline fit if you'd like to "
+            "explore his background further."
+        )
+
+    # Variation 5: Default subtle mention (fallback)
+    return (
+        "\n\nBy the way, Noah's available for opportunities like this if you'd like to "
+        "learn more about his work."
+    )
+
+
+def get_availability_with_context(hiring_signals: list[str], discussed_topic: str = "") -> str:
+    """Generate context-aware availability mention tied to conversation topic.
+
+    This variation customizes the mention based on what was just discussed,
+    making it feel even more natural and relevant.
+
+    Args:
+        hiring_signals: List of detected signals
+        discussed_topic: What the conversation was about (e.g., "RAG architecture", "vector search")
+
+    Returns:
+        Context-aware availability mention
+
+    Examples:
+        >>> get_availability_with_context(["mentioned_hiring"], "RAG architecture")
+        "By the way, Noah's built several production RAG systems and is available to discuss
+        how this architecture could work for your team."
+    """
+    if not discussed_topic:
+        return get_subtle_availability_mention(hiring_signals)
+
+    # Context-aware variations
+    if "rag" in discussed_topic.lower():
+        return (
+            f"\n\nBy the way, Noah's built production RAG systems handling millions of queries—"
+            "available to discuss how this could work for your use case if you're interested."
+        )
+
+    if "vector" in discussed_topic.lower() or "embedding" in discussed_topic.lower():
+        return (
+            f"\n\nNoah specializes in vector search optimization and pgvector implementations—"
+            "happy to discuss his experience if you're exploring this for your team."
+        )
+
+    if "llm" in discussed_topic.lower() or "gpt" in discussed_topic.lower():
+        return (
+            f"\n\nNoah's worked extensively with LLM orchestration and prompt engineering—"
+            "available to share insights if you're building similar systems."
+        )
+
+    # Default to standard mention
+    return get_subtle_availability_mention(hiring_signals)
+
+
+def format_availability_mention(mention: str) -> str:
+    """Format availability mention with consistent styling.
+
+    Ensures all mentions have proper spacing and non-pushy tone markers.
+
+    Args:
+        mention: Raw availability mention text
+
+    Returns:
+        Properly formatted mention with spacing
+    """
+    # Ensure double newline before mention (separates from educational content)
+    if not mention.startswith("\n\n"):
+        mention = "\n\n" + mention.lstrip()
+
+    return mention.strip()

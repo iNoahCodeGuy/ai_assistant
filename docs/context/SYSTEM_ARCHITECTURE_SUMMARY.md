@@ -29,6 +29,24 @@ classify_query
   → Sets flags: needs_longer_response, code_would_help, data_would_help
   → Source: src/flows/query_classification.py
 
+detect_hiring_signals (NEW - Passive Tracking for HM Roles)
+  → Scans query for hiring indicators (mentioned_hiring, described_role, team_context)
+  → Accumulates signals in state.hiring_signals list (passive tracking)
+  → Does NOT trigger proactive offers - only enables subtle availability mentions
+  → Source: src/flows/conversation_nodes.py
+
+handle_resume_request (NEW - Explicit Requests for HM Roles)
+  → Detects explicit resume requests ("can I get your resume", "send me your CV")
+  → Sets state.resume_explicitly_requested = True (triggers email collection)
+  → Immediate response without qualification - user asked, we deliver
+  → Source: src/flows/conversation_nodes.py
+
+extract_job_details_from_query (NEW - Post-Interest Job Details)
+  → Extracts company, position, timeline from user's follow-up response
+  → Only runs AFTER resume sent - conversational gathering, not interrogation
+  → Uses regex patterns to detect: "I'm with Acme Corp", "hiring for Senior Engineer"
+  → Source: src/flows/resume_distribution.py
+
 retrieve_chunks (THIS IS RAG!)
   → Converts query to embedding via text-embedding-3-small (768 dims)
   → Searches Supabase kb_chunks using pgvector cosine similarity
@@ -40,22 +58,34 @@ generate_answer
   → Injects dynamic instructions based on query classification
   → Handles narrative (explain concepts) and code display (show implementation)
   → Uses role-specific prompts (Technical HM, Developer, General)
+  → For HM roles: Uses should_add_availability_mention() to add subtle mention if ≥2 hiring signals
+  → For HM roles (post-resume): Uses should_gather_job_details() to add job details question
   → Source: src/flows/core_nodes.py → src/core/response_generator.py
+
+Helper Functions (Resume Distribution Support):
+  • should_add_availability_mention(state) - Returns True if ≥2 hiring signals + not sent yet
+  • should_gather_job_details(state) - Returns True if resume sent + no company info yet
+  • get_job_details_prompt() - Returns natural question for company/position info
+  • extract_email_from_query(query) - Regex-based email extraction
+  • extract_name_from_query(query) - Regex-based name extraction
+  → Source: src/flows/resume_distribution.py
 
 plan_actions
   → Determines side effects needed: send analytics? offer contact? log feedback?
+  → For HM roles: Plans resume_send action if explicitly requested
   → Creates action plan without executing yet (separation of concerns)
   → Source: src/flows/conversation_nodes.py
 
 apply_role_context
   → Adds role-specific enhancements (follow-ups, contact offers, personality)
   → Software Developer → technical follow-ups + code examples
-  → Hiring Manager → business value + Noah's contact offer
+  → Hiring Manager → business value + education-first (subtle availability if signaled)
   → Just exploring → fun facts + casual tone
   → Source: src/flows/conversation_nodes.py
 
 execute_actions
   → Runs planned side effects: email via Resend, SMS via Twilio, analytics logging
+  → For HM roles: Sends resume PDF via email, notifies Noah via SMS with job details
   → Handles failures gracefully (degraded mode - logs errors but doesn't crash)
   → Source: src/flows/action_execution.py
 
@@ -69,6 +99,10 @@ log_and_notify
 - **Determinism first:** Factual answers only after retrieval (no hallucinations)
 - **Proactive intelligence:** Show code/data when it would clarify, not just when explicitly requested
 - **Role adaptation:** Technical users get code, business users get value propositions
+- **Education-first for hiring managers:** Primary goal is teaching GenAI value, not pitching Noah
+  - Mode 1 (default): Pure education, zero resume mentions
+  - Mode 2 (hiring signals detected): Education + ONE subtle availability mention ("Noah's available if you'd like to learn more")
+  - Mode 3 (explicit request): Immediate resume distribution without qualification
 - **Graceful degradation:** External services fail → log errors, continue with core functionality
 - **Observability:** Every step logged for continuous improvement
 

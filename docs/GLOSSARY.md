@@ -266,7 +266,7 @@ Fake object that simulates real behavior.
 ### **Integration Test**
 Tests multiple components working together.
 
-**Example**: Test RoleRouter → RagEngine → ResponseGenerator flow.
+**Example**: Test classify_query → retrieve_chunks → generate_answer flow.
 
 ---
 
