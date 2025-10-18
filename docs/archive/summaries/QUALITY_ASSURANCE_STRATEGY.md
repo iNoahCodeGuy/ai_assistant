@@ -46,7 +46,7 @@ These tests ensure that as we add features, we don't break:
 
 import pytest
 from src.core.rag_engine import RagEngine
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
     classify_query, generate_answer, plan_actions,
     apply_role_context, run_conversation_flow

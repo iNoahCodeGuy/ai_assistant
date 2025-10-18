@@ -12,7 +12,7 @@ Each action handler includes graceful degradation if services are unavailable.
 import logging
 from typing import Dict, Any, Optional
 
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.services.resend_service import get_resend_service
 from src.services.storage_service import get_storage_service
 from src.services.twilio_service import get_twilio_service

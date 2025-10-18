@@ -19,7 +19,7 @@ from io import BytesIO
 
 # Import conversation flow components
 from src.flows.conversation_flow import run_conversation_flow
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.core.rag_engine import RagEngine
 
 # Import services for mocking

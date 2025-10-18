@@ -1,10 +1,9 @@
 import os
-from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import pytest
 
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows import conversation_nodes as nodes
 from src.flows.conversation_flow import run_conversation_flow
 
@@ -18,10 +17,10 @@ class DummyResponseGenerator:
         return f"{self._response} | {query}{history_note}"
 
 
-@dataclass
 class DummyRagEngine:
-    retrieve_result: Dict[str, Any]
-    response_text: str
+    def __init__(self, retrieve_result: Dict[str, Any], response_text: str):
+        self.retrieve_result = retrieve_result
+        self.response_text = response_text
 
     def retrieve(self, query: str, top_k: int = 4) -> Dict[str, Any]:
         return self.retrieve_result
@@ -33,16 +32,23 @@ class DummyRagEngine:
 
 @pytest.fixture
 def base_state() -> ConversationState:
-    return ConversationState(
-        role="Hiring Manager (nontechnical)",
-        query="Tell me about Noah's career",
-        chat_history=
-        [
+    return {
+        "role": "Hiring Manager (nontechnical)",
+        "query": "Tell me about Noah's career",
+        "chat_history": [
             {"role": "user", "content": "Hello"},
             {"role": "assistant", "content": "Hi there"},
             {"role": "user", "content": "Can you share more?"},
         ],
-    )
+        "answer": "",
+        "retrieved_chunks": [],
+        "pending_actions": [],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "resume_sent": False,
+        "resume_explicitly_requested": False,
+        "job_details": {},
+    }
 
 
 @pytest.fixture
@@ -62,21 +68,21 @@ def dummy_engine() -> DummyRagEngine:
 
 def test_classify_query_sets_type(base_state: ConversationState) -> None:
     nodes.classify_query(base_state)
-    assert base_state.fetch("query_type") == "career"
+    assert base_state.get("query_type") == "career"
 
 
 def test_retrieve_chunks_stores_context(base_state: ConversationState, dummy_engine: DummyRagEngine) -> None:
     nodes.retrieve_chunks(base_state, dummy_engine)
-    assert len(base_state.retrieved_chunks) == 2
-    assert base_state.fetch("retrieval_matches") == ["Match A", "Match B"]
-    assert base_state.fetch("retrieval_scores") == [0.95, 0.74]
+    assert len(base_state["retrieved_chunks"]) == 2
+    assert base_state.get("retrieval_matches") == ["Match A", "Match B"]
+    assert base_state.get("retrieval_scores") == [0.95, 0.74]
 
 
 def test_generate_answer_uses_response_generator(base_state: ConversationState, dummy_engine: DummyRagEngine) -> None:
     nodes.retrieve_chunks(base_state, dummy_engine)
     nodes.generate_answer(base_state, dummy_engine)
-    assert base_state.answer
-    assert "Tell me about Noah's career" in base_state.answer
+    assert base_state["answer"]
+    assert "Tell me about Noah's career" in base_state["answer"]
 
 
 @pytest.mark.parametrize(
@@ -119,10 +125,22 @@ def test_generate_answer_uses_response_generator(base_state: ConversationState, 
     ],
 )
 def test_plan_actions_appends_expected_action(role: str, query: str, chat_history: List[Dict[str, str]], expected: str, dummy_engine: DummyRagEngine) -> None:
-    state = ConversationState(role=role, query=query, chat_history=chat_history)
+    state: ConversationState = {
+        "role": role,
+        "query": query,
+        "chat_history": chat_history,
+        "answer": "",
+        "retrieved_chunks": [],
+        "pending_actions": [],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "resume_sent": False,
+        "resume_explicitly_requested": False,
+        "job_details": {},
+    }
     nodes.classify_query(state)
     nodes.plan_actions(state)
-    action_types = [action["type"] for action in state.pending_actions]
+    action_types = [action["type"] for action in state["pending_actions"]]
     assert expected in action_types
 
 
@@ -139,11 +157,16 @@ def test_log_and_notify_records_metadata(monkeypatch: pytest.MonkeyPatch, base_s
             })
             return 99
 
-    monkeypatch.setattr(nodes, "supabase_analytics", DummyAnalytics)
-    base_state.answer = "Career summary"
+    # Import and monkeypatch in core_nodes where supabase_analytics is actually used
+    from src.flows import core_nodes
+    monkeypatch.setattr(core_nodes, "supabase_analytics", DummyAnalytics)
+
+    base_state["answer"] = "Career summary"
     nodes.classify_query(base_state)
-    result_state = nodes.log_and_notify(base_state, session_id="test-session", latency_ms=123)
-    assert result_state.analytics_metadata["message_id"] == 99
+    result = nodes.log_and_notify(base_state, session_id="test-session", latency_ms=123)
+
+    # log_and_notify returns a dict with analytics metadata
+    assert result["message_id"] == 99
     assert logged_payloads[0]["role_mode"] == "Hiring Manager (nontechnical)"
     assert logged_payloads[0]["latency_ms"] == 123
 
@@ -160,7 +183,8 @@ def test_run_conversation_flow_happy_path(base_state: ConversationState, dummy_e
             logged["latency_ms"] = data.latency_ms
             return 101
 
-    monkeypatch.setattr(nodes, "supabase_analytics", DummyAnalytics)
+    from src.flows import core_nodes
+    monkeypatch.setattr(core_nodes, "supabase_analytics", DummyAnalytics)
 
     state = run_conversation_flow(
         state=base_state,
@@ -168,26 +192,33 @@ def test_run_conversation_flow_happy_path(base_state: ConversationState, dummy_e
         session_id="abc123",
     )
 
-    assert state.answer.startswith("Noah has a strong track record.")
-    assert "Would you like me to email you my resume" in state.answer
-    assert state.retrieved_chunks
-    assert state.pending_actions[0]["type"] == "offer_resume_prompt"
-    assert state.analytics_metadata["message_id"] == 101
+    assert state["answer"].startswith("Noah has a strong track record.")
+    assert "Would you like me to email you my resume" in state["answer"]
+    assert state["retrieved_chunks"]
+    assert state["pending_actions"][0]["type"] == "offer_resume_prompt"
+    assert state["analytics_metadata"]["message_id"] == 101
     assert logged["query_type"] == "career"
     assert isinstance(logged["latency_ms"], int)
 
 
 def test_execute_actions_send_resume(monkeypatch: pytest.MonkeyPatch) -> None:
-    state = ConversationState(
-        role="Hiring Manager (technical)",
-        query="Please email your resume",
-        chat_history=[],
-    )
-    state.pending_actions = [
-        {"type": "send_resume", "email": "hiring@company.com", "name": "Hiring Team"},
-        {"type": "notify_resume_sent"},
-    ]
-    state.stash("user_email", "hiring@company.com")
+    state: ConversationState = {
+        "role": "Hiring Manager (technical)",
+        "query": "Please email your resume",
+        "chat_history": [],
+        "answer": "",
+        "retrieved_chunks": [],
+        "pending_actions": [
+            {"type": "send_resume", "email": "hiring@company.com", "name": "Hiring Team"},
+            {"type": "notify_resume_sent"},
+        ],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "resume_sent": False,
+        "resume_explicitly_requested": False,
+        "job_details": {},
+        "user_email": "hiring@company.com",
+    }
 
     class DummyStorage:
         def __init__(self):
@@ -227,22 +258,29 @@ def test_execute_actions_send_resume(monkeypatch: pytest.MonkeyPatch) -> None:
     assert dummy_resend.sent == [
         ("hiring@company.com", "Hiring Team", "https://signed.example.com/resume.pdf", None)
     ]
-    assert state.analytics_metadata["resume_email_status"] == "sent"
+    assert state["analytics_metadata"]["resume_email_status"] == "sent"
     assert dummy_twilio.alerts[0]["message_preview"].startswith("Resume dispatched")
 
 
 def test_execute_actions_contact_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
-    state = ConversationState(
-        role="Hiring Manager (nontechnical)",
-        query="Please reach out to me about the role",
-        chat_history=[],
-    )
-    state.pending_actions = [
-        {"type": "notify_contact_request", "urgent": True},
-    ]
-    state.stash("user_name", "Alex")
-    state.stash("user_email", "alex@example.com")
-    state.stash("user_phone", "+15551234")
+    state: ConversationState = {
+        "role": "Hiring Manager (nontechnical)",
+        "query": "Please reach out to me about the role",
+        "chat_history": [],
+        "answer": "",
+        "retrieved_chunks": [],
+        "pending_actions": [
+            {"type": "notify_contact_request", "urgent": True},
+        ],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "resume_sent": False,
+        "resume_explicitly_requested": False,
+        "job_details": {},
+        "user_name": "Alex",
+        "user_email": "alex@example.com",
+        "user_phone": "+15551234",
+    }
 
     class DummyResend:
         def __init__(self):

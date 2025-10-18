@@ -17,7 +17,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.flows.conversation_state import ConversationState
+    from src.state.conversation_state import ConversationState
 
 
 def detect_hiring_signals(state: ConversationState) -> ConversationState:
@@ -45,7 +45,8 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         Result: hiring_signals = ["mentioned_hiring", "described_role", "team_context"]
         Effect: Enables ONE subtle mention in educational response (Mode 2)
     """
-    query_lower = state.query.lower()
+    query_lower = state["query"].lower()
+    hiring_signals = state.get("hiring_signals", [])
 
     # Pattern 1: Mentioned hiring explicitly
     hiring_patterns = [
@@ -54,7 +55,8 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         r'\b(candidates|applicants)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in hiring_patterns):
-        state.add_hiring_signal("mentioned_hiring")
+        if "mentioned_hiring" not in hiring_signals:
+            hiring_signals.append("mentioned_hiring")
 
     # Pattern 2: Described specific role
     role_patterns = [
@@ -63,7 +65,8 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         r'\b(full.?stack|backend|frontend|data|software)\b.*\b(engineer|developer)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in role_patterns):
-        state.add_hiring_signal("described_role")
+        if "described_role" not in hiring_signals:
+            hiring_signals.append("described_role")
 
     # Pattern 3: Team context mentioned
     team_patterns = [
@@ -72,7 +75,8 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         r'\b(we are|we\'re)\b.*\b(building|creating|developing)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in team_patterns):
-        state.add_hiring_signal("team_context")
+        if "team_context" not in hiring_signals:
+            hiring_signals.append("team_context")
 
     # Pattern 4: Timeline/urgency mentioned
     timeline_patterns = [
@@ -81,7 +85,8 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         r'\b(notice period|can start|when.*start)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in timeline_patterns):
-        state.add_hiring_signal("asked_timeline")
+        if "asked_timeline" not in hiring_signals:
+            hiring_signals.append("asked_timeline")
 
     # Pattern 5: Budget/compensation mentioned
     budget_patterns = [
@@ -90,8 +95,11 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         r'\b(benefits|equity|stock)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in budget_patterns):
-        state.add_hiring_signal("budget_mentioned")
+        if "budget_mentioned" not in hiring_signals:
+            hiring_signals.append("budget_mentioned")
 
+    # Return state with updated hiring_signals
+    state["hiring_signals"] = hiring_signals
     return state
 
 
@@ -120,7 +128,7 @@ def handle_resume_request(state: ConversationState) -> ConversationState:
         Result: resume_explicitly_requested = True
         Effect: Immediate email collection → resume send (Mode 3)
     """
-    query_lower = state.query.lower()
+    query_lower = state["query"].lower()
 
     # Pattern 1: Direct resume request
     resume_patterns = [
@@ -130,7 +138,7 @@ def handle_resume_request(state: ConversationState) -> ConversationState:
         r'\bnoah\'s resume\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in resume_patterns):
-        state.mark_resume_requested()
+        state["resume_explicitly_requested"] = True
         return state
 
     # Pattern 2: Availability inquiry
@@ -140,7 +148,7 @@ def handle_resume_request(state: ConversationState) -> ConversationState:
         r'\bavailable for\b.*\b(hire|hiring|role|position|work)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in availability_patterns):
-        state.mark_resume_requested()
+        state["resume_explicitly_requested"] = True
         return state
 
     # Pattern 3: Contact request
@@ -150,7 +158,7 @@ def handle_resume_request(state: ConversationState) -> ConversationState:
         r'\btalk to noah\b.*\b(about|regarding)\b.*\b(role|position|opportunity)\b'
     ]
     if any(re.search(pattern, query_lower) for pattern in contact_patterns):
-        state.mark_resume_requested()
+        state["resume_explicitly_requested"] = True
         return state
 
     return state
@@ -169,7 +177,8 @@ def should_add_availability_mention(state: ConversationState) -> bool:
         True if subtle availability mention should be added to educational response
     """
     # Check if hiring manager role
-    is_hiring_manager = state.role in [
+    role = state.get("role", "")
+    is_hiring_manager = role in [
         "hiring_manager_technical",
         "hiring_manager_nontechnical"
     ]
@@ -177,11 +186,14 @@ def should_add_availability_mention(state: ConversationState) -> bool:
         return False
 
     # Check if enough signals detected
-    if not state.has_hiring_signals(min_count=2):
+    hiring_signals = state.get("hiring_signals", [])
+    if len(hiring_signals) < 2:
         return False
 
     # Don't add if already sent or explicitly requested
-    if state.resume_sent or state.resume_explicitly_requested:
+    resume_sent = state.get("resume_sent", False)
+    resume_explicitly_requested = state.get("resume_explicitly_requested", False)
+    if resume_sent or resume_explicitly_requested:
         return False
 
     return True
@@ -239,15 +251,16 @@ def should_gather_job_details(state: ConversationState) -> bool:
         True if we should naturally ask about company/position
     """
     # Only gather after resume sent (user expressed interest)
-    if not state.resume_sent:
+    if not state.get("resume_sent", False):
         return False
 
     # Only gather once (check if we already have company info)
-    if state.job_details.get("company"):
+    job_details = state.get("job_details", {})
+    if job_details.get("company"):
         return False
 
     # Don't gather in confession context
-    if state.role == "confession":
+    if state.get("role") == "confession":
         return False
 
     return True
@@ -293,7 +306,8 @@ def extract_job_details_from_query(state: ConversationState) -> ConversationStat
     Returns:
         Updated state with job_details populated if extracted
     """
-    query = state.query
+    query = state["query"]
+    job_details = state.get("job_details", {})
 
     # Extract company name (case-insensitive)
     company_patterns = [
@@ -309,7 +323,7 @@ def extract_job_details_from_query(state: ConversationState) -> ConversationStat
             company = match.group(1).strip()
             # Clean up common false positives
             if len(company) > 2 and company not in ['The', 'A', 'An', 'We', 'They', 'I']:
-                state.add_job_detail("company", company)
+                job_details["company"] = company
                 break
 
     # Extract position/title
@@ -324,7 +338,7 @@ def extract_job_details_from_query(state: ConversationState) -> ConversationStat
         if match:
             position = match.group(1).strip()
             if len(position) > 2:
-                state.add_job_detail("position", position)
+                job_details["position"] = position
                 break
 
     # Extract timeline
@@ -337,7 +351,9 @@ def extract_job_details_from_query(state: ConversationState) -> ConversationStat
         match = re.search(pattern, query, re.IGNORECASE)
         if match:
             timeline = match.group(0).strip()
-            state.add_job_detail("timeline", timeline)
+            job_details["timeline"] = timeline
             break
 
+    # Return state with updated job_details
+    state["job_details"] = job_details
     return state

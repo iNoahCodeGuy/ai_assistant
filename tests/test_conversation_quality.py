@@ -11,9 +11,10 @@ Run with: pytest tests/test_conversation_quality.py -v
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from src.flows.conversation_state import ConversationState
-from src.flows.conversation_nodes import (
-    classify_query, generate_answer, apply_role_context, retrieve_chunks
+from src.state.conversation_state import ConversationState
+from src.flows.query_classification import classify_query
+from src.flows.core_nodes import (
+    generate_answer, apply_role_context, retrieve_chunks
 )
 from src.flows.code_validation import is_valid_code_snippet
 from src.flows.data_reporting import render_full_data_report
@@ -121,21 +122,27 @@ class TestConversationFlowQuality:
         mock_engine = MagicMock()
         mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
-        mock_engine.generate_response.return_value = "This is a product that helps you manage your career."
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "This is a product that helps you manage your career."
 
-        state = ConversationState(
-            role="Hiring Manager (technical)",
-            query="how does this product work?"
-        )
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "how does this product work?",
+            "chat_history": []
+        }
 
-        # Set initial answer for apply_role_context to work with
-        state.set_answer("This is a product that helps you manage your career.")
+        # Simulate conversation flow with partial updates
+        update1 = classify_query(state)
+        state.update(update1)
 
-        # Simulate conversation flow
-        state = classify_query(state)
-        state = apply_role_context(state, mock_engine)
+        update2 = generate_answer(state, mock_engine)
+        state.update(update2)
 
-        answer = state.answer
+        update3 = apply_role_context(state, mock_engine)
+        state.update(update3)
+
+        answer = state["answer"]
 
         # Count "Would you like" prompts
         prompt_count = answer.lower().count("would you like")
@@ -157,14 +164,15 @@ class TestConversationFlowQuality:
         mock_engine_edu.retrieve.return_value = {"chunks": ["RAG systems combine retrieval and generation"], "matches": []}
         mock_engine_edu.generate_response.return_value = "RAG systems work by retrieving relevant documents and using them to generate responses. Would you like to explore how Noah implemented this?"
 
-        state_edu = ConversationState(
-            role="Hiring Manager (technical)",
-            query="How do RAG systems work?"
-        )
-        state_edu.hiring_signals = []  # No signals detected
-        state_edu.set_answer(mock_engine_edu.generate_response.return_value)
+        state_edu: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "How do RAG systems work?",
+            "chat_history": [],
+            "hiring_signals": [],  # No signals detected
+            "answer": mock_engine_edu.generate_response.return_value
+        }
 
-        answer_edu = state_edu.answer
+        answer_edu = state_edu["answer"]
 
         # Assert NO resume/availability mention in pure education mode
         resume_keywords = ["resume", "résumé", "cv", "available", "hire", "looking for"]
@@ -176,14 +184,15 @@ class TestConversationFlowQuality:
         mock_engine_hiring.retrieve.return_value = {"chunks": ["RAG systems combine retrieval and generation"], "matches": []}
         mock_engine_hiring.generate_response.return_value = "RAG systems work by retrieving relevant documents and using them to generate responses. Would you like to explore how Noah implemented this?\n\nBy the way, Noah's available for roles like this if you'd like to learn more about his experience."
 
-        state_hiring = ConversationState(
-            role="Hiring Manager (technical)",
-            query="We're hiring a GenAI engineer. How do RAG systems work?"
-        )
-        state_hiring.hiring_signals = ["mentioned_hiring", "described_role"]  # Signals detected
-        state_hiring.set_answer(mock_engine_hiring.generate_response.return_value)
+        state_hiring: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "We're hiring a GenAI engineer. How do RAG systems work?",
+            "chat_history": [],
+            "hiring_signals": ["mentioned_hiring", "described_role"],  # Signals detected
+            "answer": mock_engine_hiring.generate_response.return_value
+        }
 
-        answer_hiring = state_hiring.answer
+        answer_hiring = state_hiring["answer"]
 
         # Assert ONE subtle mention (not multiple)
         availability_mentions = answer_hiring.lower().count("available") + answer_hiring.lower().count("noah's")
@@ -215,23 +224,34 @@ class TestConversationFlowQuality:
                 "## 🎯 Key Features\n### 1️⃣ Data Analytics\n### 2️⃣ Machine Learning",  # KB can have this
                 "Content with structure for semantic search"
             ],
-            "matches": []
+            "matches": [],
+            "scores": [0.8, 0.7]
         }
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
-        mock_engine.generate_response.return_value = "**Key Features**\n\n**Data Analytics**: Feature overview...\n\n**Machine Learning**: ML capabilities..."  # LLM must convert
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "**Key Features**\n\n**Data Analytics**: Feature overview...\n\n**Machine Learning**: ML capabilities..."  # LLM must convert
 
-        state = ConversationState(
-            role="Software Developer",
-            query="tell me about the data analytics"
-        )
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Software Developer",
+            "query": "tell me about the data analytics",
+            "chat_history": []
+        }
 
         # Simulate full conversation flow (what user sees)
-        state = classify_query(state)
-        state = retrieve_chunks(state, mock_engine)  # Retrieves rich KB content
-        state = generate_answer(state, mock_engine)  # LLM synthesizes and sanitizes
-        state = apply_role_context(state, mock_engine)  # Final formatting
+        update1 = classify_query(state)
+        state.update(update1)
 
-        answer = state.answer
+        update2 = retrieve_chunks(state, mock_engine)  # Retrieves rich KB content
+        state.update(update2)
+
+        update3 = generate_answer(state, mock_engine)  # LLM synthesizes and sanitizes
+        state.update(update3)
+
+        update4 = apply_role_context(state, mock_engine)  # Final formatting
+        state.update(update4)
+
+        answer = state["answer"]
 
         # User-facing response must NOT have markdown headers (###, ##, #)
         import re
@@ -272,19 +292,26 @@ class TestConversationFlowQuality:
         mock_engine.response_generator = MagicMock()
         mock_engine.response_generator.generate_contextual_response.return_value = "LLM output should be bypassed"
 
-        state = ConversationState(
-            role="Hiring Manager (technical)",
-            query="Please display data for the latest analytics"
-        )
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "Please display data for the latest analytics",
+            "chat_history": []
+        }
 
-        state = classify_query(state)
-        state = retrieve_chunks(state, mock_engine)
-        state = generate_answer(state, mock_engine)
+        update1 = classify_query(state)
+        state.update(update1)
+
+        update2 = retrieve_chunks(state, mock_engine)
+        state.update(update2)
+
+        update3 = generate_answer(state, mock_engine)
+        state.update(update3)
 
         # Updated Oct 16, 2025: Match current data_reporting.py intro text
-        assert state.answer.startswith("Fetching live analytics data from Supabase")
+        assert state["answer"].startswith("Fetching live analytics data from Supabase")
         assert not mock_engine.response_generator.generate_contextual_response.called
-        assert "}" not in state.answer[:5], "Canned intro should not leak braces"
+        assert "}" not in state["answer"][:5], "Canned intro should not leak braces"
 
     def test_generated_answer_sanitizes_sql_artifacts(self):
         """Strip retrieval artefacts like stray braces and SELECT lines."""
@@ -295,18 +322,25 @@ class TestConversationFlowQuality:
             "}\n\n})\n\nSELECT\n\nSELECT.\n\nClean content ready for review"
         )
 
-        state = ConversationState(
-            role="Hiring Manager (technical)",
-            query="Walk me through the architecture overview"
-        )
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "Walk me through the architecture overview",
+            "chat_history": []
+        }
 
-        state = classify_query(state)
-        state = retrieve_chunks(state, mock_engine)
-        state = generate_answer(state, mock_engine)
+        update1 = classify_query(state)
+        state.update(update1)
 
-        assert state.answer.startswith("Clean content ready for review")
-        assert not state.answer.startswith("}")
-        first_line = state.answer.splitlines()[0]
+        update2 = retrieve_chunks(state, mock_engine)
+        state.update(update2)
+
+        update3 = generate_answer(state, mock_engine)
+        state.update(update3)
+
+        assert state["answer"].startswith("Clean content ready for review")
+        assert not state["answer"].startswith("}")
+        first_line = state["answer"].splitlines()[0]
         assert "SELECT" not in first_line, "Sanitized answer should not expose raw SELECT"
 
 
@@ -317,27 +351,33 @@ class TestCodeDisplayQuality:
         """When code index is empty, should show GitHub link not garbage."""
         # Mock empty code retrieval (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
-        mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
+        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
         mock_engine.retrieve_with_code.return_value = {
             "chunks": [],
             "code_snippets": [],
             "has_code": False
         }
-        mock_engine.generate_response.return_value = "I can help you view the code."
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "I can help you view the code."
 
-        state = ConversationState(
-            role="Software Developer",
-            query="show me the conversation node code"  # Explicit code display trigger
-        )
-
-        # Set initial answer
-        state.set_answer("I can help you view the code.")
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Software Developer",
+            "query": "show me the conversation node code",  # Explicit code display trigger
+            "chat_history": []
+        }
 
         # Run through flow
-        state = classify_query(state)
-        state = apply_role_context(state, mock_engine)
+        update1 = classify_query(state)
+        state.update(update1)
 
-        answer = state.answer
+        update2 = generate_answer(state, mock_engine)
+        state.update(update2)
+
+        update3 = apply_role_context(state, mock_engine)
+        state.update(update3)
+
+        answer = state["answer"]
 
         # Should NOT show malformed data
         assert "doc_id text" not in answer, "Found 'doc_id text' malformed output"
@@ -385,23 +425,29 @@ class TestRegressionGuards:
         """Responses should be concise, not dump entire database."""
         # Mock RAG engine (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
-        mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
+        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
-        mock_engine.generate_response.return_value = "We collect interaction data, query types, and latency metrics for analytics."
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "We collect interaction data, query types, and latency metrics for analytics."
 
-        state = ConversationState(
-            role="Hiring Manager (technical)",
-            query="what data do you collect?"
-        )
-
-        # Set initial answer
-        state.set_answer("We collect interaction data, query types, and latency metrics for analytics.")
+        # Create TypedDict state
+        state: ConversationState = {
+            "role": "Hiring Manager (technical)",
+            "query": "what data do you collect?",
+            "chat_history": []
+        }
 
         # Run through flow
-        state = classify_query(state)
-        state = apply_role_context(state, mock_engine)
+        update1 = classify_query(state)
+        state.update(update1)
 
-        answer = state.answer
+        update2 = generate_answer(state, mock_engine)
+        state.update(update2)
+
+        update3 = apply_role_context(state, mock_engine)
+        state.update(update3)
+
+        answer = state["answer"]
 
         # Character count sanity check
         char_count = len(answer)
@@ -415,9 +461,10 @@ class TestRegressionGuards:
         """All roles should get consistent professional formatting."""
         # Mock RAG engine (Fixed Oct 16, 2025: Removed bad @patch, create mock directly)
         mock_engine = MagicMock()
-        mock_engine.retrieve.return_value = {"chunks": [], "matches": []}
+        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
         mock_engine.retrieve_with_code.return_value = {"chunks": [], "code_snippets": [], "has_code": False}
-        mock_engine.generate_response.return_value = "This product helps manage your career journey."
+        mock_engine.response_generator = MagicMock()
+        mock_engine.response_generator.generate_contextual_response.return_value = "This product helps manage your career journey."
 
         roles = [
             "Hiring Manager (technical)",
@@ -427,16 +474,24 @@ class TestRegressionGuards:
         ]
 
         for role in roles:
-            state = ConversationState(role=role, query="tell me about the product")
-
-            # Set initial answer
-            state.set_answer("This product helps manage your career journey.")
+            # Create TypedDict state
+            state: ConversationState = {
+                "role": role,
+                "query": "tell me about the product",
+                "chat_history": []
+            }
 
             # Run through flow
-            state = classify_query(state)
-            state = apply_role_context(state, mock_engine)
+            update1 = classify_query(state)
+            state.update(update1)
 
-            answer = state.answer
+            update2 = generate_answer(state, mock_engine)
+            state.update(update2)
+
+            update3 = apply_role_context(state, mock_engine)
+            state.update(update3)
+
+            answer = state["answer"]
 
             # All should have professional formatting (no emoji spam)
             emoji_count = sum(answer.count(emoji) for emoji in ["🎯", "📊", "🏗️", "🗂️", "🧱", "🚀"])

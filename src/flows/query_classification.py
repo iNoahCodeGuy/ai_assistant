@@ -13,10 +13,22 @@ Types we detect:
 Vague query expansion:
 - Detects single-word or very short queries that need context enrichment
 - Expands them into fuller questions to improve retrieval quality
+
+Design Principles Applied:
+- SRP: This module only classifies queries, doesn't retrieve or generate
+- Loose Coupling: Communicates via state dict, no direct node calls
+- Defensibility: Fail-fast validation on required fields
+- Maintainability: Pure helper functions separated from I/O
 """
 
 import re
-from src.flows.conversation_state import ConversationState
+import logging
+from typing import Dict, Any
+
+# Import NEW TypedDict state (Phase 3A migration)
+from src.state.conversation_state import ConversationState
+
+logger = logging.getLogger(__name__)
 
 
 # Vague query expansion mappings
@@ -87,8 +99,8 @@ def _expand_vague_query(query: str) -> str:
     return query
 
 
-def classify_query(state: ConversationState) -> ConversationState:
-    """Classify the incoming query and stash the result on state.
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    """Classify the incoming query and return partial state update.
 
     This is the first node in the conversation pipeline. It looks at the
     user's question and figures out what category it falls into.
@@ -106,25 +118,47 @@ def classify_query(state: ConversationState) -> ConversationState:
     - Fun queries (fun facts, hobbies)
     - Response length needs (teaching, why/how questions need longer explanations)
 
+    Node Signature (LangGraph Pattern):
+        - Accepts: ConversationState (TypedDict with all conversation data)
+        - Returns: Dict[str, Any] (PARTIAL update with only modified fields)
+
+    Design Principles:
+        - Fail-Fast (Defensibility): Validates required fields before processing
+        - Pure Logic Extraction (Maintainability): Business logic in helper functions
+        - Loose Coupling: Returns dict update, doesn't modify input state
+
     Args:
         state: Current conversation state with the user's query
 
     Returns:
-        Updated state with query_type, expanded_query, and relevant flags stashed
+        Partial state update dict with classification results
+
+    Raises:
+        ValueError: If required fields (query, role) are missing
     """
-    # Expand vague queries for better retrieval
-    original_query = state.query
-    expanded_query = _expand_vague_query(original_query)
+    # Fail-fast validation (Defensibility principle)
+    try:
+        query = state["query"]
+        role = state.get("role", "Developer")  # Has default, optional
+    except KeyError as e:
+        logger.error(f"classify_query: Missing required field: {e}")
+        return {
+            "error": "classification_failed",
+            "error_message": f"Missing required field for classification: {e}"
+        }
 
-    if expanded_query != original_query:
-        state.stash("expanded_query", expanded_query)
-        state.stash("vague_query_expanded", True)
-        # Log the expansion for debugging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Expanded vague query: '{original_query}' → '{expanded_query}'")
+    # Initialize partial update dict (only fields we're modifying)
+    update: Dict[str, Any] = {}
 
-    lowered = state.query.lower()
+    # Expand vague queries for better retrieval (pure function)
+    expanded_query = _expand_vague_query(query)
+
+    if expanded_query != query:
+        update["expanded_query"] = expanded_query
+        update["vague_query_expanded"] = True
+        logger.info(f"Expanded vague query: '{query}' → '{expanded_query}'")
+
+    lowered = query.lower()
 
     # Detect when a longer teaching-focused response is needed
     # These queries require depth, explanation, and educational context
@@ -137,8 +171,8 @@ def classify_query(state: ConversationState) -> ConversationState:
         "when to use", "when should", "best practice", "enterprise"
     ]
     if any(keyword in lowered for keyword in teaching_keywords):
-        state.stash("needs_longer_response", True)
-        state.stash("teaching_moment", True)
+        update["needs_longer_response"] = True
+        update["teaching_moment"] = True
 
     # Code display triggers (explicit requests to see code)
     code_display_keywords = [
@@ -149,8 +183,8 @@ def classify_query(state: ConversationState) -> ConversationState:
         "code snippet", "code example", "source code"
     ]
     if any(keyword in lowered for keyword in code_display_keywords):
-        state.stash("code_display_requested", True)
-        state.stash("query_type", "technical")
+        update["code_display_requested"] = True
+        update["query_type"] = "technical"
 
     # PROACTIVE code detection - when code would clarify the answer for technical roles
     # Per PROJECT_REFERENCE_OVERVIEW: "proactively displays code snippets when they clarify concepts"
@@ -170,14 +204,11 @@ def classify_query(state: ConversationState) -> ConversationState:
     ]
 
     # Only proactively show code for technical roles
-    if state.role in ["Software Developer", "Hiring Manager (technical)"]:
+    if role in ["Software Developer", "Hiring Manager (technical)"]:
         if any(topic in lowered for topic in proactive_code_topics):
-            state.stash("code_would_help", True)
-            state.stash("query_type", "technical")
-            # Log for debugging
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"Proactive code detection: query '{state.query}' would benefit from code examples")
+            update["code_would_help"] = True
+            update["query_type"] = "technical"
+            logger.info(f"Proactive code detection: query '{query}' would benefit from code examples")
 
     # Import/stack explanation triggers (why did you choose X?)
     import_keywords = [
@@ -196,20 +227,20 @@ def classify_query(state: ConversationState) -> ConversationState:
     ]
 
     if any(keyword in lowered for keyword in import_keywords):
-        state.stash("import_explanation_requested", True)
-        state.stash("query_type", "technical")
+        update["import_explanation_requested"] = True
+        update["query_type"] = "technical"
     elif any(lib in lowered for lib in library_names) and any(word in lowered for word in ["why", "what", "how", "explain"]):
-        state.stash("import_explanation_requested", True)
-        state.stash("query_type", "technical")
+        update["import_explanation_requested"] = True
+        update["query_type"] = "technical"
 
     # Query type classification
-    if any(re.search(r"\\b" + k + r"\\b", lowered) for k in ["mma", "fight", "ufc", "bout", "cage"]):
-        state.stash("query_type", "mma")
+    if any(re.search(r"\b" + k + r"\b", lowered) for k in ["mma", "fight", "ufc", "bout", "cage"]):
+        update["query_type"] = "mma"
     elif any(term in lowered for term in ["fun fact", "hobby", "interesting fact", "hot dog"]):
-        state.stash("query_type", "fun")
+        update["query_type"] = "fun"
     elif _is_data_display_request(lowered):
-        state.stash("data_display_requested", True)
-        state.stash("query_type", "data")
+        update["data_display_requested"] = True
+        update["query_type"] = "data"
     else:
         # PROACTIVE data detection - when analytics/metrics would clarify the answer
         # Questions about performance, usage, trends benefit from actual data
@@ -228,24 +259,22 @@ def classify_query(state: ConversationState) -> ConversationState:
         ]
 
         if any(topic in lowered for topic in proactive_data_topics):
-            state.stash("data_would_help", True)
-            state.stash("query_type", "data")
-            # Log for debugging
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"Proactive data detection: query '{state.query}' would benefit from analytics")
+            update["data_would_help"] = True
+            update["query_type"] = "data"
+            logger.info(f"Proactive data detection: query '{query}' would benefit from analytics")
 
     # Detect "how does [product/system/chatbot] work" queries as technical
     if any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
          or (("how does" in lowered or "how did" in lowered or "explain how" in lowered)
              and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "rag", "pipeline", "work", "built"])):
         # Override if not already set
-        if not state.fetch("query_type"):
-            state.stash("query_type", "technical")
+        if "query_type" not in update:
+            update["query_type"] = "technical"
     elif any(term in lowered for term in ["career", "resume", "cv", "experience", "achievement", "work"]):
-        if not state.fetch("query_type"):
-            state.stash("query_type", "career")
-    elif not state.fetch("query_type"):
-        state.stash("query_type", "general")
+        if "query_type" not in update:
+            update["query_type"] = "career"
+    elif "query_type" not in update:
+        update["query_type"] = "general"
 
-    return state
+    # Return ONLY modified fields (LangGraph merges with existing state)
+    return update

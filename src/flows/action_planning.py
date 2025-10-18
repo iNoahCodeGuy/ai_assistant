@@ -13,7 +13,7 @@ to a list. The actual work happens in a later step.
 """
 
 from typing import Any
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.query_classification import _is_data_display_request
 
 
@@ -39,20 +39,20 @@ def plan_actions(state: ConversationState) -> ConversationState:
         Updated state with pending_actions list populated
     """
     # Clear any old actions from previous turns
-    state.pending_actions.clear()
+    state["pending_actions"] = []
 
     # Get context about the query
-    query_type = state.fetch("query_type", "general")
-    lowered = state.query.lower()
-    user_turns = sum(1 for message in state.chat_history if message.get("role") == "user")
+    query_type = state.get("query_type", "general")
+    lowered = state["query"].lower()
+    user_turns = sum(1 for message in state["chat_history"] if message.get("role") == "user")
 
     # Check for special request flags
-    code_display_requested = state.fetch("code_display_requested", False)
-    import_explanation_requested = state.fetch("import_explanation_requested", False)
+    code_display_requested = state.get("code_display_requested", False)
+    import_explanation_requested = state.get("import_explanation_requested", False)
 
     # Helper to add actions to the list
     def add_action(action_type: str, **extras: Any) -> None:
-        state.append_pending_action({"type": action_type, **extras})
+        state["pending_actions"].append({"type": action_type, **extras})
 
     # Detect specific user requests
     resume_requested = any(key in lowered for key in ["send resume", "email resume", "resume", "cv"])
@@ -69,38 +69,38 @@ def plan_actions(state: ConversationState) -> ConversationState:
     # Handle data display requests (show analytics/metrics)
     if _is_data_display_request(lowered):
         add_action("render_live_analytics")
-        state.stash("data_display_requested", True)
+        state["data_display_requested"] = True
 
     # Handle direct requests for resources
     if resume_requested:
         add_action("send_resume")
         add_action("ask_reach_out")
         add_action("notify_resume_sent")
-        state.stash("offer_sent", True)
+        state["offer_sent"] = True
 
     if linkedin_requested:
         add_action("send_linkedin")
-        if not state.fetch("offer_sent"):
+        if not state.get("offer_sent"):
             add_action("ask_reach_out")
-            state.stash("offer_sent", True)
+            state["offer_sent"] = True
 
     if contact_requested:
         add_action("notify_contact_request")
-        state.stash("contact_requested", True)
+        state["contact_requested"] = True
 
     # Handle code and import explanation requests
-    if code_display_requested and state.role in ["Hiring Manager (technical)", "Software Developer"]:
+    if code_display_requested and state["role"] in ["Hiring Manager (technical)", "Software Developer"]:
         add_action("display_code_snippet")
 
     if import_explanation_requested:
         add_action("explain_imports")
 
     # Add QA strategy for product questions (all technical roles)
-    if product_question and state.role in ["Hiring Manager (technical)", "Software Developer"]:
+    if product_question and state["role"] in ["Hiring Manager (technical)", "Software Developer"]:
         add_action("include_qa_strategy")
 
     # Role-specific action planning
-    if state.role == "Hiring Manager (nontechnical)":
+    if state["role"] == "Hiring Manager (nontechnical)":
         # Suggest switching to technical role if they ask technical questions
         if query_type == "technical" or code_display_requested or import_explanation_requested or product_question:
             add_action("suggest_technical_role_switch")
@@ -109,7 +109,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
         if not resume_requested and not linkedin_requested and user_turns >= 2:
             add_action("offer_resume_prompt")
 
-    elif state.role == "Hiring Manager (technical)":
+    elif state["role"] == "Hiring Manager (technical)":
         # For technical/data questions, show full enterprise context
         if query_type in {"technical", "data"}:
             add_action("include_purpose_overview")
@@ -128,7 +128,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
         if not resume_requested and not linkedin_requested and user_turns >= 2:
             add_action("offer_resume_prompt")
 
-    elif state.role == "Software Developer":
+    elif state["role"] == "Software Developer":
         # Developers get code-heavy responses
         if query_type in {"technical", "data"}:
             add_action("include_purpose_overview")
@@ -138,14 +138,14 @@ def plan_actions(state: ConversationState) -> ConversationState:
             add_action("explain_stack_currency")
             add_action("highlight_enterprise_adaptability")
 
-    elif state.role == "Just looking around":
+    elif state["role"] == "Just looking around":
         # Casual visitors get fun content
         if query_type == "mma":
             add_action("share_mma_link")
         else:
             add_action("share_fun_facts")
 
-    elif state.role == "Looking to confess crush":
+    elif state["role"] == "Looking to confess crush":
         # Special confession flow
         add_action("collect_confession")
 

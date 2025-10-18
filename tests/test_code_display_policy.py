@@ -8,7 +8,7 @@ This test suite validates:
 """
 
 import pytest
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.conversation_nodes import classify_query, plan_actions
 from src.retrieval.import_retriever import (
     get_import_explanation,

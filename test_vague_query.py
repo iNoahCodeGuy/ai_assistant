@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.query_classification import classify_query
 
 # Test vague query expansion

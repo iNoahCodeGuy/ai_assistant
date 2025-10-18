@@ -510,12 +510,15 @@ def test_node_is_traced():
 - [ ] Document conditional edge patterns
 - [ ] Identify gaps vs our requirements
 
-### **Phase 3: State Management Migration**
-- [ ] Create new `ConversationState` TypedDict
-- [ ] Add `Annotated[list, add_messages]` for chat_history
-- [ ] Create `StateHelper` class for `.stash()`, `.fetch()` methods
-- [ ] Update all 15 state fields with proper types
-- [ ] Write tests for state immutability
+### **Phase 3: State Management Migration** ✅ IN PROGRESS
+- [x] Create new `ConversationState` TypedDict (src/state/conversation_state.py, 230 lines)
+- [x] Add `Annotated[list, add_messages]` for chat_history
+- [x] ~~Create `StateHelper` class~~ SKIPPED (YAGNI principle - Python dict methods sufficient)
+- [x] Update all 15 state fields with proper types
+- [x] Write tests for state immutability (tests/test_conversation_state.py, 23/23 passing)
+- [x] **POC Migration:** classify_query node migrated (tests/test_classify_query_migration.py, 20/20 passing)
+- [x] **Migration Guide:** Created docs/NODE_MIGRATION_GUIDE.md (proven pattern documented)
+- [ ] Migrate remaining 14 nodes following POC pattern (see NODE_MIGRATION_GUIDE.md)
 
 ### **Phase 4: Graph Construction**
 - [ ] Replace functional pipeline with `StateGraph`

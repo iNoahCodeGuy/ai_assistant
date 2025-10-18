@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows import conversation_nodes as nodes
 
 

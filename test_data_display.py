@@ -4,7 +4,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.flows.conversation_flow import run_conversation_flow
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.core.rag_engine import RagEngine
 
 def test_data_display():

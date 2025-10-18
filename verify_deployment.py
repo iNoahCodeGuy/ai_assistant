@@ -77,7 +77,7 @@ def test_conversation_nodes_updated():
     print("\n✓ Checking conversation_nodes updates...")
     try:
         from src.flows.conversation_nodes import classify_query, plan_actions
-        from src.flows.conversation_state import ConversationState
+        from src.state.conversation_state import ConversationState
 
         # Test code display trigger
         state = ConversationState(role="Software Developer", query="show me the code")

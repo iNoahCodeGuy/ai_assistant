@@ -6,7 +6,7 @@ import time
 from typing import Callable
 
 from src.core.rag_engine import RagEngine
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
     classify_query,
     retrieve_chunks,

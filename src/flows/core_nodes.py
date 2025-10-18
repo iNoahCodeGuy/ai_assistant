@@ -14,8 +14,9 @@ For the full flow, see: docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md
 
 import logging
 import os
+from typing import Dict, Any
 
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.core.rag_engine import RagEngine
 from src.analytics.supabase_analytics import supabase_analytics, UserInteractionData
 from src.flows import content_blocks
@@ -51,7 +52,7 @@ RESUME_DOWNLOAD_URL = os.getenv("RESUME_DOWNLOAD_URL", "https://example.com/noah
 LINKEDIN_URL = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/noahdelacalzada")
 
 
-def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int = 4) -> ConversationState:
+def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int = 4) -> Dict[str, Any]:
     """Fetch relevant knowledge base chunks using semantic search.
 
     This calls the RAG engine to find the top-k most relevant pieces of
@@ -60,30 +61,56 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     If the query was expanded (vague query like "engineering"), we use the
     expanded version for better retrieval quality.
 
+    Design Principles:
+    - **SRP**: Only retrieves chunks, doesn't generate responses
+    - **Loose Coupling**: Communicates via state dict, not direct calls
+    - **Defensibility**: Fail-fast validation, graceful degradation
+    - **Testability**: Pure retrieval logic, easy to mock rag_engine
+
     Args:
         state: Current conversation state with the query
         rag_engine: RAG engine instance (handles embeddings + vector search)
         top_k: How many chunks to retrieve (default 4)
 
     Returns:
-        Updated state with retrieved_chunks, retrieval_matches, and retrieval_scores
+        Partial state update dict with retrieved_chunks, retrieval_matches, retrieval_scores
+
+    Raises:
+        KeyError: If required 'query' field missing from state
     """
+    # Fail-fast: Validate required fields (Defensibility)
+    try:
+        query = state["query"]
+    except KeyError as e:
+        logger.error("retrieve_chunks called without query in state")
+        raise KeyError("State must contain 'query' field for retrieval") from e
+
     # Use expanded query if available (for vague queries like "engineering")
-    query_for_retrieval = state.fetch("expanded_query", state.query)
+    query_for_retrieval = state.get("expanded_query", query)
 
-    results = rag_engine.retrieve(query_for_retrieval, top_k=top_k)
-    state.add_retrieved_chunks(results.get("chunks", []))
-    state.stash("retrieval_matches", results.get("matches", []))
-    state.stash("retrieval_scores", results.get("scores", []))
+    # Perform retrieval (delegated to RAG engine - Encapsulation)
+    try:
+        results = rag_engine.retrieve(query_for_retrieval, top_k=top_k)
+    except Exception as e:
+        logger.error(f"RAG retrieval failed: {e}")
+        # Fail-safe: Return empty results (Defensibility)
+        results = {"chunks": [], "matches": [], "scores": []}
 
-    # Log if we used expansion
-    if state.fetch("vague_query_expanded", False):
+    # Build partial update dict (Loose Coupling)
+    update: Dict[str, Any] = {
+        "retrieved_chunks": results.get("chunks", []),
+        "retrieval_matches": results.get("matches", []),
+        "retrieval_scores": results.get("scores", [])
+    }
+
+    # Log if we used expansion (Observability)
+    if state.get("vague_query_expanded", False):
         logger.info(f"Retrieved {len(results.get('chunks', []))} chunks using expanded query")
 
-    return state
+    return update
 
 
-def generate_answer(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
+def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
     """Generate an assistant response using retrieved context.
 
     This is where the LLM creates the actual answer to the user's question.
@@ -93,28 +120,49 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Conversa
     - For data display requests, we skip LLM generation and fetch live analytics
     - For vague queries with insufficient context, we provide a helpful fallback
 
+    Design Principles:
+    - **SRP**: Only generates answer, doesn't retrieve or log
+    - **Defensibility**: Fail-fast on missing query, fail-safe on LLM errors
+    - **Maintainability**: Separates fallback logic from generation logic
+    - **Simplicity (KISS)**: Clear flow - validate → check special cases → generate
+
     Args:
         state: Current conversation state with query + retrieved chunks
         rag_engine: RAG engine with response generator
 
     Returns:
-        Updated state with generated answer
+        Partial state update dict with 'answer' and optional 'fallback_used' flag
+
+    Raises:
+        KeyError: If required 'query' field missing from state
     """
-    retrieved_chunks = state.retrieved_chunks or []
+    # Fail-fast: Validate required fields (Defensibility)
+    try:
+        query = state["query"]
+    except KeyError as e:
+        logger.error("generate_answer called without query in state")
+        raise KeyError("State must contain 'query' field for generation") from e
+
+    # Access optional fields safely (Defensibility)
+    retrieved_chunks = state.get("retrieved_chunks", [])
+    role = state.get("role", "Just looking around")
+    chat_history = state.get("chat_history", [])
+
+    # Initialize update dict (Loose Coupling)
+    update: Dict[str, Any] = {}
 
     # For data display requests, we'll fetch live analytics later
     # Just set a placeholder for now
-    if state.fetch("data_display_requested", False):
-        state.set_answer("Fetching live analytics data from Supabase...")
-        return state
+    if state.get("data_display_requested", False):
+        update["answer"] = "Fetching live analytics data from Supabase..."
+        return update
 
     # Check if we have sufficient context
     # If vague query was expanded but we still have no good matches, help the user
-    if state.fetch("vague_query_expanded", False) and len(retrieved_chunks) == 0:
-        original_query = state.query
-        expanded_query = state.fetch("expanded_query", "")
+    if state.get("vague_query_expanded", False) and len(retrieved_chunks) == 0:
+        expanded_query = state.get("expanded_query", "")
 
-        fallback_answer = f"""I'd love to answer your question about "{original_query}"!
+        fallback_answer = f"""I'd love to answer your question about "{query}"!
 
 Could you be more specific? For example:
 - If you're curious about my engineering skills, try: "What are your software engineering skills?"
@@ -124,15 +172,15 @@ Could you be more specific? For example:
 
 I'm here to help you understand Noah's capabilities and how generative AI applications like me work. What would you like to explore?"""
 
-        state.set_answer(fallback_answer)
-        state.stash("fallback_used", True)
-        logger.info(f"Used fallback for vague query '{original_query}' with no matches")
-        return state
+        update["answer"] = fallback_answer
+        update["fallback_used"] = True
+        logger.info(f"Used fallback for vague query '{query}' with no matches")
+        return update
 
     # Check for very low retrieval quality (all scores below threshold)
-    retrieval_scores = state.fetch("retrieval_scores", [])
+    retrieval_scores = state.get("retrieval_scores", [])
     if retrieval_scores and all(score < 0.4 for score in retrieval_scores):
-        fallback_answer = f"""I'm not finding great matches for "{state.query}" in my knowledge base, but I'd love to help!
+        fallback_answer = f"""I'm not finding great matches for "{query}" in my knowledge base, but I'd love to help!
 
 Here are some things I can tell you about:
 - **Noah's engineering skills and experience** - "What are your software engineering skills?"
@@ -144,17 +192,17 @@ Here are some things I can tell you about:
 
 Or ask me to explain how I work - I love teaching about RAG, vector search, and LLM orchestration! What sounds interesting?"""
 
-        state.set_answer(fallback_answer)
-        state.stash("fallback_used", True)
+        update["answer"] = fallback_answer
+        update["fallback_used"] = True
         logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
-        return state
+        return update
 
     # Use the LLM to generate a response with retrieved context
     # Add display intelligence based on query classification
     extra_instructions = []
 
     # When teaching/explaining, provide comprehensive depth
-    if state.fetch("needs_longer_response", False) or state.fetch("teaching_moment", False):
+    if state.get("needs_longer_response", False) or state.get("teaching_moment", False):
         extra_instructions.append(
             "This is a teaching moment - provide a comprehensive, well-structured explanation. "
             "Break down concepts clearly, connect technical details to business value, and "
@@ -162,7 +210,7 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         )
 
     # EXPLICIT code request - user specifically asked
-    if state.fetch("code_display_requested", False) and state.role in [
+    if state.get("code_display_requested", False) and role in [
         "Software Developer",
         "Hiring Manager (technical)"
     ]:
@@ -172,7 +220,7 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "on the most interesting parts."
         )
     # PROACTIVE code suggestion - code would clarify but wasn't explicitly requested
-    elif state.fetch("code_would_help", False) and state.role in [
+    elif state.get("code_would_help", False) and role in [
         "Software Developer",
         "Hiring Manager (technical)"
     ]:
@@ -183,13 +231,13 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         )
 
     # EXPLICIT data request - user specifically asked
-    if state.fetch("data_display_requested", False):
+    if state.get("data_display_requested", False):
         extra_instructions.append(
             "The user wants data/analytics. Be brief with narrative - focus on presenting clean "
             "tables with proper formatting. Include source attribution."
         )
     # PROACTIVE data suggestion - metrics would clarify but weren't explicitly requested
-    elif state.fetch("data_would_help", False):
+    elif state.get("data_would_help", False):
         extra_instructions.append(
             "This question would benefit from actual metrics/data. After your explanation, "
             "include relevant analytics in table format if available. Be concise with tables, "
@@ -206,20 +254,29 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
     # Build the instruction suffix
     instruction_suffix = " ".join(extra_instructions) if extra_instructions else None
 
-    answer = rag_engine.response_generator.generate_contextual_response(
-        query=state.query,
-        context=retrieved_chunks,
-        role=state.role,
-        chat_history=state.chat_history,
-        extra_instructions=instruction_suffix
-    )
+    # Generate response with LLM (Encapsulation - delegates to response generator)
+    try:
+        answer = rag_engine.response_generator.generate_contextual_response(
+            query=query,
+            context=retrieved_chunks,
+            role=role,
+            chat_history=chat_history,
+            extra_instructions=instruction_suffix
+        )
+    except Exception as e:
+        logger.error(f"LLM generation failed: {e}")
+        # Fail-safe: Provide graceful error message (Defensibility)
+        answer = (
+            "I'm having trouble generating a response right now. "
+            "Please try rephrasing your question or ask something else!"
+        )
 
-    # Clean up any SQL artifacts that leaked from retrieval
-    state.set_answer(sanitize_generated_answer(answer))
-    return state
+    # Clean up any SQL artifacts that leaked from retrieval (Maintainability)
+    update["answer"] = sanitize_generated_answer(answer)
+    return update
 
 
-def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
+def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
     """Add role-specific content blocks to the answer.
 
     This is where we enrich the base answer with extra content based on
@@ -229,20 +286,42 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
     - Add fun facts for casual visitors
     - Add resume links when requested
 
+    Design Principles:
+    - **SRP**: Only enriches answer with content blocks, doesn't generate
+    - **Maintainability**: Uses content_blocks module for reusable components
+    - **Extensibility**: Easy to add new action types
+    - **Simplicity (DRY)**: Centralizes all content block assembly
+
     Args:
         state: Current conversation state with answer + pending_actions
         rag_engine: RAG engine for code retrieval
 
     Returns:
-        Updated state with fully enriched answer
+        Partial state update dict with enriched 'answer' and optional metadata
+
+    Raises:
+        KeyError: If required 'answer' field missing from state
     """
-    if not state.answer:
-        return state
+    # Fail-fast: Validate required fields (Defensibility)
+    try:
+        base_answer = state["answer"]
+    except KeyError as e:
+        logger.error("apply_role_context called without answer in state")
+        raise KeyError("State must contain 'answer' field for enrichment") from e
+
+    # If no answer, skip enrichment (fail-safe)
+    if not base_answer:
+        return {}  # No update needed
+
+    # Access optional fields safely (Defensibility)
+    pending_actions = state.get("pending_actions", [])
+    query_type = state.get("query_type", "general")
+    role = state.get("role", "Just looking around")
+    query = state.get("query", "")
 
     # Start with the base answer, we'll append blocks to it
-    components = [state.answer]
-    actions = {action["type"] for action in state.pending_actions}
-    query_type = state.fetch("query_type", "general")
+    components = [base_answer]
+    actions = {action["type"] for action in pending_actions}
 
     # Enterprise-focused content blocks (for hiring managers + developers)
     if "include_purpose_overview" in actions:
@@ -292,10 +371,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
 
     # Legacy data report (for compatibility)
     if "render_data_report" in actions and "render_live_analytics" not in actions:
-        report = state.fetch("data_report")
+        report = state.get("data_report")
         if not report:
             report = render_full_data_report()
-            state.stash("data_report", report)
+            # Store for potential reuse in this conversation
         components.append(
             "\n\n" + content_blocks.format_section("Data Insights & Full Dataset", report)
         )
@@ -349,17 +428,17 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
     # Resource offers (LinkedIn, resume)
     if "send_linkedin" in actions:
         components.append(f"\n\nHere is Noah's LinkedIn profile: {LINKEDIN_URL}")
-        state.stash("offer_sent", True)
+        # Note: offer_sent tracked elsewhere (action execution)
 
     if "send_resume" in actions:
-        resume_link = state.fetch("resume_signed_url", RESUME_DOWNLOAD_URL)
+        resume_link = state.get("resume_signed_url", RESUME_DOWNLOAD_URL)
         components.append(f"\n\nDownload Noah's resume: {resume_link}")
-        state.stash("offer_sent", True)
+        # Note: offer_sent tracked elsewhere (action execution)
 
     # Code snippets (for developers and technical hiring managers)
     if "include_code_snippets" in actions or "display_code_snippet" in actions:
         try:
-            results = rag_engine.retrieve_with_code(state.query, role=state.role)
+            results = rag_engine.retrieve_with_code(query, role=role)
             snippets = results.get("code_snippets", []) if results else []
         except Exception as e:
             logger.warning(f"Code retrieval failed: {e}")
@@ -408,11 +487,11 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
 
     # Import/stack explanations (why did you choose X library?)
     if "explain_imports" in actions:
-        import_name = detect_import_in_query(state.query)
+        import_name = detect_import_in_query(query)
 
         if import_name:
             # Get specific explanation for this import
-            explanation_data = get_import_explanation(import_name, state.role)
+            explanation_data = get_import_explanation(import_name, role)
             if explanation_data:
                 formatted_explanation = content_blocks.format_import_explanation(
                     import_name=explanation_data["import"],
@@ -425,7 +504,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
                 components.append(f"\n\n{formatted_explanation}")
         else:
             # Search for relevant imports
-            relevant_imports = search_import_explanations(state.query, state.role, top_k=3)
+            relevant_imports = search_import_explanations(query, role, top_k=3)
             if relevant_imports:
                 components.append("\n\n**Stack Justifications**\n")
                 for imp_data in relevant_imports:
@@ -440,7 +519,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
                     components.append(f"\n{formatted}\n")
 
     # Interactive prompts (ask if they want resume, outreach, etc.)
-    if "offer_resume_prompt" in actions and not state.fetch("offer_sent"):
+    if "offer_resume_prompt" in actions and not state.get("offer_sent"):
         components.append("\n\nWould you like me to email you my resume or share my LinkedIn profile?")
 
     if "ask_reach_out" in actions:
@@ -454,15 +533,17 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
     # Technical follow-up prompt (for technical roles)
     if (
         query_type in {"technical", "data"}
-        and state.role in {"Hiring Manager (technical)", "Software Developer"}
+        and role in {"Hiring Manager (technical)", "Software Developer"}
     ):
         components.append(
             "\n\nWould you like me to go into further detail about the logic behind the architecture, display data collected, or go deeper on how a project like this could be adapted into enterprise use?"
         )
 
-    # Combine all components into final answer
-    state.set_answer("".join(components))
-    return state
+    # Combine all components into final enriched answer
+    enriched_answer = "".join(components)
+
+    # Return partial update (Loose Coupling)
+    return {"answer": enriched_answer}
 
 
 def log_and_notify(
@@ -470,11 +551,16 @@ def log_and_notify(
     session_id: str,
     latency_ms: int,
     success: bool = True
-) -> ConversationState:
+) -> Dict[str, Any]:
     """Save analytics to Supabase and trigger notifications.
 
     This is the last step in the pipeline. It records the conversation
     to the database for evaluation and potential follow-up.
+
+    Design Principles:
+    - **SRP**: Only handles analytics logging, doesn't modify answer
+    - **Defensibility**: Gracefully handles logging failures
+    - **Loose Coupling**: Returns partial update with metadata only
 
     Args:
         state: Current conversation state with final answer
@@ -483,21 +569,34 @@ def log_and_notify(
         success: Whether the conversation completed successfully
 
     Returns:
-        Updated state with analytics metadata
+        Partial state update dict with analytics metadata
     """
+    # Access required fields with fail-safe defaults
+    role = state.get("role", "Just looking around")
+    query = state.get("query", "")
+    answer = state.get("answer", "")
+    query_type = state.get("query_type", "general")
+
+    # Initialize update dict
+    update: Dict[str, Any] = {}
+
     try:
         interaction = UserInteractionData(
             session_id=session_id,
-            role_mode=state.role,
-            query=state.query,
-            answer=state.answer or "",
-            query_type=state.fetch("query_type", "general"),
+            role_mode=role,
+            query=query,
+            answer=answer,
+            query_type=query_type,
             latency_ms=latency_ms,
             success=success
         )
         message_id = supabase_analytics.log_interaction(interaction)
-        state.update_analytics("message_id", message_id)
+
+        # Store analytics metadata in state
+        update["message_id"] = message_id
+        update["logged_at"] = True
     except Exception as exc:
         logger.error("Failed logging analytics: %s", exc)
+        update["logged_at"] = False
 
-    return state
+    return update

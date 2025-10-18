@@ -74,7 +74,7 @@ from src.agents.role_router import RoleRouter
 from src.agents.response_formatter import ResponseFormatter
 from src.analytics.supabase_analytics import supabase_analytics, UserInteractionData
 from src.config.supabase_config import supabase_settings
-from src.flows.conversation_state import ConversationState
+from src.state.conversation_state import ConversationState
 from src.flows.conversation_flow import run_conversation_flow
 from src.flows.greetings import get_role_greeting
 
