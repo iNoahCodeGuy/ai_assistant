@@ -1,6 +1,6 @@
 # 🐛 "[DEGRADED MODE SYNTHESIS]" Bug - Debug Summary
 
-**Date**: October 11, 2025  
+**Date**: October 11, 2025
 **Status**: ✅ **ROOT CAUSE IDENTIFIED & FIXED**
 
 ---
@@ -11,7 +11,7 @@ User reported the app displaying:
 ```
 [DEGRADED MODE SYNTHESIS]
 see Noah's LinkedIn? A: You can view Noah's LinkedIn profile here: https://...
-User question: what is noah's professional background? Please provide a 
+User question: what is noah's professional background? Please provide a
 helpful and accurate answer based on the information provided...
 ```
 
@@ -65,7 +65,7 @@ Fallback/Error Handler Returns Raw Prompt
 pip install --upgrade pydantic>=2.0
 ```
 
-**Before**: `pydantic==1.10.24`  
+**Before**: `pydantic==1.10.24`
 **After**: `pydantic==2.12.0`
 
 ### 2. Downgraded OpenAI
@@ -73,7 +73,7 @@ pip install --upgrade pydantic>=2.0
 pip install "openai<2.0.0"
 ```
 
-**Before**: `openai==2.2.0`  
+**Before**: `openai==2.2.0`
 **After**: `openai==1.57.4` (compatible with langchain-openai)
 
 ### 3. Reinstalled Supabase Stack
@@ -119,9 +119,9 @@ Role: Hiring Manager (nontechnical)
 
 📋 Response Preview:
 ✅ Response looks good!
-Based on the information provided, Noah's professional background includes 
-experience in Mixed Martial Arts, specifically having fought in 10 MMA fights 
-(8 amateur and 2 professional). In team projects, Noah typically serves as a 
+Based on the information provided, Noah's professional background includes
+experience in Mixed Martial Arts, specifically having fought in 10 MMA fights
+(8 amateur and 2 professional). In team projects, Noah typically serves as a
 bridge between business and technical teams...
 
 ✅ Context included: 4 chunks
@@ -137,16 +137,16 @@ bridge between business and technical teams...
 ```
 [DEGRADED MODE SYNTHESIS]
 see Noah's LinkedIn? A: You can view Noah's LinkedIn profile here: https://...
-User question: what is noah's professional background? Please provide a 
+User question: what is noah's professional background? Please provide a
 helpful and accurate answer...
 ```
 
 ### After (Fixed)
 ```
-Based on the information provided, Noah's professional background includes 
-experience in Mixed Martial Arts, specifically having fought in 10 MMA fights 
-(8 amateur and 2 professional). In team projects, Noah typically serves as a 
-bridge between business and technical teams, ensuring alignment between 
+Based on the information provided, Noah's professional background includes
+experience in Mixed Martial Arts, specifically having fought in 10 MMA fights
+(8 amateur and 2 professional). In team projects, Noah typically serves as a
+bridge between business and technical teams, ensuring alignment between
 technical work and business goals...
 
 📚 Sources
@@ -173,10 +173,10 @@ def generate_response(self, query: str, context: List[Dict], role: str) -> str:
         # Existing generation logic
         response = self.llm.predict(prompt)
         return response
-    
+
     except Exception as e:
         logger.error(f"LLM generation failed: {e}")
-        
+
         # Return user-friendly error instead of raw prompt
         return (
             "I apologize, but I'm having trouble generating a response right now. "
@@ -201,7 +201,7 @@ def check_system_health():
         "supabase": False,
         "retrieval": False
     }
-    
+
     try:
         # Test OpenAI
         openai_client.embeddings.create(
@@ -211,14 +211,14 @@ def check_system_health():
         health["openai"] = True
     except:
         pass
-    
+
     try:
         # Test Supabase
         supabase.table('kb_chunks').select('id').limit(1).execute()
         health["supabase"] = True
     except:
         pass
-    
+
     return health
 
 # In main chat loop:
@@ -316,10 +316,10 @@ langchain-openai>=0.3.0
 
 **Status**: ✅ **FIXED**
 
-**Root Cause**: Dependency version conflicts  
-**Fix**: Updated Pydantic to v2, downgraded OpenAI to <2.0, reinstalled Supabase  
-**Verification**: All debug tests pass  
-**App Status**: Running on http://localhost:8501  
+**Root Cause**: Dependency version conflicts
+**Fix**: Updated Pydantic to v2, downgraded OpenAI to <2.0, reinstalled Supabase
+**Verification**: All debug tests pass
+**App Status**: Running on http://localhost:8501
 
 **Next Action**: Test in browser to confirm fix is applied in live app
 
@@ -364,7 +364,7 @@ twilio
    # .github/workflows/test.yml
    - name: Install dependencies
      run: pip install -r requirements.txt
-   
+
    - name: Run health checks
      run: python debug_degraded_mode.py
    ```
@@ -388,6 +388,6 @@ twilio
 
 ---
 
-**Bug Fixed By**: GitHub Copilot  
-**Verification**: Comprehensive debug script created and run  
+**Bug Fixed By**: GitHub Copilot
+**Verification**: Comprehensive debug script created and run
 **Status**: ✅ Ready for production testing

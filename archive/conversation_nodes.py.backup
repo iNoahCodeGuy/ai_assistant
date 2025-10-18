@@ -139,7 +139,7 @@ def _is_data_display_request(lowered_query: str) -> bool:
 
 def classify_query(state: ConversationState) -> ConversationState:
     """Classify the incoming query and stash the result on state.
-    
+
     Detects:
     - Code display requests (show/display code, how do you, implementation details)
     - Import/stack questions (why use X, what imports, explain dependencies)
@@ -150,7 +150,7 @@ def classify_query(state: ConversationState) -> ConversationState:
     - Fun queries (fun facts, hobbies)
     """
     lowered = state.query.lower()
-    
+
     # Code display triggers (explicit requests)
     code_display_keywords = [
         "show code", "display code", "show me code", "show the code",
@@ -162,7 +162,7 @@ def classify_query(state: ConversationState) -> ConversationState:
     if any(keyword in lowered for keyword in code_display_keywords):
         state.stash("code_display_requested", True)
         state.stash("query_type", "technical")
-    
+
     # Import/stack explanation triggers
     import_keywords = [
         "why use", "why choose", "why did you use", "why did you choose",
@@ -173,9 +173,9 @@ def classify_query(state: ConversationState) -> ConversationState:
         "enterprise", "production", "scale", "library", "libraries"
     ]
     # Also check for specific library mentions in query
-    library_names = ["supabase", "openai", "pgvector", "langchain", "langgraph", 
+    library_names = ["supabase", "openai", "pgvector", "langchain", "langgraph",
                      "vercel", "resend", "twilio", "langsmith", "streamlit"]
-    
+
     if any(keyword in lowered for keyword in import_keywords):
         state.stash("import_explanation_requested", True)
         state.stash("query_type", "technical")
@@ -183,7 +183,7 @@ def classify_query(state: ConversationState) -> ConversationState:
     elif any(lib in lowered for lib in library_names) and any(word in lowered for word in ["why", "what", "how", "explain"]):
         state.stash("import_explanation_requested", True)
         state.stash("query_type", "technical")
-    
+
     # Query type classification
     if any(re.search(r"\\b" + k + r"\\b", lowered) for k in ["mma", "fight", "ufc", "bout", "cage"]):
         state.stash("query_type", "mma")
@@ -194,7 +194,7 @@ def classify_query(state: ConversationState) -> ConversationState:
         state.stash("query_type", "data")
     # Detect "how does [product/system/chatbot] work" queries as technical
     elif any(term in lowered for term in ["code", "technical", "stack", "architecture", "implementation", "retrieval"]) \
-         or (("how does" in lowered or "how did" in lowered or "explain how" in lowered) 
+         or (("how does" in lowered or "how did" in lowered or "explain how" in lowered)
              and any(word in lowered for word in ["product", "system", "chatbot", "assistant", "rag", "pipeline", "work", "built"])):
         state.stash("query_type", "technical")
     elif any(term in lowered for term in ["career", "resume", "cv", "experience", "achievement", "work"]):
@@ -215,31 +215,31 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
 
 def generate_answer(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
     """Generate an assistant response using retrieved context.
-    
+
     Uses contextual response generation which includes:
     - Role-aware prompting
     - Third-person language enforcement
     - Technical follow-up questions (for technical roles)
-    
+
     For data display requests, fetches LIVE analytics from /api/analytics endpoint.
     """
     # Get retrieved chunks for context
     retrieved_chunks = state.retrieved_chunks or []
-    
+
     # For data display requests, use LIVE analytics from API
     if state.fetch("data_display_requested", False):
         # Mark that we need to fetch live analytics
         # This will be handled in apply_role_context
         state.set_answer("Fetching live analytics data from Supabase...")
         return state
-    
+
     # Use contextual response generator (includes follow-ups)
     answer = rag_engine.response_generator.generate_contextual_response(
         query=state.query,
         context=retrieved_chunks,
         role=state.role
     )
-    
+
     state.set_answer(_sanitize_generated_answer(answer))
     return state
 
@@ -250,11 +250,11 @@ def plan_actions(state: ConversationState) -> ConversationState:
     query_type = state.fetch("query_type", "general")
     lowered = state.query.lower()
     user_turns = sum(1 for message in state.chat_history if message.get("role") == "user")
-    
+
     # Check for code/import request flags
     code_display_requested = state.fetch("code_display_requested", False)
     import_explanation_requested = state.fetch("import_explanation_requested", False)
-    
+
     # Detect product/how-it-works questions
     product_question = any(term in lowered for term in [
         "how does this work", "how does it work", "how does", "how is this",
@@ -290,7 +290,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
     # Code display and import explanations for technical roles
     if code_display_requested and state.role in ["Hiring Manager (technical)", "Software Developer"]:
         add_action("display_code_snippet")
-    
+
     if import_explanation_requested:
         add_action("explain_imports")
 
@@ -341,7 +341,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
 
 def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
     """Tailor the generated answer with role-specific enrichments.
-    
+
     This node appends structured content blocks based on planned actions:
     - Product purpose and enterprise signal
     - Full data analytics report
@@ -349,11 +349,11 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
     - Fun facts and MMA links
     - Resume and LinkedIn offers
     - Code snippets for developers
-    
+
     Args:
         state: Current conversation state
         rag_engine: RAG engine for code retrieval
-        
+
     Returns:
         Updated state with enriched answer
     """
@@ -369,7 +369,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         components.append(
             "\n\n" + content_blocks.format_section("Product Purpose", content_blocks.purpose_block())
         )
-    
+
     if "include_qa_strategy" in actions:
         components.append(
             "\n\n" + content_blocks.format_section("Quality Assurance", content_blocks.qa_strategy_block())
@@ -381,7 +381,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             import requests
             from src.flows.analytics_renderer import render_live_analytics
             from src.config.supabase_config import supabase_settings
-            
+
             # Determine the analytics API URL
             if supabase_settings.is_vercel:
                 # Production: use the deployed URL
@@ -389,22 +389,22 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
             else:
                 # Local: use localhost
                 analytics_url = "http://localhost:3000/api/analytics"
-            
+
             # Fetch live analytics
             response = requests.get(analytics_url, timeout=3)
             response.raise_for_status()
             analytics_data = response.json()
-            
+
             # Render with role-appropriate detail level
             analytics_report = render_live_analytics(
-                analytics_data, 
+                analytics_data,
                 state.role,
                 focus=None  # Could detect focus from query
             )
-            
+
             # Replace placeholder with actual analytics
             components = [analytics_report]
-            
+
         except Exception as e:
             logger.error(f"Failed to fetch live analytics: {e}")
             # Fallback to cached/KB version
@@ -446,10 +446,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         components.append(
             "\n\n" + content_blocks.format_section("Stack Importance", content_blocks.stack_importance_explanation())
         )
-    
+
     if "suggest_technical_role_switch" in actions:
         components.append(content_blocks.role_switch_suggestion("Hiring Manager (technical)"))
-    
+
     if "suggest_developer_role_switch" in actions:
         components.append(content_blocks.role_switch_suggestion("Software Developer"))
 
@@ -485,12 +485,12 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         except Exception as e:  # pragma: no cover - defensive guard
             logger.warning(f"Code retrieval failed: {e}")
             snippets = []
-        
+
         if snippets:
             snippet = snippets[0]
             code_content = snippet.get("content", "")
             citation = snippet.get("citation", "codebase")
-            
+
             if _is_valid_code_snippet(code_content):
                 # Use formatted code display with enterprise prompt
                 formatted_code = content_blocks.format_code_snippet(
@@ -527,12 +527,12 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
                         "- Request insights into specific features or services"
                     )
                 )
-    
+
     # Import explanations for stack questions
     if "explain_imports" in actions:
         # Detect which import they're asking about
         import_name = detect_import_in_query(state.query)
-        
+
         if import_name:
             # Get tier-appropriate explanation
             explanation_data = get_import_explanation(import_name, state.role)

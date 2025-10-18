@@ -16,6 +16,7 @@ from src.flows.conversation_nodes import (
     execute_actions,
     log_and_notify,
     handle_greeting,
+    extract_job_details_from_query,
 )
 
 
@@ -30,14 +31,16 @@ def run_conversation_flow(
     session_id: str,
 ) -> ConversationState:
     """Execute the conversation pipeline in sequence.
-    
-    Flow: handle_greeting → classify → retrieve → generate → plan → apply → execute → log
-    
+
+    Flow: handle_greeting → classify → extract_job_details → retrieve → generate → plan → apply → execute → log
+
     The greeting node short-circuits if user's first query is a simple "hello".
+    Job details extraction happens after classify to capture any company/position info.
     """
     pipeline = nodes or (
         lambda s: handle_greeting(s, rag_engine),  # Check for first-turn greetings
         classify_query,
+        extract_job_details_from_query,  # Extract job details if provided (Task 9)
         lambda s: retrieve_chunks(s, rag_engine) if not s.fetch("is_greeting") else s,
         lambda s: generate_answer(s, rag_engine) if not s.fetch("is_greeting") else s,
         plan_actions,

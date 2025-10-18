@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export type Role = 
+export type Role =
   | 'Hiring Manager (nontechnical)'
   | 'Hiring Manager (technical)'
   | 'Software Developer'
@@ -60,13 +60,13 @@ export function useChat() {
       }
 
       const data = await response.json()
-      
+
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.answer,
         sources: data.sources
       }
-      
+
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error sending message:', error)

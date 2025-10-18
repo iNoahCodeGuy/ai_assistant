@@ -1,7 +1,7 @@
 # 🚀 External Services Setup Guide
 
-**Last Updated**: October 5, 2025  
-**Estimated Time**: 30-45 minutes  
+**Last Updated**: October 5, 2025
+**Estimated Time**: 30-45 minutes
 **Prerequisites**: Supabase setup completed, Supabase project created
 
 ---
@@ -64,7 +64,7 @@
      ```bash
      RESEND_FROM_EMAIL=noah@yourdomain.com
      ```
-   
+
    **OR use Resend's test domain** (for testing):
    ```bash
    RESEND_FROM_EMAIL=onboarding@resend.dev
@@ -316,5 +316,5 @@ Once External Services setup is complete:
 
 ---
 
-**Status**: Ready for External Services setup ✅  
+**Status**: Ready for External Services setup ✅
 **Next**: Run `python scripts/setup_external_services.py`

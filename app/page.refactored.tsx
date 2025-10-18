@@ -7,10 +7,10 @@ import { ChatInput } from './components/chat/ChatInput'
 
 /**
  * Main chat page - refactored version
- * 
+ *
  * BEFORE: 224 lines with all logic mixed together
  * AFTER: 28 lines that clearly shows the structure
- * 
+ *
  * Benefits:
  * - Easy to understand at a glance
  * - Each component is testable independently
@@ -30,16 +30,16 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen gradient-bg">
-      <ChatHeader 
-        role={selectedRole} 
-        onRoleChange={setSelectedRole} 
+      <ChatHeader
+        role={selectedRole}
+        onRoleChange={setSelectedRole}
       />
-      
-      <ChatMessages 
-        messages={messages} 
-        loading={loading} 
+
+      <ChatMessages
+        messages={messages}
+        loading={loading}
       />
-      
+
       <ChatInput
         value={input}
         onChange={setInput}

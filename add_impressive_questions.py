@@ -103,17 +103,17 @@ Think of Noah's AI assistant as a **smart librarian system**:
 // app/page.tsx - Main chat interface
 const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
-  
+
   const handleSend = async (userMessage) => {
     // Send to backend API
     const response = await fetch('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         query: userMessage,
         role: selectedRole  // "Software Developer", etc.
       })
     });
-    
+
     const data = await response.json();
     setMessages([...messages, data.answer]);
   };
@@ -139,13 +139,13 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Parse incoming request
         body = json.loads(self.rfile.read())
-        
+
         # Run RAG pipeline (the magic happens here)
         result = run_conversation_flow(
             query=body['query'],
             role=body['role']
         )
-        
+
         # Return answer
         return {'answer': result.answer}
 ```
@@ -199,7 +199,7 @@ embedding = openai.embeddings.create(
 
 ```sql
 -- Supabase pgvector query
-SELECT content, 
+SELECT content,
        1 - (embedding <=> query_embedding) AS similarity
 FROM kb_chunks
 WHERE 1 - (embedding <=> query_embedding) > 0.60  -- 60% match threshold
@@ -342,7 +342,7 @@ Total: 2.3 seconds
 
 ## Scalability Design
 
-**Current capacity**: 
+**Current capacity**:
 - 283 KB chunks
 - ~5-10 queries/second
 - 100 concurrent users (Vercel free tier)

@@ -37,7 +37,7 @@ High-level overview of all data tables with record counts and last activity.
 ```
 
 #### 2. Knowledge Base Coverage (Aggregated)
-**Before**: 245 rows of individual entries  
+**Before**: 245 rows of individual entries
 **After**: 3 clean rows by source
 
 ```markdown
@@ -70,7 +70,7 @@ Calculated insights that answer business questions:
 - Content demand signals (general queries > technical queries)
 
 #### 4. Recent Conversations (Last 10)
-**Before**: All 83 messages shown  
+**Before**: All 83 messages shown
 **After**: 10 most recent for context
 
 ```markdown
@@ -84,7 +84,7 @@ Calculated insights that answer business questions:
 **Impact**: 87.9% reduction in rows (83 → 10) while maintaining temporal relevance
 
 #### 5. Confessions (Privacy Protected)
-**Before**: Full message details exposed (name, email, phone, message content)  
+**Before**: Full message details exposed (name, email, phone, message content)
 **After**: Count only
 
 ```markdown

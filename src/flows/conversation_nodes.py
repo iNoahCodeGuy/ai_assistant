@@ -34,18 +34,28 @@ from src.flows.code_validation import (
     sanitize_generated_answer
 )
 from src.flows.greetings import get_role_greeting, should_show_greeting, is_first_turn
+from src.flows.resume_distribution import (
+    detect_hiring_signals,
+    handle_resume_request,
+    should_add_availability_mention,
+    extract_email_from_query,
+    extract_name_from_query,
+    should_gather_job_details,
+    get_job_details_prompt,
+    extract_job_details_from_query
+)
 
 
 def handle_greeting(state, rag_engine):
     """Check if this is a first-turn greeting and respond appropriately.
-    
+
     If the user's first query is a simple greeting (hi/hello/hey), we respond
     with a warm, role-specific introduction per CONVERSATION_PERSONALITY.md.
-    
+
     Args:
         state: ConversationState with query and role
         rag_engine: RAG engine (not used for greetings, but part of node signature)
-        
+
     Returns:
         Updated state with greeting as answer, or unchanged if not a greeting
     """
@@ -71,4 +81,13 @@ __all__ = [
     "should_show_greeting",
     "is_valid_code_snippet",
     "sanitize_generated_answer",
+    # Resume distribution nodes (NEW - Intelligent Resume Distribution System)
+    "detect_hiring_signals",
+    "handle_resume_request",
+    "should_add_availability_mention",
+    "extract_email_from_query",
+    "extract_name_from_query",
+    "should_gather_job_details",
+    "get_job_details_prompt",
+    "extract_job_details_from_query",
 ]

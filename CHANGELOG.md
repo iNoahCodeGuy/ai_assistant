@@ -10,7 +10,66 @@ and this project follows calendar-based versioning.
 ## [Unreleased]
 
 ### Added
+- **Low-Quality Retrieval Fallback Test (Oct 17, 2025)**: Added `test_low_quality_retrieval_fallback()` to validate graceful handling when retrieval scores < 0.4
+  - Test validates fallback message appears when no quality matches found (e.g., typos like "buisness")
+  - Confirms `fallback_used=True` flag set for analytics tracking
+  - Closes QA gap discovered during production screenshot analysis
+  - Documentation: QA_STRATEGY.md § Low-Quality Retrieval Fallback (line 2070-2135), ERROR_HANDLING_IMPLEMENTATION.md § 2.3
+  - Status: ✅ PASSING (6/6 error handling tests at 100%)
+- **Documentation Consolidation Policy (Section 12)** - Added to `docs/QA_STRATEGY.md` to prevent future QA documentation sprawl with decision tree, file categorization rules, and quarterly review process
+- **Intelligent Resume Distribution System (COMPLETE)**: Hybrid approach for converting hiring manager education into opportunities
+  - **Mode 1 (Pure Education)**: ZERO resume mentions - maintains educational focus
+  - **Mode 2 (Hiring Signals)**: ONE subtle availability mention when ≥2 hiring signals detected + HM role
+  - **Mode 3 (Explicit Request)**: Immediate email collection and resume distribution (no qualification needed)
+  - **Job Details Gathering**: Post-interest conversational extraction (company, position, timeline)
+  - **Implementation**: 9 functions in `src/flows/resume_distribution.py` (343 lines)
+  - **Integration**: Added to conversation pipeline via `extract_job_details_from_query` node
+  - **External Services**: Email via Resend, SMS via Twilio with job details
+  - **Test Coverage**: 37 automated tests (100% pass rate in 0.04s)
+  - **Documentation**:
+    - Feature doc: `docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md`
+    - Master docs updated: `SYSTEM_ARCHITECTURE_SUMMARY.md`, `PROJECT_REFERENCE_OVERVIEW.md`
+    - QA standards: `QA_STRATEGY.md` Section 1.1-1.2
+  - **Status**: ✅ COMPLETE - Ready for Streamlit testing
+
 ### Changed
+- **QA Documentation Consolidated**: Merged 5 separate QA docs into single source of truth
+  - Merged LangSmith Phase 2 content into `docs/QA_STRATEGY.md` Section 9
+  - Archived historical policy docs to `docs/archive/policies/`
+  - Archived task-specific reports to `docs/archive/deployments/`
+  - Archived analysis docs to `docs/archive/analysis/`
+  - Added Section 12: Documentation Consolidation Policy to prevent future sprawl
+  - Result: 1 master QA doc (3,200 lines) replacing 5 files (4,620 lines, ~1,400 duplication)
+- **QA Test Suite Expanded**: 77 total tests (was 31 tests initially)
+  - Conversation Quality: 19 tests (100% pass rate) - Added `test_no_pushy_resume_offers()`
+  - Documentation Alignment: 15 tests (93% pass rate) - Added 3 resume distribution alignment tests
+  - Resume Distribution: 37 tests (100% pass rate) - Comprehensive hybrid approach validation
+  - Error Handling: 6 tests (100% pass rate) - Added `test_low_quality_retrieval_fallback()` (Oct 17)
+  - **Pass Rate**: 99% overall (76/77 passing, 1 intentionally skipped)
+
+- **Conversation Pipeline Extended**: Added `extract_job_details_from_query` node
+  - Runs after `classify_query` to extract job details post-interest
+  - Updated flow: `handle_greeting → classify → extract_job_details → retrieve → generate → plan → apply → execute → log`
+
+- **Conversation State Extended**: 6 new fields for resume distribution
+  - `hiring_signals`: List tracking passive signals (mentioned_hiring, described_role, team_context)
+  - `resume_explicitly_requested`: Boolean flag for Mode 3 detection
+  - `resume_sent`: Once-per-session enforcement flag
+  - `user_email`: Collected email address
+  - `user_name`: Collected name (with fallback)
+  - `job_details`: Dict with company, position, timeline (post-interest)
+
+- **QA Documentation Consolidated (Oct 17, 2025)**: Archived 6 point-in-time analysis documents to prevent documentation sprawl
+  - Archived to `docs/archive/analysis/`: QA_ALIGNMENT_ANALYSIS_ERROR_HANDLING.md, QA_AUDIT_FINDINGS_ERROR_HANDLING.md, QA_GAP_ANALYSIS_RETRIEVAL_FALLBACK.md, QA_IMPLEMENTATION_LOW_QUALITY_RETRIEVAL.md, QA_CONSOLIDATION_EXECUTION_SUMMARY.md, QA_DOCUMENTATION_CONSOLIDATION_PLAN_OCT16.md
+  - Master docs remain single source of truth: QA_STRATEGY.md, QA_IMPLEMENTATION_SUMMARY.md, ERROR_HANDLING_IMPLEMENTATION.md
+  - Result: Clean docs/ directory, all analysis preserved for historical reference
+
+### Technical
+- **Files Modified/Created**: 13+ files across feature implementation, testing, documentation
+- **Code Quality**: All regex patterns validated through test-driven development (5 iterations)
+- **Service Integration**: Graceful degraded mode handling for Resend/Twilio failures
+- **Observability**: All resume send actions logged to Supabase with analytics tracking
+
 ### Fixed
 ### Deprecated
 
@@ -213,13 +272,13 @@ and this project follows calendar-based versioning.
 
 ## Legend
 
-**[YYYY-MM-DD]** - Release/feature date  
-**Added** - New features  
-**Changed** - Changes to existing functionality  
-**Fixed** - Bug fixes  
-**Deprecated** - Features marked for removal  
-**Removed** - Deleted features  
-**Security** - Security-related changes  
+**[YYYY-MM-DD]** - Release/feature date
+**Added** - New features
+**Changed** - Changes to existing functionality
+**Fixed** - Bug fixes
+**Deprecated** - Features marked for removal
+**Removed** - Deleted features
+**Security** - Security-related changes
 
 ---
 

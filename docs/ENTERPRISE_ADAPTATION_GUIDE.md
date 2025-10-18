@@ -81,16 +81,16 @@ python -c "from src.core.rag_engine import RagEngine; print(RagEngine().retrieve
 # In src/flows/action_planning.py
 def plan_actions(state):
     actions = []
-    
+
     if "onboarding" in state.query.lower():
         actions.append({"type": "show_onboarding_checklist"})
-    
+
     if "policy" in state.query.lower():
         actions.append({"type": "link_to_policy_doc"})
-    
+
     if state.role == "New Hire":
         actions.append({"type": "suggest_onboarding_buddy"})
-    
+
     return state.set_pending_actions(actions)
 ```
 
@@ -122,7 +122,7 @@ def pricing_calculator_block(deal_size: int, use_case: str) -> str:
     base_price = 10000
     multiplier = 1.5 if use_case == "enterprise" else 1.0
     total = base_price * multiplier * (deal_size / 100)
-    
+
     return f"""
 ### Pricing Estimate
 - Base: ${base_price:,}
@@ -164,10 +164,10 @@ if "pricing" in state.query.lower():
 def calculate_pto():
     employee_id = request.json.get("employee_id")
     start_date = request.json.get("start_date")
-    
+
     # Query HRIS system for PTO balance
     balance = hris_client.get_pto_balance(employee_id)
-    
+
     return {
         "balance_hours": balance,
         "balance_days": balance / 8,
@@ -182,7 +182,7 @@ if action["type"] == "calculate_pto":
         json={"employee_id": state.user_id}
     )
     pto_data = response.json()
-    
+
     components.append(f"""
 ### Your PTO Balance
 - **Available**: {pto_data['balance_days']} days ({pto_data['balance_hours']} hours)
@@ -256,21 +256,21 @@ def plan_actions(state: ConversationState) -> ConversationState:
     actions = []
     query = state.query.lower()
     role = state.role
-    
+
     # Customer-specific actions
     if role == "Customer":
         if "bug" in query or "issue" in query:
             actions.append({"type": "offer_support_ticket"})
         if "pricing" in query:
             actions.append({"type": "show_pricing_table"})
-    
+
     # Employee-specific actions
     if role == "Employee":
         if "pto" in query or "vacation" in query:
             actions.append({"type": "calculate_pto"})
         if "benefits" in query:
             actions.append({"type": "show_benefits_comparison"})
-    
+
     return state.set_pending_actions(actions)
 ```
 
@@ -288,14 +288,14 @@ class ActionExecutor:
                 self._calculate_pto(state, action)
             # ... more handlers
         return state
-    
+
     def _offer_support_ticket(self, state, action):
         """Offer to create support ticket if query unresolved."""
         components.append("""
-💁 **Need more help?**  
+💁 **Need more help?**
 I can create a support ticket for you. Just say "create ticket" and I'll escalate this to our team.
 """)
-    
+
     def _calculate_pto(self, state, action):
         """Fetch and display PTO balance from HRIS."""
         try:
@@ -305,7 +305,7 @@ I can create a support ticket for you. Just say "create ticket" and I'll escalat
                 timeout=3
             )
             pto_data = response.json()
-            
+
             components.append(f"""
 ### Your PTO Balance
 - **Available**: {pto_data['balance_days']} days
@@ -331,12 +331,12 @@ Context (product documentation): {context}
 
 Customer question: {query}
 
-Provide a clear, friendly answer based on the documentation. If you don't know, 
+Provide a clear, friendly answer based on the documentation. If you don't know,
 offer to create a support ticket. Use simple language and avoid jargon.
 
 CRITICAL: Never make up features or policies not in the documentation.
 """
-    
+
     elif role == "Employee":
         return f"""
 You are an internal knowledge assistant for Acme Corp employees.
@@ -345,7 +345,7 @@ Context (company wiki, policies): {context}
 
 Employee question: {query}
 
-Provide an accurate answer based on company policies. If you're unsure, 
+Provide an accurate answer based on company policies. If you're unsure,
 direct them to the appropriate department or manager. Be professional but approachable.
 
 CRITICAL: Handle PII carefully. Don't display other employees' personal information.
@@ -413,11 +413,11 @@ def log_llm_cost(model: str, input_tokens: int, output_tokens: int):
         "gpt-4": {"input": 0.03, "output": 0.06},
         "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002}
     }
-    
+
     input_cost = (input_tokens / 1000) * cost_per_1k[model]["input"]
     output_cost = (output_tokens / 1000) * cost_per_1k[model]["output"]
     total = input_cost + output_cost
-    
+
     # Log to Supabase for reporting
     supabase_analytics.log_cost(model=model, cost=total, timestamp=now())
 ```
@@ -481,7 +481,7 @@ USING (
 def log_and_notify(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
     # Standard logging
     supabase_analytics.log_interaction(...)
-    
+
     # Additional audit for sensitive queries
     if is_sensitive_query(state.query):
         audit_logger.log({
@@ -493,7 +493,7 @@ def log_and_notify(state: ConversationState, rag_engine: RagEngine) -> Conversat
             "ip_address": state.fetch("ip_address"),
             "compliance_tags": ["PII", "Financial", "Medical"]  # As appropriate
         })
-    
+
     return state
 ```
 
@@ -516,7 +516,7 @@ def log_and_notify(state: ConversationState, rag_engine: RagEngine) -> Conversat
 
 ```sql
 -- Response accuracy trend
-SELECT 
+SELECT
     DATE(created_at) as date,
     AVG(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as satisfaction_rate
 FROM feedback
@@ -525,7 +525,7 @@ GROUP BY DATE(created_at)
 ORDER BY date;
 
 -- Top unresolved queries (low similarity = knowledge gap)
-SELECT 
+SELECT
     user_query,
     AVG(similarity_score) as avg_similarity,
     COUNT(*) as frequency
@@ -536,7 +536,7 @@ ORDER BY frequency DESC
 LIMIT 20;
 
 -- Cost by role
-SELECT 
+SELECT
     role_mode,
     COUNT(*) as interactions,
     SUM(token_count * 0.002 / 1000) as estimated_cost

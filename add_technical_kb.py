@@ -72,17 +72,17 @@ for i in range(0, len(texts), batch_size):
     batch = texts[i:i + batch_size]
     batch_num = (i // batch_size) + 1
     total_batches = (len(texts) + batch_size - 1) // batch_size
-    
+
     print(f"   Batch {batch_num}/{total_batches}: Processing {len(batch)} texts...")
-    
+
     response = openai_client.embeddings.create(
         model="text-embedding-3-small",
         input=batch
     )
-    
+
     batch_embeddings = [item.embedding for item in response.data]
     all_embeddings.extend(batch_embeddings)
-    
+
     print(f"   Progress: {min(i + batch_size, len(texts))}/{len(texts)}")
 
 # Add embeddings to chunks
@@ -109,7 +109,7 @@ total_inserted = 0
 
 for i in range(0, len(chunks), insert_batch_size):
     batch = chunks[i:i + insert_batch_size]
-    
+
     insert_data = [{
         'doc_id': chunk['doc_id'],
         'section': chunk['section'],
@@ -117,10 +117,10 @@ for i in range(0, len(chunks), insert_batch_size):
         'embedding': chunk['embedding'],
         'metadata': chunk['metadata']
     } for chunk in batch]
-    
+
     result = supabase.table('kb_chunks').insert(insert_data).execute()
     total_inserted += len(result.data) if result.data else 0
-    
+
     print(f"   Progress: {min(i + insert_batch_size, len(chunks))}/{len(chunks)}")
 
 print(f"   ✅ Inserted {total_inserted} chunks")
@@ -135,7 +135,7 @@ print(f"   Embeddings generated: {len(all_embeddings)}")
 print(f"   Chunks inserted: {total_inserted}")
 print(f"\n✅ Your assistant can now answer technical questions about:")
 print(f"   - Tech stack and architecture")
-print(f"   - Files and codebase structure") 
+print(f"   - Files and codebase structure")
 print(f"   - Features and capabilities")
 print(f"   - Setup and deployment")
 print(f"   - Security and scalability")

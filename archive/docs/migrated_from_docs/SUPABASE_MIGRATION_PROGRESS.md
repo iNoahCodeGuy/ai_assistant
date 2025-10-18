@@ -132,23 +132,23 @@ import { OpenAI } from 'openai'
 
 export default async function handler(req, res) {
   const { query, session_id, role_mode } = req.body
-  
+
   // 1. Generate embedding
   const embedding = await openai.embeddings.create(...)
-  
+
   // 2. Search KB with pgvector
   const { data: chunks } = await supabase.rpc('search_kb_chunks', {
     query_embedding: embedding,
     match_threshold: 0.7,
     match_count: 3
   })
-  
+
   // 3. Generate response with context
   const response = await openai.chat.completions.create(...)
-  
+
   // 4. Log to database
   await supabase.from('messages').insert(...)
-  
+
   return res.json({ answer: response })
 }
 ```

@@ -51,10 +51,10 @@ else:
 print("\n4️⃣  Testing Supabase connection...")
 try:
     from supabase import create_client, Client
-    
+
     supabase: Client = create_client(supabase_url, service_key)
     print("   ✅ Supabase client created successfully")
-    
+
     # Test a simple query (table might not exist yet)
     print("\n5️⃣  Testing database query...")
     try:
@@ -66,7 +66,7 @@ try:
             print(f"   💡 You'll need to run the database migration first")
         else:
             raise table_error
-    
+
 except ImportError as e:
     print(f"   ❌ Missing required package: {e}")
     print("   💡 Run: pip install supabase")
@@ -83,18 +83,18 @@ except Exception as e:
 print("\n6️⃣  Testing OpenAI API connection...")
 try:
     from openai import OpenAI
-    
+
     client = OpenAI(api_key=openai_key)
-    
+
     # Test with a small embedding request
     response = client.embeddings.create(
         input="test",
         model="text-embedding-3-small"
     )
-    
+
     embedding_dim = len(response.data[0].embedding)
     print(f"   ✅ OpenAI API working! (Embedding dimension: {embedding_dim})")
-    
+
 except ImportError as e:
     print(f"   ❌ Missing required package: {e}")
     print("   💡 Run: pip install openai")

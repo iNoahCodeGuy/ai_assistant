@@ -1,7 +1,7 @@
 # Documentation Alignment Summary - Educational GenAI Mission
 
-**Date:** October 15, 2025  
-**Commits:** 76ad18e (docs alignment), Previous commit with system prompts  
+**Date:** October 15, 2025
+**Commits:** 76ad18e (docs alignment), Previous commit with system prompts
 **Status:** ✅ Complete - All documentation aligned with educational mission
 
 ---
@@ -50,7 +50,7 @@
 
 **Changes:**
 - **New Section 0 (Educational Mission):** Added 5-bullet introduction explaining teaching purpose
-- **Section 1 (Control flow):** 
+- **Section 1 (Control flow):**
   - Added "The GenAI Conversation Pipeline" subtitle
   - Annotated each node with teaching insights
   - Added "Try it" invitation at end

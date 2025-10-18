@@ -40,11 +40,11 @@ export function ChatMessages({ messages, loading }: ChatMessagesProps) {
             </p>
           </div>
         )}
-        
+
         {messages.map((message, index) => (
           <ChatMessage key={index} message={message} />
         ))}
-        
+
         {loading && (
           <div className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-chat-primary to-chat-secondary flex items-center justify-center flex-shrink-0">
@@ -59,7 +59,7 @@ export function ChatMessages({ messages, loading }: ChatMessagesProps) {
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
     </div>

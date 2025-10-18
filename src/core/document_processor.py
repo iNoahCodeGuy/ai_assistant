@@ -19,7 +19,7 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size, 
+            chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
 
@@ -28,7 +28,7 @@ class DocumentProcessor:
         if not os.path.exists(file_path):
             logger.warning(f"CSV file not found: {file_path}")
             return []
-        
+
         try:
             loader = CSVLoader(file_path=file_path, source_column=source_column)
             raw_docs = loader.load()
@@ -48,7 +48,7 @@ class DocumentProcessor:
                 content = f"Q: {q}\nA: {a}".strip()
                 if content:
                     docs.append(Document(page_content=content, metadata={"source": "career_kb"}))
-            
+
             return self._split_documents(docs) if chunk else docs
         except Exception as e:
             logger.error(f"Error loading from career KB: {e}")
@@ -69,7 +69,7 @@ class DocumentProcessor:
                     ))
                 except Exception as e:
                     logger.warning(f"Failed to load {file_path}: {e}")
-            
+
             return self._split_documents(docs)
         except Exception as e:
             logger.error(f"Error loading text files from {directory}: {e}")
@@ -102,10 +102,10 @@ class DocumentProcessor:
         """Get statistics about document collection."""
         if not docs:
             return {"count": 0, "total_chars": 0, "avg_length": 0, "sources": []}
-        
+
         total_chars = sum(len(doc.page_content) for doc in docs)
         sources = list(set(doc.metadata.get("source", "unknown") for doc in docs))
-        
+
         return {
             "count": len(docs),
             "total_chars": total_chars,

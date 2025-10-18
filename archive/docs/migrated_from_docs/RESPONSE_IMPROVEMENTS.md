@@ -48,7 +48,7 @@ IMPORTANT: If the context contains code examples, diagrams, or technical documen
 
 **Applied to**:
 - Hiring Manager (technical) prompts
-- Software Developer prompts  
+- Software Developer prompts
 - General prompts
 
 ---

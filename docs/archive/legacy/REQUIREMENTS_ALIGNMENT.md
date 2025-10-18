@@ -118,7 +118,7 @@
 
 ## ⚠️ Minor Gaps (What Could Be Improved)
 
-### 1. **Frontend Stack** 
+### 1. **Frontend Stack**
 **Expected**: "Next.js on Vercel with role-aware chat UI" (from conversation flow doc)
 **Actual**: Static HTML/CSS/JS + Streamlit prototype
 

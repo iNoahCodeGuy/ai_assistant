@@ -138,11 +138,11 @@ except Exception:
 
 __all__ = [
     "OpenAIEmbeddings",
-    "FAISS", 
+    "FAISS",
     "CSVLoader",
     "RecursiveCharacterTextSplitter",
     "RetrievalQA",
-    "PromptTemplate", 
+    "PromptTemplate",
     "ChatOpenAI",
     "Document"
 ]

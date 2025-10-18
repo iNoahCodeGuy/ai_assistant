@@ -21,16 +21,16 @@
 export default function Home() {
   // 1. Type definitions (20 lines)
   type Role = 'Hiring Manager (nontechnical)' | ...
-  
+
   // 2. State (8 lines)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   // 3. Utilities (10 lines)
   const scrollToBottom = () => { ... }
   useEffect(() => { scrollToBottom() }, [messages])
-  
+
   // 4. API logic (40 lines!)
   const sendMessage = async (content?: string) => {
     // Validation
@@ -39,7 +39,7 @@ export default function Home() {
     // Error handling
     // More state updates
   }
-  
+
   // 5. Rendering (150 lines!)
   return (
     <div>
@@ -126,7 +126,7 @@ export default function Home() {
     <div className="flex flex-col h-screen gradient-bg">
       <ChatHeader role={selectedRole} onRoleChange={setSelectedRole} />
       <ChatMessages messages={messages} loading={loading} />
-      <ChatInput 
+      <ChatInput
         value={input}
         onChange={setInput}
         onSubmit={() => sendMessage()}
@@ -137,7 +137,7 @@ export default function Home() {
 }
 ```
 
-**Why it's better**: 
+**Why it's better**:
 - ✅ Can understand entire page structure in 10 seconds
 - ✅ Clear separation: Header → Messages → Input
 - ✅ Business logic (useChat) separate from UI
@@ -153,11 +153,11 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   const sendMessage = async (content?: string) => {
     // All API logic here - testable in isolation
   }
-  
+
   return { messages, sendMessage, loading, ... }
 }
 ```
@@ -175,7 +175,7 @@ export function useChat() {
 // app/components/chat/ChatMessage.tsx
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
-  
+
   return (
     <div className={cn("flex gap-4", isUser ? "justify-end" : "justify-start")}>
       {!isUser && <BotAvatar />}
@@ -277,7 +277,7 @@ describe('ChatMessage', () => {
 
 ## 💡 Real-World Example: Adding a Timestamp
 
-### BEFORE: 
+### BEFORE:
 ```tsx
 // In the 224-line page.tsx, find the message rendering (lines 120-180)
 // Then add timestamp somewhere in this nested mess:

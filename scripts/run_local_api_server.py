@@ -18,7 +18,7 @@ from api.confess import handler as ConfessHandler
 
 class LocalAPIServer(BaseHTTPRequestHandler):
     """Local server that routes to API handlers."""
-    
+
     def do_POST(self):
         """Route POST requests to appropriate handler."""
         if self.path == '/api/chat':
@@ -31,7 +31,7 @@ class LocalAPIServer(BaseHTTPRequestHandler):
             ConfessHandler.do_POST(self)
         else:
             self._send_error(404, f"Endpoint not found: {self.path}")
-    
+
     def do_OPTIONS(self):
         """Handle CORS preflight."""
         if self.path.startswith('/api/'):
@@ -40,7 +40,7 @@ class LocalAPIServer(BaseHTTPRequestHandler):
             self.end_headers()
         else:
             self._send_error(404, f"Endpoint not found: {self.path}")
-    
+
     def _send_error(self, status_code: int, message: str):
         """Send error response."""
         self._send_cors_headers()
@@ -51,7 +51,7 @@ class LocalAPIServer(BaseHTTPRequestHandler):
             'success': False,
             'error': message
         }).encode('utf-8'))
-    
+
     def _send_cors_headers(self):
         """Add CORS headers."""
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -63,7 +63,7 @@ def run_server(port=3000):
     """Start local API server."""
     server_address = ('', port)
     httpd = HTTPServer(server_address, LocalAPIServer)
-    
+
     print(f"\n🚀 Local API server running on http://localhost:{port}")
     print(f"\nEndpoints available:")
     print(f"  POST http://localhost:{port}/api/chat")
@@ -71,7 +71,7 @@ def run_server(port=3000):
     print(f"  POST http://localhost:{port}/api/feedback")
     print(f"  POST http://localhost:{port}/api/confess")
     print(f"\nPress Ctrl+C to stop\n")
-    
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -8,27 +8,27 @@ graph TB
     User[👤 User] -->|HTTP Request| Streamlit[Streamlit UI<br/>localhost:8501<br/>src/main.py]
     Streamlit -->|Query + Role| Router[Role Router<br/>src/agents/role_router.py<br/>Classifies query type]
     Router -->|Enhanced Query| RAG[RAG Engine<br/>src/core/rag_engine.py<br/>Orchestrates retrieval]
-    
+
     RAG -->|Generate Embedding| OpenAI_Embed[OpenAI API<br/>text-embedding-3-small<br/>$0.00002/1K tokens]
     OpenAI_Embed -->|1536-dim vector<br/>~200ms| RAG
-    
+
     RAG -->|Vector Search| Retriever[pgvector Retriever<br/>src/retrieval/pgvector_retriever.py<br/>Similarity search]
     Retriever -->|SQL Query<br/>cosine distance| Supabase[(Supabase Postgres<br/>+ pgvector extension<br/>IVFFLAT index)]
     Supabase -->|Top 3 Chunks<br/>similarity > 0.7<br/>~300ms| Retriever
     Retriever -->|Retrieved Context| RAG
-    
+
     RAG -->|Prompt + Context<br/>Role-aware| Generator[Response Generator<br/>src/core/response_generator.py<br/>Builds LLM prompt]
     Generator -->|Chat Completion| OpenAI_LLM[OpenAI API<br/>GPT-4o-mini<br/>$0.15/$0.60 per 1M tokens]
     OpenAI_LLM -->|Generated Answer<br/>~1-2s| Generator
     Generator -->|Response Object| Formatter[Response Formatter<br/>src/agents/response_formatter.py<br/>Markdown formatting]
-    
+
     Formatter -->|Formatted Response| Analytics[Analytics Logger<br/>src/analytics/supabase_analytics.py<br/>Track metrics]
     Analytics -->|INSERT messages<br/>retrieval_logs| Supabase
     Analytics -->|Response + Sources<br/>Display| Streamlit
-    
+
     Supabase -.->|Traces & Metrics| LangSmith[LangSmith<br/>Observability Platform<br/>Cost tracking]
     OpenAI_LLM -.->|API Traces| LangSmith
-    
+
     style Supabase fill:#3ECF8E
     style OpenAI_Embed fill:#10A37F
     style OpenAI_LLM fill:#10A37F
@@ -291,7 +291,7 @@ logger = logging.getLogger(__name__)
 class PgvectorRetriever:
     \"\"\"
     Retrieves relevant knowledge base chunks using pgvector similarity search.
-    
+
     Features:
     - OpenAI text-embedding-3-small for 1536-dim embeddings
     - Cosine similarity search with pgvector
@@ -299,17 +299,17 @@ class PgvectorRetriever:
     - Configurable threshold and top-k filtering
     - Doc-type filtering support
     \"\"\"
-    
+
     def __init__(self):
         self.openai_client = OpenAI(api_key=supabase_settings.api_key)
         self.supabase = get_supabase_client()
         self.embedding_model = 'text-embedding-3-small'
         self.embedding_dim = 1536
-    
+
     def retrieve(
-        self, 
-        query: str, 
-        top_k: int = 3, 
+        self,
+        query: str,
+        top_k: int = 3,
         threshold: float = 0.7,
         doc_filter: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
@@ -320,39 +320,39 @@ class PgvectorRetriever:
         3. Filter by similarity threshold
         4. Optionally filter by doc_id
         5. Return top K results with metadata
-        
+
         Args:
             query: User's search query
             top_k: Number of results to return (default: 3)
             threshold: Minimum similarity score 0-1 (default: 0.7)
             doc_filter: List of doc_ids to search (e.g., ['technical_kb', 'career_kb'])
-        
+
         Returns:
             List of dicts with id, content, similarity, metadata
         \"\"\"
-        
+
         # Step 1: Generate embedding for query
         logger.info(f\"Generating embedding for query: {query[:50]}...\")
         embedding = self._generate_embedding(query)
         logger.info(f\"Embedding generated: {len(embedding)} dimensions\")
-        
+
         # Step 2: Vector similarity search using pgvector
         # Uses custom Postgres function with cosine distance operator: <=>
         logger.info(f\"Searching Supabase with threshold={threshold}, top_k={top_k}\")
-        
+
         params = {
             'query_embedding': embedding,
             'match_threshold': threshold,
             'match_count': top_k
         }
-        
+
         # Add doc_filter if specified
         if doc_filter:
             params['doc_filter'] = doc_filter
             results = self.supabase.rpc('match_kb_chunks_filtered', params).execute()
         else:
             results = self.supabase.rpc('match_kb_chunks', params).execute()
-        
+
         # Step 3: Format results with full metadata
         chunks = []
         for row in results.data:
@@ -364,14 +364,14 @@ class PgvectorRetriever:
                 'similarity': round(row['similarity'], 4),
                 'metadata': row['metadata']
             })
-        
+
         logger.info(f\"Retrieved {len(chunks)} chunks above threshold\")
         return chunks
-    
+
     def _generate_embedding(self, text: str) -> List[float]:
         \"\"\"
         Generate 1536-dimensional embedding using OpenAI.
-        
+
         Cost: ~$0.00002 per 1K tokens
         Latency: ~200ms
         \"\"\"
@@ -382,26 +382,26 @@ class PgvectorRetriever:
                 encoding_format='float'  # Returns standard floats
             )
             return response.data[0].embedding
-        
+
         except Exception as e:
             logger.error(f\"Embedding generation failed: {e}\")
             raise
-    
+
     def batch_embed(self, texts: List[str]) -> List[List[float]]:
         \"\"\"
         Generate embeddings for multiple texts in a single API call.
         More efficient than individual calls.
-        
+
         Max: 100 texts per batch
         \"\"\"
         if len(texts) > 100:
             raise ValueError(\"Maximum 100 texts per batch\")
-        
+
         response = self.openai_client.embeddings.create(
             model=self.embedding_model,
             input=texts
         )
-        
+
         return [item.embedding for item in response.data]
 
 
@@ -467,7 +467,7 @@ BEGIN
         1 - (kb_chunks.embedding <=> query_embedding) AS similarity,
         kb_chunks.metadata
     FROM kb_chunks
-    WHERE 
+    WHERE
         1 - (kb_chunks.embedding <=> query_embedding) > match_threshold
         AND (doc_filter IS NULL OR kb_chunks.doc_id = ANY(doc_filter))
     ORDER BY kb_chunks.embedding <=> query_embedding
@@ -478,13 +478,13 @@ $$;
 # === Index Creation for Performance ===
 
 -- IVFFLAT index: O(√n) vs O(n) sequential scan
-CREATE INDEX IF NOT EXISTS kb_chunks_embedding_idx 
-ON kb_chunks 
+CREATE INDEX IF NOT EXISTS kb_chunks_embedding_idx
+ON kb_chunks
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);  -- For ~10K chunks, use lists = 100
 
 -- Composite index for filtered searches
-CREATE INDEX IF NOT EXISTS kb_chunks_doc_section_idx 
+CREATE INDEX IF NOT EXISTS kb_chunks_doc_section_idx
 ON kb_chunks (doc_id, section);
 ```
 
@@ -557,10 +557,10 @@ from config.supabase_config import supabase_settings
 
 class ResponseGenerator:
     """"""Generates contextual responses using retrieved knowledge and LLM.""""""
-    
+
     def __init__(self):
         self.client = OpenAI(api_key=supabase_settings.api_key)
-    
+
     def generate(
         self,
         query: str,
@@ -574,19 +574,19 @@ class ResponseGenerator:
         3. User's original query
         4. LLM generation with GPT-4o-mini
         """"""
-        
+
         # Step 1: Build role-specific system prompt
         system_prompt = self._get_system_prompt(role)
-        
+
         # Step 2: Format retrieved chunks as context
         context = self._format_context(retrieved_chunks)
-        
+
         # Step 3: Construct full prompt
         messages = [
             {""role"": ""system"", ""content"": system_prompt},
             {""role"": ""user"", ""content"": f""Context:\\n{context}\\n\\nQuestion: {query}""}
         ]
-        
+
         # Step 4: Call OpenAI GPT-4o-mini
         response = self.client.chat.completions.create(
             model=""gpt-4o-mini"",
@@ -596,7 +596,7 @@ class ResponseGenerator:
             presence_penalty=0.1,  # Slight preference for new topics
             frequency_penalty=0.1  # Slight penalty for repetition
         )
-        
+
         # Step 5: Extract and return results
         return {
             ""answer"": response.choices[0].message.content,
@@ -606,38 +606,38 @@ class ResponseGenerator:
             ""finish_reason"": response.choices[0].finish_reason,
             ""retrieved_chunks"": retrieved_chunks
         }
-    
+
     def _get_system_prompt(self, role: str) -> str:
         """"""Returns role-specific instructions for the LLM.""""""
         prompts = {
-            ""Software Developer"": 
+            ""Software Developer"":
                 ""You are Noah's AI assistant speaking to a software developer. ""
                 ""Provide technical details, code examples, and architecture explanations. ""
                 ""Focus on implementation details, tech stack, and development practices."",
-            
+
             ""Hiring Manager"":
                 ""You are Noah's AI assistant speaking to a hiring manager. ""
                 ""Emphasize career achievements, impact metrics, and business value. ""
                 ""Highlight transferable skills and project outcomes."",
-            
+
             ""General"":
                 ""You are Noah's AI assistant. Provide helpful, accurate responses ""
                 ""based on the knowledge base. Be professional and concise.""
         }
         return prompts.get(role, prompts[""General""])
-    
+
     def _format_context(self, chunks: List[Dict[str, Any]]) -> str:
         """"""Formats retrieved chunks into readable context.""""""
         if not chunks:
             return ""No relevant information found in knowledge base.""
-        
+
         context_parts = []
         for i, chunk in enumerate(chunks, 1):
             context_parts.append(
                 f""Source {i} (similarity: {chunk['similarity']:.2f}):\\n""
                 f""{chunk['content']}\\n""
             )
-        
+
         return ""\\n"".join(context_parts)
 
 
@@ -675,7 +675,7 @@ import re
 
 class RoleRouter:
     """"""Routes queries based on user role and query type for optimized retrieval.""""""
-    
+
     ROLE_PROMPTS = {
         ""Software Developer"": {
             ""focus"": ""technical"",
@@ -693,7 +693,7 @@ class RoleRouter:
             ""context"": ""Highlight product thinking and stakeholder management""
         }
     }
-    
+
     def route(self, query: str, role: str) -> Dict[str, any]:
         """"""
         Process query with role context:
@@ -702,19 +702,19 @@ class RoleRouter:
         3. Adjust retrieval parameters
         4. Return enhanced query with metadata
         """"""
-        
+
         # Step 1: Classify query type
         query_type = self._classify_query(query)
-        
+
         # Step 2: Get role configuration
         role_config = self.ROLE_PROMPTS.get(role, {})
-        
+
         # Step 3: Enhance query with role context
         enhanced_query = self._enhance_query(query, role, role_config)
-        
+
         # Step 4: Determine retrieval strategy
         retrieval_params = self._get_retrieval_params(query_type, role)
-        
+
         return {
             ""original_query"": query,
             ""enhanced_query"": enhanced_query,
@@ -723,50 +723,50 @@ class RoleRouter:
             ""retrieval_params"": retrieval_params,
             ""role_context"": role_config.get(""context"", """")
         }
-    
+
     def _classify_query(self, query: str) -> str:
         """"""Classify query into type: technical, career, personal, product.""""""
         query_lower = query.lower()
-        
+
         # Technical indicators
         if any(word in query_lower for word in [
             ""code"", ""implement"", ""architecture"", ""database"", ""api"",
             ""tech stack"", ""algorithm"", ""system"", ""deploy"", ""how does""
         ]):
             return ""technical""
-        
+
         # Career indicators
         if any(word in query_lower for word in [
             ""experience"", ""career"", ""worked on"", ""achieved"", ""role"",
             ""transition"", ""why"", ""background"", ""skills"", ""project""
         ]):
             return ""career""
-        
+
         # Product indicators
         if any(word in query_lower for word in [
             ""feature"", ""product"", ""user"", ""roadmap"", ""planning"",
             ""requirements"", ""stakeholder"", ""metrics"", ""impact""
         ]):
             return ""product""
-        
+
         # Default
         return ""general""
-    
+
     def _enhance_query(self, query: str, role: str, role_config: Dict) -> str:
         """"""Add role context to query for better retrieval.""""""
         context = role_config.get(""context"", """")
-        
+
         # For developers, emphasize technical depth
         if role == ""Software Developer"":
             return f""[Technical perspective needed] {query} [Include implementation details]""
-        
+
         # For hiring managers, emphasize achievements
         elif role == ""Hiring Manager"":
             return f""[Career achievement focus] {query} [Highlight impact and results]""
-        
+
         # Default: minimal enhancement
         return query
-    
+
     def _get_retrieval_params(self, query_type: str, role: str) -> Dict:
         """"""Determine optimal retrieval parameters based on query and role.""""""
         params = {
@@ -774,17 +774,17 @@ class RoleRouter:
             ""threshold"": 0.7,
             ""doc_filter"": None  # Filter by doc_id if needed
         }
-        
+
         # Technical queries from developers: prioritize technical_kb
         if query_type == ""technical"" and role == ""Software Developer"":
             params[""top_k""] = 5  # More context for technical questions
             params[""doc_filter""] = [""technical_kb"", ""career_kb""]
-        
+
         # Career queries from hiring managers: prioritize career_kb
         elif query_type == ""career"" and role == ""Hiring Manager"":
             params[""doc_filter""] = [""career_kb""]
             params[""threshold""] = 0.65  # Slightly lower threshold for broader matches
-        
+
         return params
 
 
@@ -986,8 +986,8 @@ main.py (display)
 Portfolia uses a **node-based conversation pipeline** inspired by LangGraph — an assembly line where each station (node) performs one specific job. Every user query flows through 8 sequential nodes:
 
 ```
-User Query → handle_greeting → classify_query → retrieve_chunks 
-→ generate_answer → plan_actions → apply_role_context 
+User Query → handle_greeting → classify_query → retrieve_chunks
+→ generate_answer → plan_actions → apply_role_context
 → execute_actions → log_and_notify → Response
 ```
 
@@ -998,7 +998,7 @@ User Query → handle_greeting → classify_query → retrieve_chunks
 ## The 8 Conversation Nodes (Detailed Breakdown)
 
 ### Node 1: handle_greeting - First Impression Manager
-**File**: `src/flows/greetings.py`  
+**File**: `src/flows/greetings.py`
 **Purpose**: Detect first-turn greetings and respond warmly without RAG
 
 **What it does**:
@@ -1025,8 +1025,8 @@ def handle_greeting(state, rag_engine):
 
 ---
 
-### Node 2: classify_query - Intent Detective  
-**File**: `src/flows/query_classification.py`  
+### Node 2: classify_query - Intent Detective
+**File**: `src/flows/query_classification.py`
 **Purpose**: Analyze query intent to enable proactive intelligence
 
 **What it does**:
@@ -1046,19 +1046,19 @@ def handle_greeting(state, rag_engine):
 ```python
 def classify_query(state):
     query_lower = state.query.lower()
-    
+
     # Technical indicators
     if any(word in query_lower for word in [""code"", ""implementation"", ""how does"", ""show me""]):
         state.stash(""code_would_help"", True)
-    
-    # Data/analytics indicators  
+
+    # Data/analytics indicators
     if any(word in query_lower for word in [""analytics"", ""metrics"", ""performance"", ""cost""]):
         state.stash(""data_would_help"", True)
-    
+
     # Complexity indicators
     if any(word in query_lower for word in [""explain"", ""walk me through"", ""how"", ""why""]):
         state.stash(""needs_longer_response"", True)
-    
+
     return state
 ```
 
@@ -1066,13 +1066,13 @@ def classify_query(state):
 
 ---
 
-### Node 3: retrieve_chunks - Knowledge Retriever (THIS IS RAG!)  
-**File**: `src/flows/core_nodes.py` → `src/retrieval/pgvector_retriever.py`  
+### Node 3: retrieve_chunks - Knowledge Retriever (THIS IS RAG!)
+**File**: `src/flows/core_nodes.py` → `src/retrieval/pgvector_retriever.py`
 **Purpose**: Find relevant knowledge from vector database
 
 **What it does**:
 1. Converts query to **768-dimensional embedding** using `text-embedding-3-small` ($0.00002/1K tokens)
-2. Searches Supabase `kb_chunks` table using **pgvector cosine similarity**  
+2. Searches Supabase `kb_chunks` table using **pgvector cosine similarity**
 3. Returns top-k (usually 4) most relevant chunks with similarity scores > 0.7
 4. For technical roles, also pulls relevant code snippets from `code_chunks/`
 
@@ -1083,8 +1083,8 @@ def classify_query(state):
 
 **Vector search SQL** (executed by pgvector):
 ```sql
-SELECT 
-  id, section, content, 
+SELECT
+  id, section, content,
   embedding <=> $query_embedding AS similarity_score
 FROM kb_chunks
 WHERE embedding <=> $query_embedding < 0.3  -- Cosine distance threshold
@@ -1101,8 +1101,8 @@ LIMIT 4;
 
 ---
 
-### Node 4: generate_answer - Response Composer  
-**File**: `src/flows/core_nodes.py` → `src/core/response_generator.py`  
+### Node 4: generate_answer - Response Composer
+**File**: `src/flows/core_nodes.py` → `src/core/response_generator.py`
 **Purpose**: Use LLM to synthesize natural response from retrieved context
 
 **What it does**:
@@ -1111,7 +1111,7 @@ LIMIT 4;
    - Role-specific instructions (technical vs business audience)
    - Dynamic affordances (code display, analytics, contact offers)
    - Query classification flags (from node 2)
-2. Calls `gpt-4o-mini` with **temperature 0.4** (balanced factual + conversational)  
+2. Calls `gpt-4o-mini` with **temperature 0.4** (balanced factual + conversational)
 3. Enforces Q&A synthesis (no ""Q: ... A: ..."" verbatim format per QA policy)
 4. Returns generated answer
 
@@ -1155,8 +1155,8 @@ response = llm.predict(prompt, temperature=0.4)
 
 ---
 
-### Node 5: plan_actions - Side Effects Planner  
-**File**: `src/flows/action_planning.py`  
+### Node 5: plan_actions - Side Effects Planner
+**File**: `src/flows/action_planning.py`
 **Purpose**: Determine what side effects needed (without executing yet)
 
 **What it does**:
@@ -1166,7 +1166,7 @@ response = llm.predict(prompt, temperature=0.4)
   - `show_code` - Technical query needs code display
   - `send_resume` - User wants resume
   - `log_feedback` - User provided feedback
-- Stores plan in state for next node  
+- Stores plan in state for next node
 - **Separation of concerns**: Planning ≠ Execution (testability!)
 
 **Why it matters**:
@@ -1179,15 +1179,15 @@ response = llm.predict(prompt, temperature=0.4)
 def plan_actions(state):
     actions = []
     query_lower = state.query.lower()
-    
+
     # Analytics request detection
     if any(word in query_lower for word in [""analytics"", ""metrics"", ""performance""]):
         actions.append({""type"": ""send_analytics"", ""tables"": [""messages"", ""retrieval_logs""]})
-    
+
     # Contact offer timing (after 2+ turns, user engaged)
     if len(state.chat_history) >= 4 and state.role in [""hiring_manager_technical"", ""hiring_manager_nontechnical""]:
         actions.append({""type"": ""offer_contact"", ""method"": ""email""})
-    
+
     state.stash(""planned_actions"", actions)
     return state
 ```
@@ -1196,8 +1196,8 @@ def plan_actions(state):
 
 ---
 
-### Node 6: apply_role_context - Personality Injector  
-**File**: `src/flows/core_nodes.py`  
+### Node 6: apply_role_context - Personality Injector
+**File**: `src/flows/core_nodes.py`
 **Purpose**: Add role-specific enhancements to answer
 
 **What it does**:
@@ -1207,7 +1207,7 @@ def plan_actions(state):
   - **Hiring Manager (Non-technical)**: Business ROI framing, success metrics, value propositions
   - **Just exploring**: Fun facts, casual tone, MMA fight links on keyword match
   - **Confess crush**: Stores confession, returns sweet acknowledgment (bypasses RAG entirely!)
-- Adds follow-up prompts that invite deeper exploration  
+- Adds follow-up prompts that invite deeper exploration
 - Adjusts enthusiasm level per `CONVERSATION_PERSONALITY.md`
 
 **Why it matters**:
@@ -1220,7 +1220,7 @@ def plan_actions(state):
 def apply_role_context(state, rag_engine):
     base_answer = state.answer
     role = state.role
-    
+
     if role == ""software_developer"":
         # Add technical follow-ups
         followups = [
@@ -1229,12 +1229,12 @@ def apply_role_context(state, rag_engine):
             ""Should I explain the prompt engineering strategy?""
         ]
         state.set_answer(base_answer + ""\n\n"" + ""\n"".join(f""- {q}"" for q in followups[:2]))
-    
+
     elif role == ""hiring_manager_nontechnical"":
         # Add business value framing
         value_prop = ""\n\nThis same architecture reduces support costs by 40% at enterprise scale.""
         state.set_answer(base_answer + value_prop)
-    
+
     return state
 ```
 
@@ -1242,15 +1242,15 @@ def apply_role_context(state, rag_engine):
 
 ---
 
-### Node 7: execute_actions - Side Effects Executor  
-**File**: `src/flows/action_execution.py`  
+### Node 7: execute_actions - Side Effects Executor
+**File**: `src/flows/action_execution.py`
 **Purpose**: Execute planned side effects (email, SMS, logging)
 
 **What it does**:
 - Reads action plan from state (created in node 5)
 - Executes each action:
   - **Send email**: Via Resend API (resume, contact info)
-  - **Send SMS**: Via Twilio API (notifications to Noah)  
+  - **Send SMS**: Via Twilio API (notifications to Noah)
   - **Log to storage**: Analytics, feedback, confessions
   - **Generate signed URLs**: Supabase Storage for private resume access
 - **Graceful degradation**: If Resend down → log error, continue conversation
@@ -1265,7 +1265,7 @@ def apply_role_context(state, rag_engine):
 ```python
 def execute_actions(state):
     actions = state.fetch(""planned_actions"", [])
-    
+
     for action in actions:
         try:
             if action[""type""] == ""send_email"":
@@ -1279,7 +1279,7 @@ def execute_actions(state):
         except Exception as e:
             logger.error(f""Action execution failed: {e}"")
             # Log error but don't crash
-    
+
     return state
 ```
 
@@ -1296,8 +1296,8 @@ def get_resend_service():
 
 ---
 
-### Node 8: log_and_notify - Observability Reporter  
-**File**: `src/flows/core_nodes.py`  
+### Node 8: log_and_notify - Observability Reporter
+**File**: `src/flows/core_nodes.py`
 **Purpose**: Log interaction for analytics, monitoring, and continuous improvement
 
 **What it does**:
@@ -1331,7 +1331,7 @@ def log_and_notify(state, session_id, latency_ms):
         ""success"": True,
         ""created_at"": datetime.utcnow()
     }).execute()
-    
+
     # Log retrieval details for quality measurement
     for chunk in state.fetch(""retrieved_chunks"", []):
         supabase.table(""retrieval_logs"").insert({
@@ -1341,7 +1341,7 @@ def log_and_notify(state, session_id, latency_ms):
             ""grounded"": chunk[""used_in_answer""],  # LLM-as-judge validation
             ""created_at"": datetime.utcnow()
         }).execute()
-    
+
     return state
 ```
 
@@ -1363,7 +1363,7 @@ def log_and_notify(state, session_id, latency_ms):
 1. handle_greeting
    ✓ Not a greeting → pass through
 
-2. classify_query  
+2. classify_query
    ✓ Technical question: needs_longer_response=True, code_would_help=True
 
 3. retrieve_chunks
@@ -1406,7 +1406,7 @@ state.stash(""key"", value)      # Store metadata without mutation
 
 **Why**: Enables time-travel debugging, easy rollback, predictable behavior.
 
-### Pattern 2: Short-Circuiting  
+### Pattern 2: Short-Circuiting
 Greeting node can skip expensive RAG operations:
 ```python
 if is_greeting:
@@ -1448,11 +1448,11 @@ logger.info(f""Node {node_name} completed in {elapsed_ms}ms"")
 
 ## Why This Architecture? (Design Decisions)
 
-**Testability**: Each node can be tested independently (unit tests per node)  
-**Maintainability**: Each node file <200 lines, single responsibility (easy to understand)  
-**Observability**: Log at each stage, trace failures back to specific node  
-**Flexibility**: Easy to add new nodes (e.g., `translate_answer` for multilingual support)  
-**Performance**: Can skip expensive operations (greetings bypass RAG, saving 1s + $0.002)  
+**Testability**: Each node can be tested independently (unit tests per node)
+**Maintainability**: Each node file <200 lines, single responsibility (easy to understand)
+**Observability**: Log at each stage, trace failures back to specific node
+**Flexibility**: Easy to add new nodes (e.g., `translate_answer` for multilingual support)
+**Performance**: Can skip expensive operations (greetings bypass RAG, saving 1s + $0.002)
 **Education**: Clean separation demonstrates GenAI best practices (used as teaching tool)
 
 ---
@@ -1491,7 +1491,7 @@ logger.info(f""Node {node_name} completed in {elapsed_ms}ms"")
 
 **Deep-dive options**:
 - ""Show me the classify_query code"" - See intent detection logic
-- ""Display the retrieval pipeline"" - Dive into pgvector search  
+- ""Display the retrieval pipeline"" - Dive into pgvector search
 - ""How does role context work?"" - Explore personality injection
 - ""Show me the action execution code"" - See graceful degradation pattern
 - ""Explain the state management"" - Learn immutable patterns

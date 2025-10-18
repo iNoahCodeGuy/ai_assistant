@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 
 def normalize_value(value: Any) -> str:
     """Normalize any value for safe display in markdown tables.
-    
+
     Args:
         value: Any Python value (None, list, dict, str, int, etc.)
-        
+
     Returns:
         String representation safe for markdown tables with escaped pipes.
         Long values are truncated to 120 characters.
@@ -37,38 +37,38 @@ def normalize_value(value: Any) -> str:
 
 def format_table(headers: List[str], rows: List[Dict[str, Any]]) -> str:
     """Format data rows into a markdown table.
-    
+
     Args:
         headers: Column names for the table
         rows: List of dictionaries containing row data
-        
+
     Returns:
         Markdown-formatted table string. Returns "No records found." if rows is empty.
     """
     if not rows:
         return "No records found."
-    
+
     header_line = "| " + " | ".join(headers) + " |"
     separator = "| " + " | ".join(["---"] * len(headers)) + " |"
     lines = [header_line, separator]
-    
+
     for row in rows:
         line = "| " + " | ".join(normalize_value(row.get(header)) for header in headers) + " |"
         lines.append(line)
-    
+
     return "\n".join(lines)
 
 
 def render_full_data_report() -> str:
     """Generate comprehensive data report across all Supabase tables.
-    
+
     This function:
     1. Fetches all records from messages, retrieval_logs, feedback, confessions, sms_logs
     2. Summarizes knowledge base coverage (kb_chunks)
     3. Calculates key performance metrics and insights
     4. Formats everything into analyst-grade markdown tables
     5. Includes dataset inventory with record counts and last entry timestamps
-    
+
     Returns:
         Markdown-formatted report with multiple sections and tables.
         Returns error message if Supabase connection fails.
@@ -106,7 +106,7 @@ def render_full_data_report() -> str:
             if rows and "created_at" in columns:
                 # Already ordered desc, so first is latest
                 last_timestamp = rows[0].get("created_at") if rows else None
-            
+
             inventory.append({
                 "Dataset": table_name,
                 "Records": len(rows),
@@ -132,13 +132,13 @@ def render_full_data_report() -> str:
             "Records": len(kb_data),
             "Last Entry": "—",
         })
-        
+
         # Aggregate chunks by SOURCE (doc_id) only - professional summary
         source_aggregation: Dict[str, int] = {}
         for row in kb_data:
             doc_id = row.get("doc_id", "unknown")
             source_aggregation[doc_id] = source_aggregation.get(doc_id, 0) + 1
-        
+
         # Create clean summary: 1 row per knowledge source
         for doc_id, total_chunks in sorted(source_aggregation.items()):
             kb_summary_rows.append({
@@ -162,28 +162,28 @@ def render_full_data_report() -> str:
         report_sections.append(
             "#### Knowledge Base Coverage\n" + format_table(["Knowledge Source", "Total Chunks"], kb_summary_rows)
         )
-    
+
     # 3. Key Performance Metrics (Analytics Insights)
     messages = dataset_rows.get("messages", [])
     if messages:
         total_messages = len(messages)
         successful = sum(1 for m in messages if m.get("success"))
         avg_latency = sum(m.get("latency_ms", 0) for m in messages) / total_messages if total_messages > 0 else 0
-        
+
         # Role distribution
         role_counts: Dict[str, int] = {}
         for m in messages:
             role = m.get("role_mode", "unknown")
             role_counts[role] = role_counts.get(role, 0) + 1
         top_roles = sorted(role_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        
+
         # Query type distribution
         query_counts: Dict[str, int] = {}
         for m in messages:
             qtype = m.get("query_type", "unknown")
             query_counts[qtype] = query_counts.get(qtype, 0) + 1
         top_query_types = sorted(query_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        
+
         metrics_rows = [
             {"Metric": "Total Conversations", "Value": total_messages},
             {"Metric": "Success Rate", "Value": f"{(successful/total_messages*100):.1f}%" if total_messages > 0 else "0%"},
@@ -191,7 +191,7 @@ def render_full_data_report() -> str:
             {"Metric": "Top Role", "Value": f"{top_roles[0][0]} ({top_roles[0][1]} queries)" if top_roles else "—"},
             {"Metric": "Top Query Type", "Value": f"{top_query_types[0][0]} ({top_query_types[0][1]} queries)" if top_query_types else "—"},
         ]
-        
+
         report_sections.append(
             "#### Key Performance Metrics\n" + format_table(["Metric", "Value"], metrics_rows)
         )
@@ -203,7 +203,7 @@ def render_full_data_report() -> str:
         report_sections.append(
             "#### Recent Conversations (Last 10)\n" + format_table(headers, recent_messages)
         )
-    
+
     # 5. Other detailed tables (only if they have data, and limit confessions for privacy)
     for table_name in ["retrieval_logs", "feedback", "sms_logs"]:
         rows = dataset_rows.get(table_name, [])
@@ -213,7 +213,7 @@ def render_full_data_report() -> str:
             display_rows = rows[:10]
             section_title = f"#### {table_name.replace('_', ' ').title()} (Recent)"
             report_sections.append(section_title + "\n" + format_table(headers, display_rows))
-    
+
     # Confessions: Show count only for privacy, no details
     confessions = dataset_rows.get("confessions", [])
     if confessions:

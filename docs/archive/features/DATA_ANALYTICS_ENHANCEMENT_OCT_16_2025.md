@@ -42,8 +42,8 @@ What data is collected and how is it analyzed?
 # 📊 Noah's AI Assistant - Analytics Dashboard
 
 ## Executive Summary
-This system tracks **5 core data streams** for continuous improvement and 
-performance monitoring. All analytics are stored in **Supabase Postgres** 
+This system tracks **5 core data streams** for continuous improvement and
+performance monitoring. All analytics are stored in **Supabase Postgres**
 with real-time querying capabilities.
 
 ---
@@ -182,7 +182,7 @@ Poor (<0.55):           ██░░░░░░░░░░░░░░░░�
 
 **Get top queries by volume**:
 ```sql
-SELECT 
+SELECT
     user_query,
     COUNT(*) as query_count,
     AVG(latency_ms) as avg_latency,
@@ -196,7 +196,7 @@ LIMIT 10;
 
 **Find knowledge gaps** (low similarity scores):
 ```sql
-SELECT 
+SELECT
     m.user_query,
     AVG(r.similarity_score) as avg_similarity,
     COUNT(r.id) as retrieval_count

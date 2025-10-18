@@ -22,14 +22,14 @@ print("=" * 80)
 for query in test_queries:
     print(f"\n🔍 Query: {query}")
     print("-" * 80)
-    
+
     # Generate embedding
     response = openai_client.embeddings.create(
         model='text-embedding-3-small',
         input=query
     )
     embedding = response.data[0].embedding
-    
+
     # Search using the correct function name
     results = supabase.rpc(
         'search_kb_chunks',  # ← Correct function name
@@ -39,9 +39,9 @@ for query in test_queries:
             'match_count': 3
         }
     ).execute()
-    
+
     print(f"\n📊 Found {len(results.data)} results:\n")
-    
+
     for i, row in enumerate(results.data, 1):
         print(f"  {i}. 📄 **{row['doc_id']}** (similarity: {row.get('similarity', 0):.3f})")
         print(f"     Section: {row['section'][:70]}...")

@@ -2,7 +2,7 @@
 
 **Purpose**: Comprehensive guide to the analytics dashboard system, from initial enhancement to live implementation.
 
-**Status**: ✅ Fully Implemented  
+**Status**: ✅ Fully Implemented
 **Last Updated**: October 16, 2025
 
 ---
@@ -152,7 +152,7 @@ What data is collected and how is it analyzed?
 # 📊 Noah's AI Assistant - Analytics Dashboard
 
 ## Executive Summary
-This system tracks **5 core data streams** for continuous improvement. 
+This system tracks **5 core data streams** for continuous improvement.
 All analytics stored in **Supabase Postgres** with real-time querying.
 
 **Current Inventory:**
@@ -309,8 +309,8 @@ CREATE TABLE confessions (
 
 ### API Endpoint: GET /api/analytics
 
-**Authentication**: Server-side only (uses service role key)  
-**Rate Limit**: 6 requests/minute per IP  
+**Authentication**: Server-side only (uses service role key)
+**Rate Limit**: 6 requests/minute per IP
 **Timeout**: 2.5s per table, 10s total route
 
 #### Response Schema
@@ -422,11 +422,11 @@ Implementation:
 ```python
 def classify_query(state: ConversationState) -> ConversationState:
     query_lower = state.query.lower()
-    
+
     # Check for analytics display request
     if any(trigger in query_lower for trigger in ANALYTICS_TRIGGERS):
         state.query_type = "data_display"
-    
+
     return state
 ```
 
@@ -441,7 +441,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
             "type": "render_live_analytics",
             "role": state.role
         })
-    
+
     return state
 ```
 
@@ -452,23 +452,23 @@ def plan_actions(state: ConversationState) -> ConversationState:
 ```python
 def apply_role_context(state: ConversationState) -> ConversationState:
     import requests
-    
+
     if "render_live_analytics" in [a["type"] for a in state.planned_actions]:
         try:
             response = requests.get(
                 "https://noahsaiassistant.vercel.app/api/analytics",
                 timeout=3.0
             )
-            
+
             if response.status_code == 200:
                 analytics_data = response.json()
                 state.stash("analytics_data", analytics_data)
             else:
                 state.stash("analytics_error", f"HTTP {response.status_code}")
-        
+
         except requests.Timeout:
             state.stash("analytics_error", "timeout")
-    
+
     return state
 ```
 
@@ -479,26 +479,26 @@ def apply_role_context(state: ConversationState) -> ConversationState:
 ```python
 def render_analytics_response(data: dict, role: str) -> str:
     """Format analytics data into professional markdown tables."""
-    
+
     sections = []
-    
+
     # Executive Summary
     sections.append("# 📊 Noah's AI Assistant - Analytics Dashboard\n")
     sections.append("## Executive Summary\n")
     sections.append(f"**Current Inventory:**\n")
-    
+
     inventory = data.get("inventory", {})
     for key, value in inventory.items():
         sections.append(f"- {key.replace('_', ' ').title()}: {value:,}\n")
-    
+
     sections.append("\n---\n\n")
-    
+
     # Messages Table
     if "messages" in data and role in ["Software Developer", "Hiring Manager (technical)"]:
         sections.append("## 📈 Messages Table (Last 50 Queries)\n\n")
         sections.append("| Timestamp | Role | Query | Latency | Tokens | Success |\n")
         sections.append("|-----------|------|-------|---------|--------|------|\n")
-        
+
         for msg in data["messages"]["data"][:50]:
             timestamp = msg["created_at"][:16].replace("T", " ")
             role_short = msg["role_mode"][:20]
@@ -506,35 +506,35 @@ def render_analytics_response(data: dict, role: str) -> str:
             latency = f"{msg['latency_ms']/1000:.1f}s"
             tokens = msg["token_count"]
             success = "✅" if msg["success"] else "❌"
-            
+
             sections.append(f"| {timestamp} | {role_short} | {query_short} | {latency} | {tokens} | {success} |\n")
-        
+
         sections.append("\n---\n\n")
-    
+
     # Performance Metrics (from SQL helper)
     if "performance_summary" in data:
         sections.append("## 🎯 Performance Metrics (7-Day Summary)\n\n")
         sections.append("| Metric | Value | Status |\n")
         sections.append("|--------|-------|--------|\n")
-        
+
         perf = data["performance_summary"]
-        
+
         avg_latency = perf["avg_latency_ms"] / 1000
         latency_status = "🟢 Good" if avg_latency < 2.5 else "🟡 Fair" if avg_latency < 4 else "🔴 Slow"
-        
+
         success_rate = perf["success_rate"] * 100
         success_status = "🟢 Excellent" if success_rate > 90 else "🟡 Fair" if success_rate > 75 else "🔴 Poor"
-        
+
         sections.append(f"| **Avg Latency** | {avg_latency:.1f}s | {latency_status} |\n")
         sections.append(f"| **Avg Cost/Query** | ${perf['avg_cost']:.5f} | 🟢 Excellent |\n")
         sections.append(f"| **Success Rate** | {success_rate:.0f}% | {success_status} |\n")
         sections.append(f"| **Avg Tokens/Conv** | {perf['avg_tokens']} | 🟢 Good |\n")
-        
+
         sections.append("\n---\n\n")
-    
+
     # Follow-up CTA
     sections.append(analytics_cta(role))
-    
+
     return "".join(sections)
 
 
@@ -558,16 +558,16 @@ import re
 
 def redact_pii(text: str) -> str:
     """Mask emails, phone numbers, and sensitive data."""
-    
+
     if not text:
         return text
-    
+
     # Redact emails: user@example.com → [redacted]
     text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[redacted]', text)
-    
+
     # Redact phone numbers: +1-555-1234, (555) 123-4567, etc.
     text = re.sub(r'\+?[\d\s\-\(\)]{10,}', '[redacted]', text)
-    
+
     return text
 ```
 
@@ -619,16 +619,16 @@ rate_limit_store = {}  # {ip: [timestamp1, timestamp2, ...]}
 def check_rate_limit(ip: str, limit: int = 6, window: int = 60) -> bool:
     """Allow `limit` requests per `window` seconds."""
     now = time.time()
-    
+
     if ip not in rate_limit_store:
         rate_limit_store[ip] = []
-    
+
     # Remove old timestamps
     rate_limit_store[ip] = [t for t in rate_limit_store[ip] if now - t < window]
-    
+
     if len(rate_limit_store[ip]) >= limit:
         return False  # Rate limited
-    
+
     rate_limit_store[ip].append(now)
     return True
 ```
@@ -664,13 +664,13 @@ import requests
 
 def test_analytics_endpoint():
     """Test /api/analytics returns correct schema."""
-    
+
     response = requests.get("https://noahsaiassistant.vercel.app/api/analytics")
-    
+
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
-    
+
     data = response.json()
-    
+
     # Check required keys
     assert "inventory" in data, "Missing inventory"
     assert "messages" in data, "Missing messages"
@@ -679,12 +679,12 @@ def test_analytics_endpoint():
     assert "confessions" in data, "Missing confessions"
     assert "kb_chunks" in data, "Missing kb_chunks"
     assert "generated_at" in data, "Missing generated_at"
-    
+
     # Check inventory structure
     inv = data["inventory"]
     assert "messages" in inv, "Inventory missing messages count"
     assert "retrieval_logs" in inv, "Inventory missing retrieval_logs count"
-    
+
     # Check confession privacy
     for confession in data["confessions"]["data"]:
         assert "message" not in confession, "❌ CRITICAL: Confession message exposed!"
@@ -692,7 +692,7 @@ def test_analytics_endpoint():
         assert "contact" not in confession, "❌ CRITICAL: Confession contact exposed!"
         assert "id" in confession, "Missing confession id"
         assert "is_anonymous" in confession, "Missing is_anonymous flag"
-    
+
     print("✅ All contract tests passed")
 ```
 
@@ -704,21 +704,21 @@ from src.flows.analytics_renderer import redact_pii
 
 def test_pii_redaction():
     """Test PII masking."""
-    
+
     # Email redaction
     assert redact_pii("Contact me at user@example.com") == "Contact me at [redacted]"
-    
+
     # Phone redaction
     assert redact_pii("Call +1-555-1234") == "Call [redacted]"
     assert redact_pii("Call (555) 123-4567") == "Call [redacted]"
-    
+
     # Multiple PII in one string
     input_text = "Email user@test.com or call +1-555-9999"
     output = redact_pii(input_text)
     assert "user@test.com" not in output
     assert "+1-555-9999" not in output
     assert "[redacted]" in output
-    
+
     print("✅ PII redaction tests passed")
 ```
 
@@ -731,13 +731,13 @@ import time
 
 def test_rate_limiting():
     """Test 6 req/min rate limit."""
-    
+
     url = "https://noahsaiassistant.vercel.app/api/analytics"
-    
+
     # Make 7 requests rapidly
     for i in range(7):
         response = requests.get(url)
-        
+
         if i < 6:
             # First 6 should succeed
             assert response.status_code == 200, f"Request {i+1} failed: {response.status_code}"
@@ -746,9 +746,9 @@ def test_rate_limiting():
             # 7th should be rate limited
             assert response.status_code == 429, f"Expected 429, got {response.status_code}"
             print(f"✅ Request {i+1}/7: {response.status_code} (rate limited as expected)")
-        
+
         time.sleep(0.5)
-    
+
     print("✅ Rate limiting test passed")
 ```
 
@@ -758,17 +758,17 @@ def test_rate_limiting():
 # tests/test_conversation_quality.py
 def test_analytics_role_filtering():
     """Test role-based analytics display."""
-    
+
     from src.flows.conversation_nodes import run_conversation_flow
     from unittest.mock import MagicMock
-    
+
     # Mock analytics data
     mock_data = {
         "inventory": {"messages": 100},
         "messages": {"data": [...]},
         "confessions": {"data": [{"id": "uuid", "is_anonymous": True}]}
     }
-    
+
     # Test technical role (full access)
     state_tech = ConversationState(
         query="display data analytics",
@@ -777,7 +777,7 @@ def test_analytics_role_filtering():
     result_tech = run_conversation_flow(state_tech, mock_rag_engine)
     assert "Messages Table" in result_tech.answer
     assert "Confessions" in result_tech.answer  # Privacy-protected view
-    
+
     # Test non-technical role (simplified view)
     state_nontech = ConversationState(
         query="display data analytics",
@@ -786,7 +786,7 @@ def test_analytics_role_filtering():
     result_nontech = run_conversation_flow(state_nontech, mock_rag_engine)
     assert "Executive Summary" in result_nontech.answer
     # May not show raw tables
-    
+
     print("✅ Role-based access test passed")
 ```
 
@@ -901,7 +901,7 @@ If analytics endpoint fails:
    ```bash
    # Find previous deployment
    vercel ls
-   
+
    # Promote previous working version
    vercel promote <deployment-url>
    ```
@@ -968,7 +968,7 @@ If analytics endpoint fails:
 
 ## Ownership & SLO
 
-**Code Owner**: @noah  
+**Code Owner**: @noah
 **Tables Owner**: @noah (Supabase admin)
 
 **Service Level Objectives**:
@@ -989,7 +989,7 @@ If analytics endpoint fails:
 ### Documentation
 - **Policy**: `DISPLAY_ANALYTICS_POLICY.md` (if exists)
 - **This Guide**: `docs/features/ANALYTICS_IMPLEMENTATION.md`
-- **Archived Docs**: 
+- **Archived Docs**:
   - `docs/archive/features/DATA_ANALYTICS_ENHANCEMENT_OCT_16_2025.md`
   - `docs/archive/features/LIVE_ANALYTICS_IMPLEMENTATION_OCT_16_2025.md`
 
@@ -1023,5 +1023,5 @@ If analytics endpoint fails:
 
 ---
 
-**Last Updated**: October 16, 2025  
+**Last Updated**: October 16, 2025
 **Status**: ✅ Production-ready, fully documented

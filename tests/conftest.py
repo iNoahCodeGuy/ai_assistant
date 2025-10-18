@@ -182,7 +182,7 @@ def test_environment():
         'TESTING': 'true',
         'LOG_LEVEL': 'DEBUG'
     }
-    
+
     with patch.dict(os.environ, test_env):
         yield test_env
 
@@ -193,7 +193,7 @@ def temp_test_files(tmp_path):
     # Create test source files
     test_src = tmp_path / "test_src"
     test_src.mkdir()
-    
+
     # Create a test Python file
     test_file = test_src / "test_module.py"
     test_file.write_text('''"""Test module for testing."""
@@ -204,14 +204,14 @@ def example_function():
 
 class ExampleClass:
     """Example class for testing."""
-    
+
     def __init__(self):
         self.value = 42
-    
+
     def get_value(self):
         return self.value
 ''')
-    
+
     return {
         'src_dir': test_src,
         'test_file': test_file
@@ -252,11 +252,11 @@ def pytest_collection_modifyitems(config, items):
         # Mark slow tests
         if "slow" in item.nodeid or "performance" in item.nodeid:
             item.add_marker(pytest.mark.slow)
-        
+
         # Mark integration tests
         if "integration" in item.nodeid or "test_integration" in item.nodeid:
             item.add_marker(pytest.mark.integration)
-        
+
         # Mark unit tests (default for everything else)
         elif not any(marker.name in ['integration', 'performance'] for marker in item.iter_markers()):
             item.add_marker(pytest.mark.unit)
@@ -267,7 +267,7 @@ def assert_valid_response(response: Dict[str, Any]):
     """Assert that a response has the expected structure."""
     assert isinstance(response, dict)
     assert 'answer' in response or 'response' in response
-    
+
     if 'code_snippets' in response:
         assert isinstance(response['code_snippets'], list)
         for snippet in response['code_snippets']:
@@ -281,16 +281,16 @@ def assert_valid_code_snippet(snippet: Dict[str, Any]):
     required_fields = ['file_path', 'content', 'citation']
     for field in required_fields:
         assert field in snippet, f"Code snippet missing required field: {field}"
-    
+
     # Validate citation format (file:line or file:start-end)
     citation = snippet['citation']
     assert ':' in citation, "Citation should contain ':' separator"
-    
+
     file_part, line_part = citation.split(':', 1)
     assert file_part.endswith('.py'), "Citation should reference a Python file"
 
 
-def create_mock_interaction(role: str = "Software Developer", 
+def create_mock_interaction(role: str = "Software Developer",
                           query: str = "Test query",
                           success: bool = True) -> Dict[str, Any]:
     """Create a mock user interaction for testing."""

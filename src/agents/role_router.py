@@ -68,7 +68,7 @@ class RoleRouter:
                     resp = content
                 # Return with full chunks for source citations
                 return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
-        
+
         if technical and query_type == "technical":
             ctx = rag_engine.retrieve(query)
             resp = self._handle_technical_manager(query, ctx, rag_engine, chat_history)
@@ -82,16 +82,16 @@ class RoleRouter:
         """Enhanced technical manager handling with code snippets."""
         include_code = True  # technical manager always gets code for technical queries
         results = rag_engine.retrieve_with_code(user_input, role="Hiring Manager (technical)")
-        
+
         # Use basic generate_response method with chat history
         response = rag_engine.generate_response(user_input, chat_history=chat_history)
-        
+
         # Add code snippets to response
         if results.get("code_snippets"):
             response += "\n\n**Code References:**\n"
             for snippet in results["code_snippets"]:
                 response += f"- [{snippet['citation']}]({snippet['github_url']})\n"
-        
+
         return response
 
     def _handle_developer(self, query: str, query_type: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -109,7 +109,7 @@ class RoleRouter:
                     resp = content
                 # Return with full chunks for source citations
                 return {"response": resp, "type": "technical", "context": ctx.get("chunks", [])}
-        
+
         if query_type == "technical":
             ctx = rag_engine.retrieve(query)
             resp = self._handle_developer_with_code(query, ctx, rag_engine, chat_history)
@@ -122,16 +122,16 @@ class RoleRouter:
         """Enhanced developer handling with detailed code integration."""
         include_code = True
         results = rag_engine.retrieve_with_code(user_input, role="Software Developer")
-        
+
         # Use basic generate_response method with chat history
         response = rag_engine.generate_response(user_input, chat_history=chat_history)
-        
+
         if results.get("code_snippets"):
             response += "\n\n## Code Implementation\n"
             for snippet in results["code_snippets"]:
                 response += f"\n### {snippet['name']} ([{snippet['citation']}]({snippet['github_url']}))\n"
                 response += f"```python\n{snippet['content']}\n```\n"
-        
+
         return response
 
     def _handle_casual(self, query: str, query_type: str, rag_engine: RagEngine, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:

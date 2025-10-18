@@ -12,23 +12,23 @@ import re
 
 
 CODE_VALIDATION_KEYWORDS = [
-    "def ", "class ", "import ", "from ", "return ", 
+    "def ", "class ", "import ", "from ", "return ",
     "async ", "await ", "try:", "except ", "lambda "
 ]
 
 
 def is_valid_code_snippet(code: str) -> bool:
     """Check if retrieved text looks like actual Python source code.
-    
+
     This uses simple heuristics to filter out malformed responses:
     - Must have minimum length (20 chars)
     - Must contain Python keywords (def, class, import, etc.)
     - Must have multiple lines (not just a single statement)
     - Must NOT be metadata (doc_id, query=, etc.)
-    
+
     Args:
         code: The text to validate
-        
+
     Returns:
         True if it looks like valid Python code, False otherwise
     """
@@ -69,17 +69,17 @@ SANITIZE_PREFIX_PATTERNS = [
 
 def sanitize_generated_answer(answer: str) -> str:
     """Strip leading SQL/artifact noise from LLM responses.
-    
+
     Sometimes the RAG context includes SQL queries or metadata that the LLM
     accidentally includes at the start of its answer. This removes those.
-    
+
     Example:
         Input:  "}\n\nSELECT\n\nHere is the answer you requested..."
         Output: "Here is the answer you requested..."
-    
+
     Args:
         answer: The raw LLM-generated text
-        
+
     Returns:
         Cleaned answer with leading artifacts removed
     """

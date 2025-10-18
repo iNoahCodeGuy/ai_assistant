@@ -2,7 +2,7 @@
 
 This module contains the essential conversation flow nodes:
 1. retrieve_chunks - Get relevant knowledge from the database
-2. generate_answer - Create LLM response with retrieved context  
+2. generate_answer - Create LLM response with retrieved context
 3. apply_role_context - Add role-specific content (code, data, links)
 4. log_and_notify - Save analytics and trigger notifications
 
@@ -36,7 +36,7 @@ try:
 except Exception as e:
     logger.warning(f"Import retriever not available: {e}")
     IMPORT_RETRIEVER_AVAILABLE = False
-    
+
     # Provide stub functions so code doesn't break
     def search_import_explanations(*args, **kwargs):
         return []
@@ -53,68 +53,68 @@ LINKEDIN_URL = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/noahdelacalzad
 
 def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int = 4) -> ConversationState:
     """Fetch relevant knowledge base chunks using semantic search.
-    
+
     This calls the RAG engine to find the top-k most relevant pieces of
     information from the knowledge base (career facts, technical docs, etc.)
-    
+
     If the query was expanded (vague query like "engineering"), we use the
     expanded version for better retrieval quality.
-    
+
     Args:
         state: Current conversation state with the query
         rag_engine: RAG engine instance (handles embeddings + vector search)
         top_k: How many chunks to retrieve (default 4)
-        
+
     Returns:
         Updated state with retrieved_chunks, retrieval_matches, and retrieval_scores
     """
     # Use expanded query if available (for vague queries like "engineering")
     query_for_retrieval = state.fetch("expanded_query", state.query)
-    
+
     results = rag_engine.retrieve(query_for_retrieval, top_k=top_k)
     state.add_retrieved_chunks(results.get("chunks", []))
     state.stash("retrieval_matches", results.get("matches", []))
     state.stash("retrieval_scores", results.get("scores", []))
-    
+
     # Log if we used expansion
     if state.fetch("vague_query_expanded", False):
         logger.info(f"Retrieved {len(results.get('chunks', []))} chunks using expanded query")
-    
+
     return state
 
 
 def generate_answer(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
     """Generate an assistant response using retrieved context.
-    
+
     This is where the LLM creates the actual answer to the user's question.
     It uses the chunks we retrieved in the previous step as context.
-    
+
     Special cases:
     - For data display requests, we skip LLM generation and fetch live analytics
     - For vague queries with insufficient context, we provide a helpful fallback
-    
+
     Args:
         state: Current conversation state with query + retrieved chunks
         rag_engine: RAG engine with response generator
-        
+
     Returns:
         Updated state with generated answer
     """
     retrieved_chunks = state.retrieved_chunks or []
-    
+
     # For data display requests, we'll fetch live analytics later
     # Just set a placeholder for now
     if state.fetch("data_display_requested", False):
         state.set_answer("Fetching live analytics data from Supabase...")
         return state
-    
+
     # Check if we have sufficient context
     # If vague query was expanded but we still have no good matches, help the user
     if state.fetch("vague_query_expanded", False) and len(retrieved_chunks) == 0:
         original_query = state.query
         expanded_query = state.fetch("expanded_query", "")
-        
-        fallback_answer = f"""I'd love to answer your question about "{original_query}"! 
+
+        fallback_answer = f"""I'd love to answer your question about "{original_query}"!
 
 Could you be more specific? For example:
 - If you're curious about my engineering skills, try: "What are your software engineering skills?"
@@ -123,12 +123,12 @@ Could you be more specific? For example:
 - If you want to understand my architecture approach, ask: "How do you design systems?"
 
 I'm here to help you understand Noah's capabilities and how generative AI applications like me work. What would you like to explore?"""
-        
+
         state.set_answer(fallback_answer)
         state.stash("fallback_used", True)
         logger.info(f"Used fallback for vague query '{original_query}' with no matches")
         return state
-    
+
     # Check for very low retrieval quality (all scores below threshold)
     retrieval_scores = state.fetch("retrieval_scores", [])
     if retrieval_scores and all(score < 0.4 for score in retrieval_scores):
@@ -143,16 +143,16 @@ Here are some things I can tell you about:
 - **Career background** - "Tell me about your career journey"
 
 Or ask me to explain how I work - I love teaching about RAG, vector search, and LLM orchestration! What sounds interesting?"""
-        
+
         state.set_answer(fallback_answer)
         state.stash("fallback_used", True)
         logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
         return state
-    
+
     # Use the LLM to generate a response with retrieved context
     # Add display intelligence based on query classification
     extra_instructions = []
-    
+
     # When teaching/explaining, provide comprehensive depth
     if state.fetch("needs_longer_response", False) or state.fetch("teaching_moment", False):
         extra_instructions.append(
@@ -160,10 +160,10 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "Break down concepts clearly, connect technical details to business value, and "
             "help the user truly understand. Use examples where helpful."
         )
-    
+
     # EXPLICIT code request - user specifically asked
     if state.fetch("code_display_requested", False) and state.role in [
-        "Software Developer", 
+        "Software Developer",
         "Hiring Manager (technical)"
     ]:
         extra_instructions.append(
@@ -181,7 +181,7 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "include a relevant code snippet (≤40 lines) with comments to clarify the implementation. "
             "This is proactive - the user didn't explicitly ask but code will help understanding."
         )
-    
+
     # EXPLICIT data request - user specifically asked
     if state.fetch("data_display_requested", False):
         extra_instructions.append(
@@ -195,10 +195,17 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "include relevant analytics in table format if available. Be concise with tables, "
             "include source attribution. This is proactive - help the user with concrete numbers."
         )
-    
+
+    # Job details gathering (AFTER resume sent) - Task 9
+    # Import here to avoid circular dependency
+    from src.flows.resume_distribution import should_gather_job_details, get_job_details_prompt
+
+    if should_gather_job_details(state):
+        extra_instructions.append(get_job_details_prompt())
+
     # Build the instruction suffix
     instruction_suffix = " ".join(extra_instructions) if extra_instructions else None
-    
+
     answer = rag_engine.response_generator.generate_contextual_response(
         query=state.query,
         context=retrieved_chunks,
@@ -206,7 +213,7 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         chat_history=state.chat_history,
         extra_instructions=instruction_suffix
     )
-    
+
     # Clean up any SQL artifacts that leaked from retrieval
     state.set_answer(sanitize_generated_answer(answer))
     return state
@@ -214,18 +221,18 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
 
 def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
     """Add role-specific content blocks to the answer.
-    
+
     This is where we enrich the base answer with extra content based on
     the actions we planned earlier. For example:
     - Add code snippets for developers
     - Add architecture diagrams for technical roles
     - Add fun facts for casual visitors
     - Add resume links when requested
-    
+
     Args:
         state: Current conversation state with answer + pending_actions
         rag_engine: RAG engine for code retrieval
-        
+
     Returns:
         Updated state with fully enriched answer
     """
@@ -242,7 +249,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         components.append(
             "\n\n" + content_blocks.format_section("Product Purpose", content_blocks.purpose_block())
         )
-    
+
     if "include_qa_strategy" in actions:
         components.append(
             "\n\n" + content_blocks.format_section("Quality Assurance", content_blocks.qa_strategy_block())
@@ -253,29 +260,29 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         try:
             import requests
             from src.config.supabase_config import supabase_settings
-            
+
             # Determine analytics API URL (production vs local)
             if supabase_settings.is_vercel:
                 analytics_url = "https://noahsaiassistant.vercel.app/api/analytics"
             else:
                 analytics_url = "http://localhost:3000/api/analytics"
-            
+
             # Fetch live data
             response = requests.get(analytics_url, timeout=3)
             response.raise_for_status()
             analytics_data = response.json()
-            
+
             # Render with role-appropriate formatting
             from src.flows.analytics_renderer import render_live_analytics
             analytics_report = render_live_analytics(
-                analytics_data, 
+                analytics_data,
                 state.role,
                 focus=None
             )
-            
+
             # Replace placeholder with actual report
             components = [analytics_report]
-            
+
         except Exception as e:
             logger.error(f"Failed to fetch live analytics: {e}")
             # Fallback to cached version
@@ -318,10 +325,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         components.append(
             "\n\n" + content_blocks.format_section("Stack Importance", content_blocks.stack_importance_explanation())
         )
-    
+
     if "suggest_technical_role_switch" in actions:
         components.append(content_blocks.role_switch_suggestion("Hiring Manager (technical)"))
-    
+
     if "suggest_developer_role_switch" in actions:
         components.append(content_blocks.role_switch_suggestion("Software Developer"))
 
@@ -357,12 +364,12 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
         except Exception as e:
             logger.warning(f"Code retrieval failed: {e}")
             snippets = []
-        
+
         if snippets:
             snippet = snippets[0]
             code_content = snippet.get("content", "")
             citation = snippet.get("citation", "codebase")
-            
+
             # Validate it's real code (not metadata)
             if is_valid_code_snippet(code_content):
                 formatted_code = content_blocks.format_code_snippet(
@@ -398,11 +405,11 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Conve
                         "- Request insights into specific features or services"
                     )
                 )
-    
+
     # Import/stack explanations (why did you choose X library?)
     if "explain_imports" in actions:
         import_name = detect_import_in_query(state.query)
-        
+
         if import_name:
             # Get specific explanation for this import
             explanation_data = get_import_explanation(import_name, state.role)
@@ -465,16 +472,16 @@ def log_and_notify(
     success: bool = True
 ) -> ConversationState:
     """Save analytics to Supabase and trigger notifications.
-    
+
     This is the last step in the pipeline. It records the conversation
     to the database for evaluation and potential follow-up.
-    
+
     Args:
         state: Current conversation state with final answer
         session_id: Unique session identifier
         latency_ms: How long the conversation took
         success: Whether the conversation completed successfully
-        
+
     Returns:
         Updated state with analytics metadata
     """

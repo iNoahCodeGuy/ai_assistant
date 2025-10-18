@@ -9,7 +9,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        
+
         response = {
             "status": "healthy",
             "message": "Noah's AI Assistant API is running",
@@ -19,6 +19,6 @@ class handler(BaseHTTPRequestHandler):
                 "/api/chat": "Chat endpoint (coming soon)"
             }
         }
-        
+
         self.wfile.write(json.dumps(response).encode())
         return

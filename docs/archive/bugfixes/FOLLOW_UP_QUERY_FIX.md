@@ -1,7 +1,7 @@
 # Follow-Up Query Context Fix
 
-**Date**: October 15, 2025  
-**Commit**: 2021b50  
+**Date**: October 15, 2025
+**Commit**: 2021b50
 **Issue**: Follow-up queries failing due to missing conversation context
 
 ## Problem Statement
@@ -48,10 +48,10 @@ Added `chat_history` parameter to `generate_contextual_response()`:
 
 ```python
 def generate_contextual_response(
-    self, 
-    query: str, 
-    context: List[Dict[str, Any]], 
-    role: str = None, 
+    self,
+    query: str,
+    context: List[Dict[str, Any]],
+    role: str = None,
     chat_history: List[Dict[str, str]] = None  # ✅ New parameter
 ) -> str:
 ```
@@ -61,14 +61,14 @@ Modified `_build_role_prompt()` to include conversation history:
 
 ```python
 def _build_role_prompt(
-    self, 
-    query: str, 
-    context_str: str, 
-    role: str = None, 
+    self,
+    query: str,
+    context_str: str,
+    role: str = None,
     chat_history: List[Dict[str, str]] = None  # ✅ New parameter
 ) -> str:
     """Build role-specific prompt with conversation history."""
-    
+
     # Build conversation history string for context continuity
     history_context = ""
     if chat_history and len(chat_history) > 0:
@@ -84,7 +84,7 @@ def _build_role_prompt(
                 history_parts.append(f"Assistant: {content}")
         if history_parts:
             history_context = "\n\nPrevious conversation:\n" + "\n".join(history_parts) + "\n"
-    
+
     # Inject history_context into all role prompts
     return f"""
         You are Noah's AI Assistant...
@@ -112,7 +112,7 @@ answer = rag_engine.response_generator.generate_contextual_response(
 ### Before Fix
 ```
 User: hello
-Assistant: Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I want you to 
+Assistant: Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I want you to
 understand how generative AI applications like this work... [explains 6 components]
 
 User: engineering
@@ -122,11 +122,11 @@ Assistant: I don't have enough information to answer that question about Noah.
 ### After Fix
 ```
 User: hello
-Assistant: Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I want you to 
+Assistant: Hey! 👋 I'm really excited you're here. I'm Noah's AI Assistant, and I want you to
 understand how generative AI applications like this work... [explains 6 components]
 
 User: engineering
-Assistant: Great question! Let me explain the engineering components I mentioned. 
+Assistant: Great question! Let me explain the engineering components I mentioned.
 The 🎨 FRONTEND uses Streamlit for the local chat interface and Next.js for production...
 [provides detailed explanation based on previous context]
 ```
@@ -183,7 +183,7 @@ Assistant: [Knows "cost" refers to the data pipeline just discussed: $0.0001/1K 
 ## Testing Recommendations
 
 ### Manual Testing
-1. **Basic follow-up**: 
+1. **Basic follow-up**:
    - Type "hello" → Then "engineering" → Should explain components
 2. **Multi-turn conversation**:
    - Ask about architecture → Then "show me code" → Should reference previous context
@@ -249,8 +249,8 @@ Now the system maintains context across turns, enabling natural multi-turn conve
 
 ## Deployment
 
-✅ **Committed**: 2021b50  
-✅ **Pushed to main**: October 15, 2025  
+✅ **Committed**: 2021b50
+✅ **Pushed to main**: October 15, 2025
 ✅ **Auto-deployed to Vercel**: Production updated automatically via CI/CD
 
 Users will immediately see improved follow-up query handling in production.
@@ -267,8 +267,8 @@ Users will immediately see improved follow-up query handling in production.
 
 ## Summary
 
-**Problem**: Follow-up queries failed because LLM lacked conversation context  
-**Solution**: Pass chat history through response generator and inject into prompts  
-**Result**: Natural multi-turn conversations now work across all roles  
-**Cost**: Negligible token increase (~$0.00002/query)  
+**Problem**: Follow-up queries failed because LLM lacked conversation context
+**Solution**: Pass chat history through response generator and inject into prompts
+**Result**: Natural multi-turn conversations now work across all roles
+**Cost**: Negligible token increase (~$0.00002/query)
 **Impact**: Major UX improvement - users can now have coherent conversations about system components

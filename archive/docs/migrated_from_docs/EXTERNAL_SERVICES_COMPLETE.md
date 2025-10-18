@@ -369,7 +369,7 @@ def check_services():
     storage = StorageService()
     resend = ResendService()
     twilio = TwilioService()
-    
+
     return {
         'storage': storage.health_check(),
         'email': resend.health_check(),
@@ -602,5 +602,5 @@ def test_sms_health():
 
 All external services are integrated and operational. Ready for Next phase: API & Deployment!
 
-**Last Updated**: October 5, 2025  
+**Last Updated**: October 5, 2025
 **Maintainer**: Noah De La Calzada

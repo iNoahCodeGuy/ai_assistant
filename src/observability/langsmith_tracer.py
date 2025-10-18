@@ -43,15 +43,15 @@ try:
 except ImportError:
     LANGSMITH_AVAILABLE = False
     logger.warning("LangSmith not available. Install with: pip install langsmith")
-    
+
     # Create no-op types and functions if LangSmith not available
     Client = None
-    
+
     def traceable(*args, **kwargs):
         def decorator(func):
             return func
         return decorator if not args else decorator(args[0])
-    
+
     def trace(*args, **kwargs):
         """No-op context manager"""
         class NoOpContext:
@@ -64,10 +64,10 @@ except ImportError:
 
 def initialize_langsmith() -> bool:
     """Initialize LangSmith tracing.
-    
+
     Returns:
         True if LangSmith is configured and ready, False otherwise
-        
+
     Checks:
     1. LANGCHAIN_TRACING_V2 is set to 'true'
     2. LANGCHAIN_API_KEY is set
@@ -76,18 +76,18 @@ def initialize_langsmith() -> bool:
     if not LANGSMITH_AVAILABLE:
         logger.warning("LangSmith not installed. Tracing disabled.")
         return False
-    
+
     tracing_enabled = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
     api_key = os.getenv("LANGCHAIN_API_KEY")
-    
+
     if not tracing_enabled:
         logger.info("LangSmith tracing disabled (LANGCHAIN_TRACING_V2 not set)")
         return False
-    
+
     if not api_key:
         logger.warning("LANGCHAIN_API_KEY not set. Tracing disabled.")
         return False
-    
+
     project = os.getenv("LANGCHAIN_PROJECT", "noahs-ai-assistant")
     logger.info(f"LangSmith initialized. Project: {project}")
     return True
@@ -95,16 +95,16 @@ def initialize_langsmith() -> bool:
 
 def get_langsmith_client():
     """Get LangSmith client if available.
-    
+
     Returns:
         LangSmith client or None if not configured
     """
     if not LANGSMITH_AVAILABLE:
         return None
-    
+
     if not initialize_langsmith():
         return None
-    
+
     try:
         return Client()
     except Exception as e:
@@ -114,13 +114,13 @@ def get_langsmith_client():
 
 def trace_rag_call(func: Callable) -> Callable:
     """Decorator to trace an entire RAG call (retrieve + generate).
-    
+
     Usage:
         @trace_rag_call
         def generate_answer(query: str) -> str:
             # ... RAG logic
             pass
-    
+
     Captures:
     - Query text
     - Retrieved chunks
@@ -133,33 +133,33 @@ def trace_rag_call(func: Callable) -> Callable:
     @traceable(name="rag_pipeline", run_type="chain")
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        
+
         try:
             result = func(*args, **kwargs)
             latency_ms = int((time.time() - start_time) * 1000)
-            
+
             # Log success metrics
             logger.debug(f"RAG call completed in {latency_ms}ms")
-            
+
             return result
-            
+
         except Exception as e:
             latency_ms = int((time.time() - start_time) * 1000)
             logger.error(f"RAG call failed after {latency_ms}ms: {e}")
             raise
-    
+
     return wrapper
 
 
 def trace_retrieval(func: Callable) -> Callable:
     """Decorator to trace retrieval operations.
-    
+
     Usage:
         @trace_retrieval
         def retrieve(query: str, top_k: int = 3) -> List[Dict]:
             # ... retrieval logic
             pass
-    
+
     Captures:
     - Query text
     - Number of chunks retrieved
@@ -171,15 +171,15 @@ def trace_retrieval(func: Callable) -> Callable:
     @traceable(name="retrieval", run_type="retriever")
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        
+
         # Extract query from args
         query = args[0] if args else kwargs.get('query', 'unknown')
         top_k = args[1] if len(args) > 1 else kwargs.get('top_k', 3)
-        
+
         try:
             result = func(*args, **kwargs)
             latency_ms = int((time.time() - start_time) * 1000)
-            
+
             # Extract metrics from result
             if isinstance(result, dict):
                 num_chunks = len(result.get('matches', []))
@@ -190,32 +190,32 @@ def trace_retrieval(func: Callable) -> Callable:
             else:
                 num_chunks = 0
                 scores = []
-            
+
             # Log retrieval metrics
             logger.debug(
                 f"Retrieved {num_chunks} chunks in {latency_ms}ms. "
                 f"Avg similarity: {sum(scores)/len(scores) if scores else 0:.3f}"
             )
-            
+
             return result
-            
+
         except Exception as e:
             latency_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Retrieval failed after {latency_ms}ms: {e}")
             raise
-    
+
     return wrapper
 
 
 def trace_generation(func: Callable) -> Callable:
     """Decorator to trace LLM generation operations.
-    
+
     Usage:
         @trace_generation
         def generate(prompt: str) -> str:
             # ... OpenAI call
             pass
-    
+
     Captures:
     - Prompt text
     - Generated response
@@ -228,35 +228,35 @@ def trace_generation(func: Callable) -> Callable:
     @traceable(name="generation", run_type="llm")
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        
+
         try:
             result = func(*args, **kwargs)
             latency_ms = int((time.time() - start_time) * 1000)
-            
+
             # Extract token usage if available
             tokens_prompt = None
             tokens_completion = None
-            
+
             if hasattr(result, 'usage'):
                 tokens_prompt = result.usage.prompt_tokens
                 tokens_completion = result.usage.completion_tokens
             elif isinstance(result, dict) and 'usage' in result:
                 tokens_prompt = result['usage'].get('prompt_tokens')
                 tokens_completion = result['usage'].get('completion_tokens')
-            
+
             # Log generation metrics
             logger.debug(
                 f"Generated response in {latency_ms}ms. "
                 f"Tokens: {tokens_prompt or '?'} prompt + {tokens_completion or '?'} completion"
             )
-            
+
             return result
-            
+
         except Exception as e:
             latency_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Generation failed after {latency_ms}ms: {e}")
             raise
-    
+
     return wrapper
 
 
@@ -265,9 +265,9 @@ def log_trace_metadata(
     metadata: Dict[str, Any]
 ) -> None:
     """Add metadata to an existing trace.
-    
+
     Useful for adding evaluation metrics after the trace completes.
-    
+
     Args:
         run_id: LangSmith run ID
         metadata: Additional metadata to attach
@@ -275,7 +275,7 @@ def log_trace_metadata(
     client = get_langsmith_client()
     if not client:
         return
-    
+
     try:
         client.update_run(run_id, extra=metadata)
         logger.debug(f"Added metadata to trace {run_id}")
@@ -289,12 +289,12 @@ def create_custom_span(
     run_type: str = "chain"
 ):
     """Create a custom trace span.
-    
+
     Usage:
         with create_custom_span("my_operation", {"input": "data"}):
             # ... operation
             pass
-    
+
     Args:
         name: Span name
         inputs: Input data to log
@@ -308,7 +308,7 @@ def create_custom_span(
             def __exit__(self, *args):
                 pass
         return NoOpContext()
-    
+
     return trace(
         name=name,
         inputs=inputs,

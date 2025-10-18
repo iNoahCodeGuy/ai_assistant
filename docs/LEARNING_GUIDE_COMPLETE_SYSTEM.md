@@ -112,7 +112,7 @@ api/chat → api/support
   - Replace career KB with product docs
   - Add CRM integration (Salesforce, HubSpot)
   - Ticket creation via Zendesk API
-  
+
 Service layer example:
 def get_zendesk_service():
     if not os.getenv("ZENDESK_API_KEY"):
@@ -223,7 +223,7 @@ Add permissions metadata for RLS:
 
 **RAG Pipeline** (Retrieval-Augmented Generation):
 ```
-User query → Embed query → Vector search → Retrieve top-k chunks 
+User query → Embed query → Vector search → Retrieve top-k chunks
            → Assemble context → LLM generation → Response
 ```
 
@@ -322,7 +322,7 @@ def test_retrieval(mock_supabase):
     mock_client = MagicMock()
     mock_client.rpc.return_value.execute.return_value.data = [...]
     mock_supabase.return_value = mock_client
-    
+
     # Test retrieval logic
     results = retriever.retrieve("Python experience")
     assert len(results) == 4

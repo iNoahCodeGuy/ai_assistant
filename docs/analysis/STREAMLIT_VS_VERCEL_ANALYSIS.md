@@ -1,7 +1,7 @@
 # 🤔 Why Streamlit vs Vercel? Architecture Decision Analysis
 
-**Date**: October 11, 2025  
-**Current State**: Running on Streamlit (localhost)  
+**Date**: October 11, 2025
+**Current State**: Running on Streamlit (localhost)
 **Target State**: Deploy to Vercel (production)
 
 ---
@@ -47,9 +47,9 @@
    if st.button("Submit"):
        st.write(get_response(query, role))
    ```
-   
+
    vs.
-   
+
    ```typescript
    // Next.js: ~50 lines for same functionality
    // Component setup, state management, API routes, styling, etc.
@@ -308,14 +308,14 @@ Week 5:
 // pages/api/chat.ts
 export async function POST(req: Request) {
   const { query, role, session_id } = await req.json()
-  
+
   // Call your Python backend
   const response = await fetch('https://your-python-backend.railway.app/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, role, session_id })
   })
-  
+
   return response.json()
 }
 ```

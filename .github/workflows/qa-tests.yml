@@ -1,5 +1,9 @@
 name: Quality Assurance Tests
 
+# Purpose: Core quality assurance - conversation quality + documentation alignment
+# Related: code-display-tests.yml (feature-specific validation with matrix testing)
+# Both workflows required to pass before merging (see branch protection rules)
+
 on:
   push:
     branches: [main, develop]

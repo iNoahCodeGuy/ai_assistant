@@ -37,10 +37,10 @@ export default function Home() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   // API logic
   const sendMessage = async () => { /* 30 lines */ }
-  
+
   // Rendering
   return (
     <div>
@@ -55,12 +55,12 @@ export default function Home() {
 // Clean 50-line orchestrator
 export default function Home() {
   const { messages, sendMessage, loading, input, setInput, selectedRole, setSelectedRole } = useChat()
-  
+
   return (
     <div className="flex flex-col h-screen gradient-bg">
       <ChatHeader role={selectedRole} onRoleChange={setSelectedRole} />
       <ChatMessages messages={messages} loading={loading} />
-      <ChatInput 
+      <ChatInput
         value={input}
         onChange={setInput}
         onSubmit={sendMessage}
@@ -136,12 +136,12 @@ export function ChatMessage({ message, isUser }: ChatMessageProps) {
   return (
     <div className={cn("flex gap-4", isUser ? "justify-end" : "justify-start")}>
       {!isUser && <BotAvatar />}
-      
+
       <MessageBubble isUser={isUser}>
         <MessageContent content={message.content} />
         {message.sources && <MessageSources sources={message.sources} />}
       </MessageBubble>
-      
+
       {isUser && <UserAvatar />}
     </div>
   )

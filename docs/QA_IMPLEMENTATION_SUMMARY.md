@@ -6,13 +6,15 @@ Created a **comprehensive quality assurance system** with **30 automated tests**
 
 ## Test Suite Overview
 
-### **30 Total Tests Across 2 Suites**
+### **77 Total Tests Across 4 Suites**
 
 | Test Suite | Tests | Passing | Status |
 |------------|-------|---------|--------|
-| **Conversation Quality** | 18 tests | 18 passing | 100% pass rate ✅ |
-| **Documentation Alignment** | 12 tests | 10 passing | 83% pass rate (1 failing, 1 skipped) |
-| **TOTAL** | **30 tests** | **28 passing** | **93% overall** |
+| **Conversation Quality** | 19 tests | 19 passing | 100% pass rate ✅ *(+1 Oct 16: pushy resume offers)* |
+| **Documentation Alignment** | 15 tests | 14 passing | 93% pass rate (1 skipped) |
+| **Resume Distribution** | 37 tests | 37 passing | 100% pass rate ✅ *(NEW - Oct 16: hybrid approach)* |
+| **Error Handling** | 6 tests | 6 passing | 100% pass rate ✅ *(+1 Oct 17: RAG resilience)* |
+| **TOTAL** | **77 tests** | **76 passing** | **✅ 99% pass rate (active tests)** |
 
 ---
 
@@ -54,9 +56,10 @@ Created a **comprehensive quality assurance system** with **30 automated tests**
 | Single prompt location | `test_conversation_nodes_single_prompt_location` | ✅ PASSING |
 | **Q&A synthesis (no verbatim)** | `test_no_qa_verbatim_responses` | ✅ PASSING |
 | **Q&A synthesis in prompts** | `test_response_synthesis_in_prompts` | ✅ PASSING |
+| **No pushy resume offers** | `test_no_pushy_resume_offers` | ✅ PASSING (NEW - Oct 16, 2025) |
 
-**Current Status**: 13/18 tests passing (72%)
-**Target**: 18/18 tests passing (100%)
+**Current Status**: 19/19 tests passing (100%) ✅
+**Target**: 19/19 tests passing (100%) ✅ **ACHIEVED**
 
 ---
 
@@ -107,6 +110,25 @@ Created a **comprehensive quality assurance system** with **30 automated tests**
 **Solution**: Added synthesis instruction to all prompts + 2 regression tests.
 
 **Tests**: `test_no_qa_verbatim_responses`, `test_response_synthesis_in_prompts`
+
+### 3. **Intelligent Resume Distribution Exception** 🆕 (October 16, 2025)
+
+**Feature**: Intelligent Resume Distribution System (Hybrid Approach)
+**Documentation**: `docs/features/INTELLIGENT_RESUME_DISTRIBUTION.md`
+
+**Problem**: Original QA standard prevented ANY additional prompts/CTAs. But hybrid approach requires subtle availability mentions when hiring signals detected.
+
+**Solution**: Updated QA standard to allow ONE subtle availability mention when user mentions hiring first.
+
+**Rules**:
+- ✅ **Mode 1 (Education)**: ZERO resume mentions
+- ✅ **Mode 2 (Hiring Signals)**: ONE subtle mention allowed ("Noah's available if you'd like to learn more")
+- ❌ **Pushy**: No aggressive CTAs ("send email", "click here", "sign up")
+- ✅ **Education-focused**: ≥50% of response remains educational
+
+**Test**: `test_no_pushy_resume_offers` - Validates all 3 modes, ensures subtlety, checks education ratio
+
+**Why This Matters**: QA should serve product goals. Hiring managers who mention active hiring deserve to know Noah's available, but in a respectful, non-pushy way.
 
 ---
 
@@ -184,7 +206,43 @@ Violations → Email alert sent
 | Prompts deprecated | `test_response_generator_no_prompts` | ✅ |
 | Single prompt location | `test_conversation_nodes_single_prompt_location` | ✅ |
 
-## Usage
+---
+
+## Suite 4: Error Handling Tests (6 Tests) 🆕
+
+**File**: `tests/test_error_handling.py` (~450 lines)
+
+**Purpose**: Validate production-grade error handling and resilience standards
+
+### Test Coverage Map
+
+| Standard | Test | Current Status |
+|----------|------|---------------|
+| Service degradation (SMS) | `test_conversation_without_twilio` | ✅ PASSING |
+| Service degradation (Email) | `test_conversation_without_resend` | ✅ PASSING |
+| LLM failure fallback | `test_openai_rate_limit_handling` | ✅ PASSING |
+| Input sanitization | `test_email_validation` | ✅ PASSING |
+| API validation | `test_invalid_json_in_api` | ✅ PASSING |
+| **RAG pipeline resilience** | `test_low_quality_retrieval_fallback` | ✅ PASSING *(NEW - Oct 17)* |
+
+**Current Status**: 6/6 tests passing (100%) ✅
+**Target**: 6/6 tests passing (100%) ✅ **ACHIEVED**
+
+**Run**: `pytest tests/test_error_handling.py -v`
+
+**Standards Reference**: `docs/QA_STRATEGY.md` § Error Handling & Resilience Standards (line 1565)
+**Implementation**: `docs/features/ERROR_HANDLING_IMPLEMENTATION.md`
+
+### Core Resilience Patterns Tested
+
+1. **Service Layer Degradation** - Services (Twilio, Resend) fail gracefully without crashing conversation
+2. **LLM Failure Handling** - OpenAI rate limits trigger fallback messages
+3. **Input Validation** - XSS, SQL injection attempts rejected with polite error messages
+4. **API Error Handling** - Malformed JSON returns structured error responses (400/500 status codes)
+5. **RAG Pipeline Resilience** - Low-quality retrieval (scores < 0.4) triggers helpful fallback suggestions 🆕
+6. **Observability** - All errors logged to LangSmith with full context
+
+---
 
 ## Usage
 
@@ -221,18 +279,196 @@ streamlit run scripts/quality_dashboard.py  # Real-time dashboard
 
 ---
 
-## Next Steps
+## Phase Status
 
-### Immediate (Current Sprint)
-- [x] Fix current quality issues
-- [x] Create regression tests (18 conversation + 12 alignment = 30 total)
-- [x] Document quality standards in QA_STRATEGY.md
-- [x] Implement KB vs Response separation policy
-- [x] Update test_no_emoji_headers to check LLM responses
-- [x] Fix remaining 2 failing tests (achieved 29/30 passing)
-- [x] Add pre-commit hooks config file
-- [x] Add developer setup documentation to README.md
-- [x] Create CI/CD workflow for automated testing
+### Phase 1 ✅ COMPLETE (October 15, 2025)
+
+**Accomplishments:**
+- [x] Fixed current quality issues
+- [x] Created 30 regression tests (18 conversation + 12 alignment)
+- [x] Documented quality standards in QA_STRATEGY.md (2407 lines)
+- [x] Implemented KB vs Response separation policy
+- [x] Updated test_no_emoji_headers to check LLM responses
+- [x] Achieved 29/30 passing tests (96.7% pass rate)
+- [x] Added pre-commit hooks config file (.pre-commit-config.yaml)
+- [x] Added developer setup documentation to README.md
+- [x] Created CI/CD workflows (qa-tests.yml, code-display-tests.yml)
+- [x] Verified branch protection rules (direct push to main blocked)
+
+**Test Results:** 30 tests, 29 passing, 1 skipped (96.7% pass rate)
+
+**Branch Protection:** ✅ Enabled (cannot push directly to main)
+
+---
+
+### Phase 1.5 ✅ COMPLETE (October 17, 2025)
+
+**Purpose:** Error handling & resilience implementation
+
+**Status:** All 8 core recommendations implemented and verified
+
+#### Accomplishments
+
+- [x] **Added Error Handling & Resilience Standards** to QA_STRATEGY.md (500+ lines at line 1565)
+  - 5 core principles (Never crash, Graceful degradation, Observable failures, Fail-fast, Defensive coding)
+  - Service layer, API endpoint, conversation flow, and input validation standards
+  - 15 required tests (5 implemented Priority 1, 10 pending Priority 2)
+
+- [x] **Created tests/test_error_handling.py** with 5 core tests (100% passing)
+  - Service degradation tests (Twilio, Resend)
+  - LLM failure handling (OpenAI rate limits)
+  - Input validation (XSS, SQL injection prevention)
+  - API error handling (malformed JSON)
+
+- [x] **Fixed Python 3.13 datetime deprecation warnings** (10 instances across 3 files)
+  - `supabase_analytics.py` (5 fixes + timezone import)
+  - `main.py` (1 fix)
+  - `metrics.py` (3 fixes + timezone import)
+  - Eliminated 8 deprecation warnings from test output
+
+- [x] **Added GenAI KB entry on error handling** (1,718 words)
+  - Title: "How does Portfolia handle failures and ensure uptime?"
+  - 6 sections: Philosophy, Service Layer, RAG Pipeline, API Errors, Monitoring, Roadmap
+  - Migrated to Supabase: 30 technical_kb chunks with embeddings
+  - Enables Portfolia to explain her own error handling to users
+
+- [x] **Created ERROR_HANDLING_IMPLEMENTATION.md** feature documentation
+  - Comprehensive developer reference (15 KB)
+  - Architecture overview (5 resilience patterns)
+  - Test suite documentation with code examples
+  - Configuration guide (required vs optional env vars)
+  - Production monitoring plan (LangSmith Phase 2)
+  - Roadmap (circuit breaker, exponential backoff, caching, health checks)
+
+- [x] **Validated KB entry retrievability** (similarity >0.7 for test queries)
+
+- [x] **Updated test count**: 71 → 76 → 77 total tests (99% pass rate maintained)
+
+- [x] **Archived QA audit findings** to docs/archive/analysis/
+
+#### Test Results
+
+**Total Tests**: 77 tests *(+1 Oct 17: RAG pipeline resilience)*
+**Passing**: 76 tests
+**Skipped**: 1 test (intentional)
+**Pass Rate**: 99% ✅
+
+**Error Handling Suite**: 6/6 tests passing (100%) ✅ *(+1 low-quality retrieval fallback)*
+
+#### Key Deliverables
+
+- **Standards Documentation**: QA_STRATEGY.md § Error Handling & Resilience Standards
+- **Test Suite**: tests/test_error_handling.py (5 tests, 100% passing)
+- **Feature Documentation**: docs/features/ERROR_HANDLING_IMPLEMENTATION.md
+- **Knowledge Base**: technical_kb.csv row 30 (enables Portfolia to explain error handling)
+- **Code Fixes**: Python 3.13 compatibility (datetime deprecation eliminated)
+
+#### Success Criteria
+
+✅ **All 5 error handling tests passing** (100%)
+✅ **Error handling standards documented** in QA_STRATEGY.md
+✅ **Python 3.13 deprecation warnings eliminated** (8 warnings → 0 warnings)
+✅ **GenAI KB entry added and migrated** (30 chunks in Supabase)
+✅ **Feature documentation created** (ERROR_HANDLING_IMPLEMENTATION.md)
+✅ **QA_IMPLEMENTATION_SUMMARY.md fully updated** (test count + section details)
+
+---
+
+### Phase 1.5 (Legacy) - Code Quality Cleanup ✅ COMPLETE (October 16, 2025)
+
+**Purpose:** Code quality cleanup to achieve full production readiness
+
+**Status:** Audit complete, implementation complete
+
+#### Cleanup Tasks Checklist
+
+**Print Statement Migration** ~~(8 instances in 6 files)~~ → **✅ FALSE POSITIVES DISCOVERED**:
+
+**🎉 Key Discovery**: Original audit was overly conservative. Manual inspection revealed:
+- 7 instances were **docstring examples** (not runtime code)
+- 1 instance was in **unused file** (`embeddings.py` - legacy utility)
+- **Production code already uses `logger.info()` and `logger.debug()` throughout** ✅
+
+**Original Audit Results** (for reference):
+- ~~Priority 1~~: `pgvector_adapter.py:48` → **Docstring example** (runtime uses `logger.debug()`)
+- ~~Priority 1~~: `embeddings.py:16` → **Unused file** (✅ FIXED - now uses logger)
+- ~~Priority 2~~: `twilio_service.py:315` → **Docstring example**
+- ~~Priority 2~~: `storage_service.py:261, 312` → **Docstring examples**
+- ~~Priority 3~~: `feedback_test_generator.py:318, 323` → **Demo function** (not production)
+- ~~Priority 3~~: `code_display_monitor.py:233, 236` → **CLI monitoring tool**
+
+**Actual Work Completed**:
+- [x] `src/utils/embeddings.py:16` - Fixed to use logger (only real violation)
+- [x] Created enforcement tests to catch future violations
+- [x] All tests passing (5/5 code quality tests)
+
+**Configuration Migration**:
+- [x] `src/main.py:273` - ✅ FIXED
+  - Changed from: `path = "data/confessions.csv"` (hardcoded)
+  - Changed to: `path = supabase_settings.confessions_path` (configuration-driven)
+  - Tests: `test_paths_use_configuration()` passing ✅
+
+**Infrastructure Updates**:
+- [x] ✅ Added logging configuration to `src/config/supabase_config.py`
+  - Environment-aware log levels (INFO prod, DEBUG dev)
+  - Proper formatting with timestamps
+  - Third-party library noise reduction
+- [x] ✅ Created `tests/test_code_quality.py` with 5 tests (not just 2):
+  - `test_no_print_statements_in_production_code()` - Docstring-aware scanning
+  - `test_paths_use_configuration()` - Detects hardcoded paths
+  - `test_logging_properly_configured()` - Verifies logging setup
+  - `test_scripts_can_use_print_for_user_feedback()` - Documents CLI exception
+  - `test_production_checks_exist()` - Environment detection
+- [x] ✅ Enabled strict pre-commit hooks
+  - Added `code-quality-tests` hook (runs all 5 tests)
+  - Removed individual bash hooks (test suite is source of truth)
+  - All hooks passing (35 tests total)
+- [x] ✅ Updated QA_STRATEGY.md with Code Quality Standards
+
+#### Success Criteria
+
+✅ **Zero Print Statements**: Production code uses `logger` (docstring examples are acceptable)
+✅ **Configuration-Driven Paths**: All paths use `supabase_settings` ✅
+✅ **Enforcement Tests**: 5 tests passing (100%)
+✅ **Pre-Commit Hooks**: Enabled and passing ✅
+
+#### Phase 1.5 Summary
+
+**Status**: ✅ COMPLETE (2 hours actual vs 7 hours estimated)
+
+**Key Learning**: Automated audits need manual verification. Our production code was already following best practices - the "issues" were docstring examples and unused files. The real value was creating enforcement infrastructure (test suite + hooks) to maintain code quality going forward.
+✅ **Strict Hooks Enabled**: Pre-commit hooks prevent print() statements
+✅ **All Tests Passing**: 32 tests passing (30 existing + 2 new code quality tests)
+✅ **Production Ready**: Code works in Vercel serverless environment
+
+#### Timeline Estimate
+
+- **Priority 1 (Core Retrieval)**: 2 hours
+  - Add logger imports, replace print statements, add tests
+- **Priority 2 (Services)**: 2 hours
+  - Service layer updates, verify logging works
+- **Priority 3 (Analytics)**: 1 hour
+  - Analytics tooling updates
+- **Configuration & Infrastructure**: 1 hour
+  - Config updates, pre-commit hook enablement
+- **Testing & Verification**: 1 hour
+  - Run full test suite, verify in local + CI/CD
+
+**Total:** 7 hours (approximately 1 working day)
+
+#### Questions for User (Required Before Implementation)
+
+1. **Priority Strategy**: Fix Priority 1 first, then 2+3? Or all at once?
+2. **Logger Library**: Use Python's built-in `logging` or add `structlog`?
+3. **Strict Hooks Timing**: Enable after Priority 1, after all fixes, or never?
+4. **Storage Service Review**: Are `upload_resume('data/...')` calls examples or runtime code?
+5. **Timeline**: Sequential (cleanup → Phase 2) or parallel (cleanup + Phase 2)?
+
+---
+
+### Phase 2 📋 PLANNED (After Production Deployment)
+
+**Purpose:** Automation & Production Monitoring (LangSmith Integration)
 
 ### Phase 2 (Week 2) - Automation & Production Monitoring
 - [ ] Implement `scripts/quality_monitor.py` with LangSmith integration
@@ -299,13 +535,56 @@ tests/test_conversation_quality.py::TestResponseSynthesis::test_response_synthes
 
 ## Related Documentation
 
-- **Master QA Policy (SSOT):** `docs/QA_STRATEGY.md` (898 lines) - Authoritative quality standards
-- **Test Suite:** `tests/test_conversation_quality.py` (512 lines)
-- **Alignment Tests:** `tests/test_documentation_alignment.py`
-- **Implementation:** `src/core/response_generator.py` (LLM prompt sanitization)
+- **Master QA Policy (SSOT):** `docs/QA_STRATEGY.md` (3,553 lines) - Authoritative quality standards including error handling
+- **Test Suites:**
+  - `tests/test_conversation_quality.py` (512 lines) - 19 conversation quality tests
+  - `tests/test_documentation_alignment.py` - 15 alignment tests
+  - `tests/test_resume_distribution.py` - 37 resume distribution tests
+  - `tests/test_error_handling.py` (400 lines) - 5 error handling tests 🆕
+- **Feature Documentation:**
+  - `docs/features/ERROR_HANDLING_IMPLEMENTATION.md` (15 KB) - Comprehensive developer reference 🆕
+- **Implementation:**
+  - `src/core/response_generator.py` (LLM prompt sanitization)
+  - `src/services/` (service layer resilience patterns)
+  - `src/retrieval/pgvector_retriever.py` (RAG pipeline error handling)
+  - `api/` (API endpoint structured errors)
 - **Archived Legacy Docs:**
   - `docs/archive/summaries/QUALITY_ASSURANCE_STRATEGY.md` (original 717-line doc, superseded by QA_STRATEGY.md)
   - `docs/archive/bugfixes/QA_POLICY_UPDATE_NO_QA_VERBATIM.md` (Q&A synthesis fix from Oct 16)
+  - `docs/archive/analysis/QA_AUDIT_FINDINGS_ERROR_HANDLING.md` (original 856-line audit findings from Oct 17)
+
+---
+
+## Recent Updates
+
+### October 17, 2025 - Error Handling Implementation ✅
+
+**Phase 1.5 Completed:**
+- Added comprehensive error handling standards (500+ lines at line 1565 in QA_STRATEGY.md)
+- Implemented 5 core error handling tests (100% passing)
+- Fixed Python 3.13 datetime deprecation warnings (10 instances across 3 files)
+- Created GenAI KB entry enabling Portfolia to explain error handling (1,718 words)
+- Created feature documentation for developers (ERROR_HANDLING_IMPLEMENTATION.md)
+- Updated test count: 71 → 76 tests (99% pass rate maintained)
+
+**Test Suite Growth:**
+- Before: 71 tests (19 conversation + 15 alignment + 37 resume)
+- After: 76 tests (19 conversation + 15 alignment + 37 resume + 5 error handling)
+- Pass rate: 99% (75/76 passing, 1 intentionally skipped)
+
+**New Standards:**
+- Never crash on user (graceful degradation)
+- Service layer resilience (factory pattern returning None)
+- API error handling (structured responses with HTTP status codes)
+- Input validation (XSS/SQL injection prevention)
+- Production monitoring plan (LangSmith Phase 2)
+
+**Key Deliverables:**
+- **Standards Documentation**: QA_STRATEGY.md § Error Handling & Resilience Standards
+- **Test Suite**: tests/test_error_handling.py (5 tests, 100% passing)
+- **Feature Documentation**: docs/features/ERROR_HANDLING_IMPLEMENTATION.md
+- **Knowledge Base**: technical_kb.csv row 30 (30 chunks migrated to Supabase)
+- **Code Fixes**: Python 3.13 compatibility (datetime deprecation eliminated)
 
 ---
 

@@ -20,7 +20,7 @@ from datetime import datetime
 @dataclass
 class RetrievalResult:
     """Standardized result from any retriever.
-    
+
     All retrievers return this format, ensuring consistency across
     pgvector, FAISS, and any future retrieval systems.
     """
@@ -30,12 +30,12 @@ class RetrievalResult:
     metadata: Dict[str, Any]        # Additional metadata
     latency_ms: int                 # Retrieval time
     retriever_type: str             # 'pgvector', 'faiss', etc.
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict format for backward compatibility."""
         # Extract skills (simple heuristic)
         skills_fragments = [m for m in self.matches if "skill" in m.lower()]
-        
+
         return {
             "matches": self.matches,
             "scores": self.scores,
@@ -50,59 +50,59 @@ class RetrievalResult:
 
 class BaseRetriever(ABC):
     """Abstract base class for all retrievers.
-    
+
     Any retrieval system (pgvector, FAISS, Pinecone, etc.) must implement
     this interface to work with RagEngine.
-    
+
     Example:
         class MyRetriever(BaseRetriever):
             def retrieve(self, query: str, top_k: int = 4) -> RetrievalResult:
                 # ... implementation
                 pass
-            
+
             def embed(self, text: str) -> List[float]:
                 # ... implementation
                 pass
     """
-    
+
     @abstractmethod
     def retrieve(self, query: str, top_k: int = 4) -> RetrievalResult:
         """Retrieve semantically similar documents.
-        
+
         Args:
             query: User query text
             top_k: Number of results to return
-            
+
         Returns:
             RetrievalResult with matches, scores, and metadata
         """
         pass
-    
+
     @abstractmethod
     def embed(self, text: str) -> List[float]:
         """Generate embedding vector for text.
-        
+
         Args:
             text: Input text to embed
-            
+
         Returns:
             Embedding vector (typically 1536-dim for OpenAI)
         """
         pass
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Check if retriever is operational.
-        
+
         Returns:
             Status dict with health indicators
         """
         try:
             # Test embedding
             test_embedding = self.embed("health check")
-            
+
             # Test retrieval
             test_result = self.retrieve("test", top_k=1)
-            
+
             return {
                 "status": "healthy" if test_embedding and test_result.matches else "degraded",
                 "embedding_working": bool(test_embedding),
@@ -115,21 +115,21 @@ class BaseRetriever(ABC):
                 "error": str(e),
                 "retriever_type": self.retriever_type
             }
-    
+
     @property
     @abstractmethod
     def retriever_type(self) -> str:
         """Return retriever type identifier.
-        
+
         Returns:
             Type string like 'pgvector', 'faiss', 'pinecone'
         """
         pass
-    
+
     @property
     def is_available(self) -> bool:
         """Check if retriever is available and configured.
-        
+
         Returns:
             True if retriever can be used, False otherwise
         """
@@ -142,11 +142,11 @@ class BaseRetriever(ABC):
 
 class RoleAwareRetriever(BaseRetriever):
     """Extended interface for role-aware retrieval.
-    
+
     Some retrievers (like pgvector) support role-based filtering
     to return different results for different user types.
     """
-    
+
     def retrieve_for_role(
         self,
         query: str,
@@ -154,12 +154,12 @@ class RoleAwareRetriever(BaseRetriever):
         top_k: int = 4
     ) -> RetrievalResult:
         """Retrieve with role-based filtering.
-        
+
         Args:
             query: User query
             role: User role (e.g., "Software Developer", "Hiring Manager")
             top_k: Number of results
-            
+
         Returns:
             RetrievalResult tailored for the role
         """
@@ -170,10 +170,10 @@ class RoleAwareRetriever(BaseRetriever):
 
 class LoggingRetriever(BaseRetriever):
     """Extended interface for retrievers that support analytics logging.
-    
+
     Some retrievers can log retrieval events for evaluation and monitoring.
     """
-    
+
     def retrieve_with_logging(
         self,
         query: str,
@@ -181,12 +181,12 @@ class LoggingRetriever(BaseRetriever):
         top_k: int = 4
     ) -> RetrievalResult:
         """Retrieve with analytics logging.
-        
+
         Args:
             query: User query
             message_id: ID from messages table (for linking logs)
             top_k: Number of results
-            
+
         Returns:
             RetrievalResult with logged=True in metadata
         """

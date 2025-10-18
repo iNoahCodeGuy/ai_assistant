@@ -1,7 +1,7 @@
 # 🤖 Copilot Context — Noah’s AI Assistant (Full-Stack + LangGraph System)
 
 ## 🎯 Product Overview
-Noah’s AI Assistant is a **full-stack Retrieval-Augmented Generation (RAG)** application serving as an **interactive résumé and AI portfolio assistant**. 
+Noah’s AI Assistant is a **full-stack Retrieval-Augmented Generation (RAG)** application serving as an **interactive résumé and AI portfolio assistant**.
 It’s built to demonstrate **senior-level AI system design** with code clarity that’s easy for a **junior developer** to understand.
 
 The project showcases:
@@ -165,5 +165,5 @@ When writing code:
 ---
 
 ## 📈 Summary Directive
-> You are helping maintain Noah’s AI Assistant — a LangGraph-based, Supabase-backed RAG system that adapts to five user roles (hiring managers, developers, explorers, confessors). 
+> You are helping maintain Noah’s AI Assistant — a LangGraph-based, Supabase-backed RAG system that adapts to five user roles (hiring managers, developers, explorers, confessors).
 > Code should be succinct, modular, and well-commented, showing senior-level architecture and data handling while remaining clear and educational for junior developers.

@@ -15,17 +15,17 @@ def test_imports_kb_exists():
     """Verify imports_kb.csv exists and is readable."""
     print("✓ Checking imports_kb.csv existence...")
     imports_kb_path = Path(__file__).parent / "data" / "imports_kb.csv"
-    
+
     if not imports_kb_path.exists():
         print(f"❌ FAIL: {imports_kb_path} not found")
         return False
-    
+
     with open(imports_kb_path, 'r') as f:
         lines = f.readlines()
         if len(lines) < 2:  # Header + at least one entry
             print(f"❌ FAIL: imports_kb.csv is empty or malformed")
             return False
-    
+
     print(f"✅ PASS: Found {len(lines)-1} import entries")
     return True
 
@@ -53,18 +53,18 @@ def test_content_blocks_functions():
     print("\n✓ Checking content_blocks functions...")
     try:
         from src.flows import content_blocks
-        
+
         required_functions = [
             'format_code_snippet',
             'format_import_explanation',
             'code_display_guardrails'
         ]
-        
+
         for func_name in required_functions:
             if not hasattr(content_blocks, func_name):
                 print(f"❌ FAIL: Missing function {func_name}")
                 return False
-        
+
         print(f"✅ PASS: All {len(required_functions)} content block functions present")
         return True
     except Exception as e:
@@ -78,23 +78,23 @@ def test_conversation_nodes_updated():
     try:
         from src.flows.conversation_nodes import classify_query, plan_actions
         from src.flows.conversation_state import ConversationState
-        
+
         # Test code display trigger
         state = ConversationState(role="Software Developer", query="show me the code")
         result = classify_query(state)
-        
+
         if not result.fetch("code_display_requested"):
             print("❌ FAIL: Code display trigger not working")
             return False
-        
+
         # Test import explanation trigger
         state2 = ConversationState(role="Software Developer", query="why use Supabase?")
         result2 = classify_query(state2)
-        
+
         if not result2.fetch("import_explanation_requested"):
             print("❌ FAIL: Import explanation trigger not working")
             return False
-        
+
         print("✅ PASS: Conversation node triggers working correctly")
         return True
     except Exception as e:
@@ -112,24 +112,24 @@ def test_import_retrieval_works():
             get_import_explanation,
             detect_import_in_query
         )
-        
+
         # Test getting an explanation
         result = get_import_explanation("openai", "Software Developer")
-        
+
         if not result:
             print("❌ FAIL: No explanation returned for 'openai'")
             return False
-        
+
         if result["tier"] != "2":
             print(f"❌ FAIL: Wrong tier returned (got {result['tier']}, expected 2)")
             return False
-        
+
         # Test library detection
         detected = detect_import_in_query("why use supabase for this project?")
         if detected != "supabase":
             print(f"❌ FAIL: Library detection failed (got {detected}, expected supabase)")
             return False
-        
+
         print("✅ PASS: Import retrieval working correctly")
         print(f"   - Retrieved tier 2 explanation for OpenAI")
         print(f"   - Detected 'supabase' in query")
@@ -146,11 +146,11 @@ def test_api_integration():
     print("\n✓ Checking Vercel API integration...")
     try:
         sys.path.insert(0, str(Path(__file__).parent / "api"))
-        
+
         # Try importing the API handler (without running it)
         from src.flows.conversation_flow import run_conversation_flow
         from src.core.rag_engine import RagEngine
-        
+
         print("✅ PASS: Vercel API imports work")
         return True
     except Exception as e:
@@ -166,7 +166,7 @@ def main():
     print("🚀 VERCEL DEPLOYMENT VERIFICATION")
     print("   Code Display & Import Explanation Features")
     print("=" * 70)
-    
+
     tests = [
         test_imports_kb_exists,
         test_import_retriever_loads,
@@ -175,7 +175,7 @@ def main():
         test_import_retrieval_works,
         test_api_integration,
     ]
-    
+
     results = []
     for test_func in tests:
         try:
@@ -183,17 +183,17 @@ def main():
         except Exception as e:
             print(f"❌ FAIL: Unexpected error in {test_func.__name__}: {e}")
             results.append(False)
-    
+
     print("\n" + "=" * 70)
     print("📊 VERIFICATION RESULTS")
     print("=" * 70)
-    
+
     passed = sum(results)
     total = len(results)
-    
+
     print(f"\n✅ Passed: {passed}/{total} tests")
     print(f"{'❌' if passed < total else '✅'} Failed: {total - passed}/{total} tests")
-    
+
     if passed == total:
         print("\n🎉 ALL TESTS PASSED - READY FOR DEPLOYMENT!")
         print("\nTo deploy to Vercel:")

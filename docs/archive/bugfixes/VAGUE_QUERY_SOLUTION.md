@@ -116,7 +116,7 @@ Enhanced `generate_answer()` with two fallback conditions:
 #### Condition 1: Vague Query with No Matches
 ```python
 if state.fetch("vague_query_expanded", False) and len(retrieved_chunks) == 0:
-    fallback_answer = """I'd love to answer your question about "{original_query}"! 
+    fallback_answer = """I'd love to answer your question about "{original_query}"!
 
 Could you be more specific? For example:
 - If you're curious about my engineering skills, try: "What are your software engineering skills?"

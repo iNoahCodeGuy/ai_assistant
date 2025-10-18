@@ -7,7 +7,7 @@ to improve maintainability and consistency.
 # Chart colors for consistent theming
 CHART_COLORS = {
     'primary': '#1f77b4',
-    'secondary': '#ff7f0e', 
+    'secondary': '#ff7f0e',
     'tertiary': '#2ca02c',
     'quaternary': '#d62728',
     'hiring_managers': '#1f77b4',
@@ -48,13 +48,13 @@ TAB_CONFIG = [
         'key': 'user_behavior'
     },
     {
-        'emoji': '💡', 
+        'emoji': '💡',
         'title': 'Content Insights',
         'key': 'content_insights'
     },
     {
         'emoji': '📈',
-        'title': 'Business Intelligence', 
+        'title': 'Business Intelligence',
         'key': 'business_intelligence'
     },
     {

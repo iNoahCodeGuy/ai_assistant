@@ -61,16 +61,16 @@ async function sendMessage(query: string, role: string) {
       user_name: userName
     })
   });
-  
+
   const data = await response.json();
-  
+
   if (data.success) {
     // Display answer
     setMessages([...messages, {
       role: 'assistant',
       content: data.answer
     }]);
-    
+
     // Handle actions
     if (data.actions_taken.includes('send_resume')) {
       showResumeConfirmation();
@@ -93,9 +93,9 @@ async function requestResume() {
       message: 'Requested via chat'
     })
   });
-  
+
   const data = await response.json();
-  
+
   if (data.success) {
     alert('Resume sent! Check your email.');
   }
@@ -119,7 +119,7 @@ async function submitFeedback(rating: number, comment: string, contactRequested:
       user_phone: userPhone
     })
   });
-  
+
   const data = await response.json();
   alert(data.message);
 }
@@ -138,7 +138,7 @@ async function submitConfession(message: string, isAnonymous: boolean, contactIn
       ...(isAnonymous ? {} : contactInfo)
     })
   });
-  
+
   const data = await response.json();
   alert(data.message);
 }

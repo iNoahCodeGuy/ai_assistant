@@ -1,5 +1,9 @@
 name: Code Display Tests
 
+# Purpose: Feature-specific validation with matrix testing across Python versions
+# Related: qa-tests.yml (core quality assurance - conversation + documentation)
+# Both workflows required to pass before merging (see branch protection rules)
+
 on:
   push:
     branches: [ main, develop ]

@@ -13,7 +13,7 @@ When users asked "how does this product work?", the response had multiple UX iss
 
 💡 **Would you like me to show you:**
 - The data analytics Noah collects
-- The RAG system code  
+- The RAG system code
 - Noah's LangGraph workflow diagram
 
 ### 🎯 Product Purpose
@@ -48,7 +48,7 @@ elif role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
 
 This method had **8 different categories** × **3 role variants** = 24+ follow-up prompt variations!
 
-### Source 2: conversation_nodes.py  
+### Source 2: conversation_nodes.py
 Lines 278-307 had emoji-heavy section headers:
 ```python
 components.append("\n\n### 🎯 Product Purpose\n" + content_blocks.purpose_block())
@@ -69,15 +69,15 @@ The LLM itself was generating "## 🔍 How It Works" headers because it learned 
 ```python
 def add_followup_suggestions(self, response: str, query: str, role: str) -> str:
     """Add context-aware follow-up suggestions to engage the user."""
-    
+
     # Multi-choice follow-up suggestions based on context and role
     followup_text = ""
-    
+
     # For enterprise/scale/business queries - NEW CATEGORY
     if any(term in query_lower for term in ["enterprise", "scale", "company"...]):
         followup_text = "\n\n🏢 **Would you like me to show you:**\n..."
     # [80 more lines of conditionals]
-    
+
     return response + followup_text
 ```
 
@@ -85,7 +85,7 @@ def add_followup_suggestions(self, response: str, query: str, role: str) -> str:
 ```python
 def add_followup_suggestions(self, response: str, query: str, role: str) -> str:
     """Add context-aware follow-up suggestions to engage the user.
-    
+
     NOTE: This method is deprecated. Follow-up prompts are now handled by
     conversation_nodes.apply_role_context() to avoid duplicates and provide
     cleaner, more conversational interactions.
@@ -276,7 +276,7 @@ state = apply_role_context(state, rag_engine)
 ## Deployment
 
 - **Commit**: 0f7455b
-- **Branch**: main  
+- **Branch**: main
 - **Status**: ✅ Deployed to production
 - **Vercel**: Auto-deployment triggered
 
