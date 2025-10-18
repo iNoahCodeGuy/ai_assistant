@@ -67,6 +67,16 @@
    - 11.2 [Solution: 3-Layer Protection](#solution-automated-documentation-registration)
    - 11.3 [Pre-Commit Hook Implementation](#step-1-add-pre-commit-hook-for-new-md-files)
 
+#### 12. [Design Principles](#design-principles-for-langgraph-migration) 🆕
+   - 12.1 [Cohesion & SRP](#1-cohesion--single-responsibility-principle-srp)
+   - 12.2 [Encapsulation & Abstraction](#2-encapsulation--abstraction)
+   - 12.3 [Loose Coupling & Modularity](#3-loose-coupling--modularity)
+   - 12.4 [Reusability & Extensibility](#4-reusability--extensibility)
+   - 12.5 [Portability](#5-portability)
+   - 12.6 [Defensibility](#6-defensibility-fail-fast-fail-safe-fail-loud)
+   - 12.7 [Maintainability & Testability](#7-maintainability--testability)
+   - 12.8 [Simplicity (KISS, DRY, YAGNI)](#8-simplicity-kiss-dry-yagni)
+
 ---
 
 ## For New Developers (Start Here)
@@ -163,6 +173,692 @@ pytest tests/ -k "emoji" -v
 - [ ] Include test results in PR description
 - [ ] Reference related documentation updates
 - [ ] Note any intentional test changes
+
+---
+
+## Design Principles for LangGraph Migration
+
+**Purpose:** Foundational principles for building production-grade LangGraph applications
+**Source:** [QUICK_REFERENCE.md](https://github.com/iNoahCodeGuy/NoahsAIAssistant-/blob/main/QUICK_REFERENCE.md)
+**Context:** These principles guide the migration from functional pipeline to actual LangGraph library
+
+---
+
+### 1. Cohesion & Single Responsibility Principle (SRP)
+
+**Rule:** One node, one job - Each node should have only one reason to change
+
+**Why This Matters for LangGraph:**
+- LangGraph visualizes your flow as a DAG (Directed Acyclic Graph)
+- Each node appears as a box in the visual debugger
+- If a node does multiple things, debugging becomes harder
+- High cohesion = related functionality grouped, unrelated functionality separated
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Single responsibility per node
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    """ONLY classifies query type, nothing else."""
+    query_type = _determine_type(state["query"])
+    return {"query_type": query_type}
+
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """ONLY retrieves relevant chunks, nothing else."""
+    chunks = rag_engine.retrieve(state["query"], top_k=4)
+    return {"retrieved_chunks": chunks.get("chunks", [])}
+
+# Graph construction
+graph_builder.add_node("classify", classify_query)
+graph_builder.add_node("retrieve", retrieve_chunks)
+graph_builder.add_edge("classify", "retrieve")  # Clear separation
+
+# ❌ BAD: Multiple responsibilities in one node
+def classify_and_retrieve(state: ConversationState) -> Dict[str, Any]:
+    """Does TWO things - violates SRP, hard to debug."""
+    query_type = _determine_type(state["query"])
+    chunks = rag_engine.retrieve(state["query"])  # Should be separate node!
+    return {"query_type": query_type, "retrieved_chunks": chunks}
+```
+
+**Ask yourself:** "Can I describe this node's purpose in one sentence without using 'and'?"
+
+**Test Standard:**
+```python
+def test_node_single_responsibility():
+    """Ensure each node has one clear purpose."""
+    # Each node should update only its designated state keys
+    state = {"query": "test"}
+
+    result = classify_query(state)
+    assert set(result.keys()) == {"query_type"}, "Node should only set query_type"
+
+    result = retrieve_chunks(state)
+    assert set(result.keys()) == {"retrieved_chunks"}, "Node should only set chunks"
+```
+
+---
+
+### 2. Encapsulation & Abstraction
+
+**Rule:** Hide the details, show the interface - Keep internal state private, expose behavior
+
+**Why This Matters for LangGraph:**
+- Nodes are the public interface to your graph
+- Internal implementation (helpers, utils) should be hidden
+- Abstracts away complexity from the graph visualization
+- Makes nodes easier to test in isolation
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Encapsulated node with hidden implementation
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """Public interface - clean and simple."""
+    try:
+        chunks = _fetch_from_pgvector(state["query"])  # Private helper
+        return {"retrieved_chunks": chunks}
+    except Exception as e:
+        logger.error(f"Retrieval failed: {e}")
+        return {
+            "retrieved_chunks": [],
+            "error": "retrieval_failed",
+            "error_message": "I'm having trouble accessing information right now."
+        }
+
+def _fetch_from_pgvector(query: str) -> List[Dict]:
+    """Private implementation - users don't see this in graph."""
+    # Complex pgvector logic, embedding generation, similarity search
+    embeddings = _generate_embeddings(query)
+    results = supabase.rpc("search_kb_chunks", {
+        "query_embedding": embeddings,
+        "match_count": 4
+    })
+    return _parse_results(results)
+
+# ❌ BAD: Implementation details exposed in node
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """Too much implementation detail - hard to test."""
+    embeddings = openai.embeddings.create(
+        input=state["query"],
+        model="text-embedding-3-small"
+    ).data[0].embedding
+
+    results = supabase.rpc("search_kb_chunks", {
+        "query_embedding": embeddings,
+        "match_count": 4
+    }).execute()
+
+    chunks = [{"content": r["content"], "score": r["similarity"]} for r in results.data]
+    return {"retrieved_chunks": chunks}
+```
+
+**Ask yourself:** "If I change this internal implementation, will client code (the graph) break?"
+
+**Test Standard:**
+```python
+def test_node_encapsulation():
+    """Ensure nodes hide implementation details."""
+    with patch('src.retrieval.pgvector_retriever.get_retriever') as mock:
+        # Should be able to swap implementation without changing node interface
+        mock.return_value.retrieve.return_value = {"chunks": [{"content": "test"}]}
+
+        state = {"query": "test"}
+        result = retrieve_chunks(state)
+
+        assert "retrieved_chunks" in result, "Interface maintained despite implementation change"
+```
+
+---
+
+### 3. Loose Coupling & Modularity
+
+**Rule:** Nodes communicate ONLY via state, not direct function calls
+
+**Why This Matters for LangGraph:**
+- **CRITICAL** - This is how LangGraph works!
+- Nodes are vertices in a graph, edges define data flow
+- Direct function calls bypass the graph orchestration
+- Loose coupling = nodes can be reordered, removed, or replaced without breaking others
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Loose coupling via state
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    """Outputs to state only."""
+    return {"query_type": "technical"}
+
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """Reads from state only."""
+    query_type = state.get("query_type")  # Input from previous node via state
+    if query_type == "greeting":
+        return {"retrieved_chunks": []}  # Skip retrieval
+
+    chunks = rag_engine.retrieve(state["query"], top_k=4)
+    return {"retrieved_chunks": chunks}
+
+# Graph construction enforces loose coupling
+graph_builder.add_node("classify", classify_query)
+graph_builder.add_node("retrieve", retrieve_chunks)
+graph_builder.add_edge("classify", "retrieve")  # Data flows via state
+
+# ❌ BAD: Tight coupling via direct calls
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    result = {"query_type": "technical"}
+    # DON'T DO THIS! Bypasses graph orchestration
+    chunks = retrieve_chunks(result)  # Direct call breaks LangGraph!
+    return {**result, **chunks}
+```
+
+**Ask yourself:** "Can I test this node without instantiating half my system?"
+
+**Why This is Critical:**
+- LangGraph's `.compile()` method builds the execution plan
+- Direct function calls skip this plan, breaking conditional edges, retries, and observability
+- Every arrow in the LangSmith trace represents a state transition - direct calls are invisible
+
+**Test Standard:**
+```python
+def test_nodes_loosely_coupled():
+    """Ensure nodes don't call each other directly."""
+    import inspect
+
+    source = inspect.getsource(classify_query)
+    assert "retrieve_chunks(" not in source, "Nodes must not call other nodes directly"
+
+    # Nodes should accept state and return dict only
+    state = {"query": "test"}
+    result = classify_query(state)
+    assert isinstance(result, dict), "Node must return dict for state update"
+```
+
+---
+
+### 4. Reusability & Extensibility
+
+**Rule:** Open for extension, closed for modification - Use composition over inheritance
+
+**Why This Matters for LangGraph:**
+- Graphs should be extensible without editing existing nodes
+- Conditional edges enable branching without modifying nodes
+- New nodes can be added to handle new cases
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Extensible via conditional edges
+def should_retrieve(state: ConversationState) -> str:
+    """Router function - easily extended for new cases."""
+    if state.get("is_greeting"):
+        return "skip_retrieval"
+    if state.get("resume_explicitly_requested"):
+        return "handle_resume"
+    # Easy to add new conditions without modifying nodes
+    return "retrieve"
+
+graph_builder.add_conditional_edges(
+    "classify",
+    should_retrieve,
+    {
+        "retrieve": "retrieve_chunks",
+        "skip_retrieval": "generate_answer",
+        "handle_resume": "handle_resume_request"
+    }
+)
+
+# Adding new functionality = add new route, don't modify existing nodes
+graph_builder.add_node("handle_resume", handle_resume_request)  # NEW NODE
+
+# ❌ BAD: Hard-coded behavior in node (closed for extension)
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    if "hello" in state["query"].lower():
+        return {"query_type": "greeting"}
+    elif "resume" in state["query"].lower():
+        return {"query_type": "resume"}
+    # Adding new type requires editing this function!
+    else:
+        return {"query_type": "general"}
+```
+
+**Ask yourself:** "Can I add new functionality without editing existing code?"
+
+**Test Standard:**
+```python
+def test_graph_extensibility():
+    """Ensure graph can be extended without modifying existing nodes."""
+    # Original graph
+    graph1 = graph_builder.compile()
+
+    # Extended graph (add new node without modifying existing ones)
+    graph_builder.add_node("new_feature", new_feature_node)
+    graph_builder.add_conditional_edges("classify", router, {
+        "existing": "retrieve",
+        "new": "new_feature"  # New route
+    })
+    graph2 = graph_builder.compile()
+
+    # Original nodes should work identically
+    state1 = graph1.invoke({"query": "test"})
+    state2 = graph2.invoke({"query": "test"})
+    assert state1["query_type"] == state2["query_type"], "Extension doesn't break existing behavior"
+```
+
+---
+
+### 5. Portability
+
+**Rule:** Write once, run anywhere - Use cross-platform libraries and environment variables
+
+**Why This Matters for LangGraph:**
+- Graphs should run on local dev (Mac/Windows), CI/CD (Linux), and production (Vercel serverless)
+- Configuration should be environment-aware
+- No hardcoded paths or platform-specific assumptions
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Portable configuration
+from pathlib import Path
+import os
+
+def load_configuration(state: ConversationState) -> Dict[str, Any]:
+    """Portable - works on any platform."""
+    # Use pathlib for cross-platform paths
+    data_dir = Path(__file__).parent.parent / "data"
+    kb_path = data_dir / "career_kb.csv"
+
+    # Use environment variables for config
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    temperature = float(os.getenv("TEMPERATURE", "0.7"))
+
+    return {
+        "kb_path": str(kb_path),
+        "model": model,
+        "temperature": temperature
+    }
+
+# ❌ BAD: Platform-specific hardcoded paths
+def load_configuration(state: ConversationState) -> Dict[str, Any]:
+    """Won't work on Windows or in Vercel."""
+    kb_path = "/Users/noah/project/data/career_kb.csv"  # Mac-specific!
+    model = "gpt-4o-mini"  # Hardcoded - can't change in production
+    return {"kb_path": kb_path, "model": model}
+```
+
+**Ask yourself:** "Will this work on Linux, Windows, and Mac?"
+
+**Test Standard:**
+```python
+def test_node_portability():
+    """Ensure nodes use portable paths and configs."""
+    import platform
+
+    state = {"query": "test"}
+    result = load_configuration(state)
+
+    # Paths should use os.sep or pathlib
+    kb_path = result["kb_path"]
+    assert os.path.exists(kb_path), f"Path should exist on {platform.system()}"
+
+    # No hardcoded /Users/ or C:\\ paths
+    assert "/Users/" not in kb_path or platform.system() == "Darwin"
+    assert "C:\\" not in kb_path or platform.system() == "Windows"
+```
+
+---
+
+### 6. Defensibility (Fail-Fast, Fail-Safe, Fail-Loud)
+
+**Rule:** Validate input immediately, degrade gracefully, log failures observably
+
+**Why This Matters for LangGraph:**
+- **Critical for production** - One failing node shouldn't crash the entire graph
+- Graphs should continue executing even when individual nodes fail
+- Errors should be visible in LangSmith traces
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Defensive node with fail-fast, fail-safe, fail-loud
+from src.observability import trace_generation
+
+@trace_generation(name="retrieve_chunks")  # Fail-loud: Observable in LangSmith
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """Defensive node with comprehensive error handling."""
+
+    # FAIL-FAST: Validate input immediately
+    if not state.get("query"):
+        logger.warning("Empty query in retrieve_chunks")
+        return {
+            "retrieved_chunks": [],
+            "error": "empty_query",
+            "error_message": "I need a question to search for information."
+        }
+
+    if len(state["query"]) > 10000:
+        raise ValueError("Query too long (>10k chars) - possible attack")  # Fail-fast on abuse
+
+    try:
+        # Attempt primary operation
+        chunks = rag_engine.retrieve(state["query"], top_k=4)
+
+        if not chunks or len(chunks) == 0:
+            # FAIL-SAFE: Provide fallback even on empty results
+            logger.info(f"No chunks found for query: {state['query'][:100]}")
+            return {
+                "retrieved_chunks": [],
+                "error": "no_results",
+                "error_message": "I don't have specific information about that, but I can try to help based on general knowledge."
+            }
+
+        return {"retrieved_chunks": chunks}
+
+    except Exception as e:
+        # FAIL-LOUD: Log to LangSmith with full context
+        logger.error(f"Retrieval failed: {e}", extra={
+            "query": state.get("query"),
+            "role": state.get("role"),
+            "error_type": type(e).__name__
+        })
+
+        # FAIL-SAFE: Return graceful degradation instead of crashing
+        return {
+            "retrieved_chunks": [],
+            "error": "retrieval_failed",
+            "error_message": "I'm having trouble accessing my knowledge base right now. Let me try to help anyway."
+        }
+
+# ❌ BAD: No error handling - graph crashes on failure
+def retrieve_chunks(state: ConversationState) -> Dict[str, Any]:
+    """One error crashes the entire graph!"""
+    chunks = rag_engine.retrieve(state["query"], top_k=4)  # Can throw exception
+    return {"retrieved_chunks": chunks.get("chunks")}  # Can return None and crash next node
+```
+
+**Ask yourself:** "What's the worst that could happen with bad input?"
+
+**The Three Levels of Defense:**
+
+1. **Fail-Fast (Input Validation):**
+   - Validate at the earliest possible point
+   - Raise exceptions for invalid/malicious input
+   - Prevents wasted computation on bad data
+
+2. **Fail-Safe (Graceful Degradation):**
+   - Never let one node crash the graph
+   - Return error states instead of raising exceptions
+   - Provide fallback responses
+
+3. **Fail-Loud (Observability):**
+   - Log ALL errors to LangSmith with context
+   - Include query, role, error type, stack trace
+   - Makes production debugging possible
+
+**Test Standard:**
+```python
+def test_node_defensibility():
+    """Ensure nodes handle errors gracefully and observably."""
+
+    # Test 1: Fail-fast on invalid input
+    with pytest.raises(ValueError):
+        retrieve_chunks({"query": "x" * 10001})  # Too long
+
+    # Test 2: Fail-safe on exceptions
+    with patch('src.core.rag_engine.RagEngine.retrieve', side_effect=Exception("DB down")):
+        state = {"query": "test"}
+        result = retrieve_chunks(state)
+
+        assert "error" in result, "Node must set error flag"
+        assert result["retrieved_chunks"] == [], "Node must provide fallback"
+        assert "error_message" in result, "Node must explain error to user"
+
+    # Test 3: Fail-loud (observability)
+    with patch('langsmith.Client.create_run') as mock_trace:
+        retrieve_chunks({"query": "test"})
+        assert mock_trace.called, "Node must create LangSmith trace"
+```
+
+---
+
+### 7. Maintainability & Testability
+
+**Rule:** Future you will thank present you - Write clear, testable code with pure functions
+
+**Why This Matters for LangGraph:**
+- Nodes should be easy to test in isolation
+- Pure functions (no side effects) make testing deterministic
+- Separate business logic from I/O for unit testing
+
+**LangGraph Example:**
+
+```python
+# ✅ GOOD: Pure business logic extracted, easy to test
+def _calculate_hiring_signals(query: str, role: str) -> List[str]:
+    """Pure function - deterministic, no side effects, easy to test."""
+    signals = []
+
+    query_lower = query.lower()
+    if "hiring" in query_lower or "position" in query_lower:
+        signals.append("mentioned_hiring")
+    if "team" in query_lower or "join us" in query_lower:
+        signals.append("described_team")
+    if role in ["Hiring Manager (technical)", "Hiring Manager (nontechnical)"]:
+        signals.append("hiring_manager_role")
+
+    return signals
+
+# Node wraps pure logic with I/O
+@trace_generation(name="detect_hiring_signals")  # I/O: Observability
+def detect_hiring_signals(state: ConversationState) -> Dict[str, Any]:
+    """Node handles I/O, delegates to pure function."""
+    signals = _calculate_hiring_signals(state["query"], state["role"])
+
+    # I/O: Analytics logging
+    if signals:
+        logger.info(f"Hiring signals detected: {signals}")
+
+    return {"hiring_signals": signals}
+
+# Easy to unit test pure function
+def test_hiring_signal_detection():
+    """Pure function = easy, fast, deterministic tests."""
+    assert _calculate_hiring_signals("We're hiring engineers", "Developer") == ["mentioned_hiring"]
+    assert _calculate_hiring_signals("Join our team!", "Hiring Manager (technical)") == [
+        "described_team",
+        "hiring_manager_role"
+    ]
+
+# ❌ BAD: Logic mixed with I/O - hard to test
+@trace_generation(name="detect_hiring_signals")
+def detect_hiring_signals(state: ConversationState) -> Dict[str, Any]:
+    """Mixed logic and I/O - requires mocking logger, analytics, etc."""
+    signals = []
+
+    logger.info(f"Checking query: {state['query']}")  # I/O mixed in
+
+    if "hiring" in state["query"].lower():
+        signals.append("mentioned_hiring")
+        supabase_analytics.log_event("hiring_signal_detected")  # I/O mixed in
+
+    if state["role"].startswith("Hiring Manager"):
+        signals.append("hiring_manager_role")
+        send_slack_notification("Hiring manager detected!")  # I/O mixed in
+
+    return {"hiring_signals": signals}
+```
+
+**Ask yourself:** "Can I write a unit test for this without mocking 5 things?"
+
+**The Pattern:**
+1. **Extract pure logic** to private functions (prefix with `_`)
+2. **Node handles I/O** (logging, analytics, external calls)
+3. **Test pure functions** without mocks (fast, deterministic)
+4. **Integration test nodes** with mocks (slower, but comprehensive)
+
+**Test Standard:**
+```python
+def test_node_testability():
+    """Ensure nodes separate logic from I/O."""
+    # Pure functions should have no external dependencies
+    result = _calculate_hiring_signals("hiring engineers", "Hiring Manager (technical)")
+    assert isinstance(result, list)
+    assert all(isinstance(s, str) for s in result)
+
+    # Node tests can use mocks for I/O only
+    with patch('src.analytics.supabase_analytics.log_event') as mock_log:
+        state = {"query": "hiring", "role": "Hiring Manager (technical)"}
+        result = detect_hiring_signals(state)
+
+        # Business logic result
+        assert "hiring_signals" in result
+
+        # I/O was called
+        assert mock_log.called
+```
+
+---
+
+### 8. Simplicity (KISS, DRY, YAGNI)
+
+**Rule:** Keep it simple, don't repeat yourself, you aren't gonna need it
+
+**Why This Matters for LangGraph:**
+- Simple graphs are easier to debug in LangSmith
+- DRY prevents maintenance burden across nodes
+- YAGNI prevents over-engineering with unnecessary nodes
+
+**LangGraph Example - KISS (Keep It Simple):**
+
+```python
+# ✅ GOOD: Simple, readable router
+def should_retrieve(state: ConversationState) -> str:
+    """Simple decision logic - easy to understand."""
+    if state.get("is_greeting"):
+        return "skip_retrieval"
+    return "retrieve"
+
+graph_builder.add_conditional_edges(
+    "classify",
+    should_retrieve,
+    {
+        "skip_retrieval": "generate_answer",
+        "retrieve": "retrieve_chunks"
+    }
+)
+
+# ❌ BAD: Over-engineered router
+def should_retrieve(state: ConversationState) -> str:
+    """Unnecessarily complex for simple decision."""
+    # Decision matrix for 2 cases!?
+    decision_matrix = {
+        ("greeting", True, "casual"): "skip_retrieval",
+        ("greeting", True, "formal"): "skip_retrieval",
+        ("greeting", False, "casual"): "retrieve",
+        ("greeting", False, "formal"): "retrieve",
+        # ... 20 more combinations
+    }
+
+    key = (
+        state.get("query_type"),
+        state.get("is_greeting"),
+        state.get("tone", "casual")
+    )
+
+    return decision_matrix.get(key, "retrieve")
+```
+
+**LangGraph Example - DRY (Don't Repeat Yourself):**
+
+```python
+# ✅ GOOD: Centralized error handler
+def _handle_node_error(node_name: str, error: Exception, state: ConversationState) -> Dict:
+    """Reusable error handling for all nodes."""
+    logger.error(f"{node_name} failed: {error}", extra={
+        "query": state.get("query"),
+        "role": state.get("role"),
+        "error_type": type(error).__name__
+    })
+
+    return {
+        "error": f"{node_name}_failed",
+        "error_message": "I encountered an issue. Let me try to help anyway."
+    }
+
+# Use in all nodes
+def classify_query(state: ConversationState) -> Dict:
+    try:
+        return {"query_type": _determine_type(state["query"])}
+    except Exception as e:
+        return _handle_node_error("classify_query", e, state)
+
+def retrieve_chunks(state: ConversationState) -> Dict:
+    try:
+        chunks = rag_engine.retrieve(state["query"])
+        return {"retrieved_chunks": chunks}
+    except Exception as e:
+        return _handle_node_error("retrieve_chunks", e, state)
+
+# ❌ BAD: Repeated error handling in every node
+def classify_query(state: ConversationState) -> Dict:
+    try:
+        return {"query_type": _determine_type(state["query"])}
+    except Exception as e:
+        logger.error(f"classify_query failed: {e}")  # Repeated!
+        return {"error": "classify_query_failed"}
+
+def retrieve_chunks(state: ConversationState) -> Dict:
+    try:
+        chunks = rag_engine.retrieve(state["query"])
+        return {"retrieved_chunks": chunks}
+    except Exception as e:
+        logger.error(f"retrieve_chunks failed: {e}")  # Repeated!
+        return {"error": "retrieve_chunks_failed"}
+```
+
+**LangGraph Example - YAGNI (You Aren't Gonna Need It):**
+
+```python
+# ✅ GOOD: Only the nodes we actually use
+graph_builder = StateGraph(ConversationState)
+graph_builder.add_node("classify", classify_query)
+graph_builder.add_node("retrieve", retrieve_chunks)
+graph_builder.add_node("generate", generate_answer)
+graph = graph_builder.compile()
+
+# ❌ BAD: Building for hypothetical future features
+graph_builder = StateGraph(ConversationState)
+graph_builder.add_node("classify", classify_query)
+graph_builder.add_node("retrieve", retrieve_chunks)
+graph_builder.add_node("sentiment_analysis", analyze_sentiment)  # Not used yet!
+graph_builder.add_node("language_detection", detect_language)  # Might need later?
+graph_builder.add_node("spam_filter", filter_spam)  # Just in case?
+graph_builder.add_node("profanity_check", check_profanity)  # Future-proofing?
+graph = graph_builder.compile()  # Graph is now complex for no reason
+```
+
+**Ask yourself:**
+- KISS: "Am I making this more complex than it needs to be?"
+- DRY: "Have I written this exact logic elsewhere?"
+- YAGNI: "Will I really need this feature right now?"
+
+**Test Standard:**
+```python
+def test_graph_simplicity():
+    """Ensure graph doesn't have unnecessary complexity."""
+    # Count nodes
+    nodes = list(graph.nodes.keys())
+
+    # Should have only essential nodes (8 for our flow)
+    assert len(nodes) <= 10, f"Graph has {len(nodes)} nodes - might be over-engineered"
+
+    # Each node should be used (no dead code)
+    for node_name in nodes:
+        if node_name not in ["__start__", "__end__"]:
+            # Trace execution - node should be hit
+            state = graph.invoke({"query": "test", "role": "Developer"})
+            # (Check execution trace to ensure node was called)
+```
 
 ---
 
