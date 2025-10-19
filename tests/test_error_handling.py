@@ -62,16 +62,16 @@ class TestServiceFailureHandling:
             result = run_conversation_flow(state, rag_engine, session_id="test_twilio_unavailable")
 
             # Assert conversation completed successfully
-            assert result.answer, "Expected answer to be generated"
-            assert len(result.answer) > 50, "Expected substantive response"
+            assert result["answer"], "Expected answer to be generated"
+            assert len(result["answer"]) > 50, "Expected substantive response"
 
             # Assert no error exposed to user
-            assert "SMS service unavailable" not in result.answer.lower()
-            assert "twilio" not in result.answer.lower()
-            assert "error" not in result.answer.lower()
+            assert "SMS service unavailable" not in result["answer"].lower()
+            assert "twilio" not in result["answer"].lower()
+            assert "error" not in result["answer"].lower()
 
             # Assert response is helpful (contains RAG-related content)
-            assert any(keyword in result.answer.lower() for keyword in [
+            assert any(keyword in result["answer"].lower() for keyword in [
                 "rag", "retrieval", "generation", "knowledge", "document"
             ]), "Expected educational response about RAG systems"
 
@@ -102,19 +102,19 @@ class TestServiceFailureHandling:
             result = run_conversation_flow(state, rag_engine, session_id="test_resend_unavailable")
 
             # Assert conversation completed successfully
-            assert result.answer, "Expected answer to be generated"
+            assert result["answer"], "Expected answer to be generated"
 
             # Assert user receives polite message (not technical error)
             # Note: Exact message may vary, but should be professional
-            assert any(phrase in result.answer.lower() for phrase in [
+            assert any(phrase in result["answer"].lower() for phrase in [
                 "email", "resume", "contact", "send", "available"
             ]), "Expected response addresses resume request"
 
             # Assert NO technical errors exposed
-            assert "resend" not in result.answer.lower()
-            assert "api key" not in result.answer.lower()
-            assert "service unavailable" not in result.answer.lower()
-            assert "500 error" not in result.answer.lower()
+            assert "resend" not in result["answer"].lower()
+            assert "api key" not in result["answer"].lower()
+            assert "service unavailable" not in result["answer"].lower()
+            assert "500 error" not in result["answer"].lower()
 
 
 class TestLLMFailureHandling:
@@ -346,7 +346,7 @@ class TestRAGPipelineResilience:
         )
 
         # Mock low-quality retrieval results (scores < 0.4)
-        state.retrieved_chunks = [
+        state["retrieved_chunks"] = [
             {
                 "content": "random unrelated technical content about databases",
                 "metadata": {"doc_id": "technical_kb", "chunk_id": "1"}
@@ -356,7 +356,7 @@ class TestRAGPipelineResilience:
                 "metadata": {"doc_id": "technical_kb", "chunk_id": "2"}
             },
         ]
-        state.stash("retrieval_scores", [0.35, 0.28])  # Both below 0.4 threshold
+        state["retrieval_scores"] = [0.35, 0.28]  # Both below 0.4 threshold
 
         # Import conversation node directly for precise testing
         from src.flows.core_nodes import generate_answer
@@ -368,17 +368,17 @@ class TestRAGPipelineResilience:
         result = generate_answer(state, rag_engine)
 
         # Assertions
-        assert result.answer, "Answer should be provided (not None)"
-        assert len(result.answer) > 200, "Fallback should be substantial (not empty)"
+        assert result["answer"], "Answer should be provided (not None)"
+        assert len(result["answer"]) > 200, "Fallback should be substantial (not empty)"
 
         # Check for fallback message components
-        assert "not finding great matches" in result.answer.lower(), \
+        assert "not finding great matches" in result["answer"].lower(), \
             "Should acknowledge low retrieval quality"
-        assert "buisness" in result.answer, \
+        assert "buisness" in result["answer"], \
             "Should echo user's query (even if misspelled)"
 
         # Check for helpful alternatives
-        assert any(phrase in result.answer for phrase in [
+        assert any(phrase in result["answer"] for phrase in [
             "engineering skills",
             "production GenAI",
             "system architecture",
@@ -388,20 +388,20 @@ class TestRAGPipelineResilience:
         ]), "Should provide alternative topic suggestions"
 
         # Check for engagement
-        assert "What sounds interesting?" in result.answer or \
-               "What would you like" in result.answer, \
+        assert "What sounds interesting?" in result["answer"] or \
+               "What would you like" in result["answer"], \
             "Should end with engaging question"
 
         # Check monitoring flag
-        assert result.fetch("fallback_used") is True, \
+        assert result.get("fallback_used") is True, \
             "Should set fallback_used flag for analytics"
 
         # Quality checks
-        assert "error" not in result.answer.lower(), \
+        assert "error" not in result["answer"].lower(), \
             "Should not use error language"
-        assert result.answer.count("**") >= 4, \
+        assert result["answer"].count("**") >= 4, \
             "Should format suggestions with bold bullets"
-        assert result.answer.count("-") >= 5, \
+        assert result["answer"].count("-") >= 5, \
             "Should have multiple bullet points"
 
 
