@@ -276,5 +276,7 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
     elif "query_type" not in update:
         update["query_type"] = "general"
 
-    # Return ONLY modified fields (LangGraph merges with existing state)
-    return update
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state.update(update)
+    return state

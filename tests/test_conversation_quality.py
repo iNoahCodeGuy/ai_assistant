@@ -125,14 +125,20 @@ class TestConversationFlowQuality:
         mock_engine.response_generator = MagicMock()
         mock_engine.response_generator.generate_contextual_response.return_value = "This is a product that helps you manage your career."
 
-        # Create TypedDict state
+                # Create TypedDict state (simulating conversation flow)
         state: ConversationState = {
-            "role": "Hiring Manager (technical)",
-            "query": "how does this product work?",
-            "chat_history": []
+            "role": "Software Developer",
+            "query": "Show me data on project complexity",
+            "chat_history": [],
+            # Initialize state collections required by nodes (when calling nodes directly)
+            "analytics_metadata": {},
+            "pending_actions": [],
+            "job_details": {},
+            "hiring_signals": [],
+            "retrieved_chunks": []
         }
 
-        # Simulate conversation flow with partial updates
+        # Simulate: classify → retrieve (gets SQL KB) → generate (must sanitize)
         update1 = classify_query(state)
         state.update(update1)
 
@@ -235,7 +241,13 @@ class TestConversationFlowQuality:
         state: ConversationState = {
             "role": "Software Developer",
             "query": "tell me about the data analytics",
-            "chat_history": []
+            "chat_history": [],
+            # Initialize state collections required by nodes (when calling nodes directly)
+            "analytics_metadata": {},
+            "pending_actions": [],
+            "job_details": {},
+            "hiring_signals": [],
+            "retrieved_chunks": []
         }
 
         # Simulate full conversation flow (what user sees)
@@ -296,7 +308,13 @@ class TestConversationFlowQuality:
         state: ConversationState = {
             "role": "Hiring Manager (technical)",
             "query": "Please display data for the latest analytics",
-            "chat_history": []
+            "chat_history": [],
+            # Initialize state collections required by nodes (when calling nodes directly)
+            "analytics_metadata": {},
+            "pending_actions": [],
+            "job_details": {},
+            "hiring_signals": [],
+            "retrieved_chunks": []
         }
 
         update1 = classify_query(state)
@@ -326,7 +344,13 @@ class TestConversationFlowQuality:
         state: ConversationState = {
             "role": "Hiring Manager (technical)",
             "query": "Walk me through the architecture overview",
-            "chat_history": []
+            "chat_history": [],
+            # Initialize state collections required by nodes (when calling nodes directly)
+            "analytics_metadata": {},
+            "pending_actions": [],
+            "job_details": {},
+            "hiring_signals": [],
+            "retrieved_chunks": []
         }
 
         update1 = classify_query(state)

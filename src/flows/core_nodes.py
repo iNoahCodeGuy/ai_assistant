@@ -53,61 +53,36 @@ LINKEDIN_URL = os.getenv("LINKEDIN_URL", "https://linkedin.com/in/noahdelacalzad
 
 
 def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int = 4) -> Dict[str, Any]:
-    """Fetch relevant knowledge base chunks using semantic search.
+    """Retrieve relevant KB chunks using RAG engine (pgvector).
 
-    This calls the RAG engine to find the top-k most relevant pieces of
-    information from the knowledge base (career facts, technical docs, etc.)
-
-    If the query was expanded (vague query like "engineering"), we use the
-    expanded version for better retrieval quality.
+    Observability: Logs retrieval performance (latency, chunk count, avg similarity)
+    Performance: ~300ms typical (embedding + vector search)
 
     Design Principles:
-    - **SRP**: Only retrieves chunks, doesn't generate responses
-    - **Loose Coupling**: Communicates via state dict, not direct calls
-    - **Defensibility**: Fail-fast validation, graceful degradation
-    - **Testability**: Pure retrieval logic, easy to mock rag_engine
-
-    Args:
-        state: Current conversation state with the query
-        rag_engine: RAG engine instance (handles embeddings + vector search)
-        top_k: How many chunks to retrieve (default 4)
-
-    Returns:
-        Partial state update dict with retrieved_chunks, retrieval_matches, retrieval_scores
-
-    Raises:
-        KeyError: If required 'query' field missing from state
+    - Reliability (#4): Graceful handling if retrieval fails (returns empty chunks)
+    - Observability: Logs retrieval metadata for LangSmith tracing
     """
-    # Fail-fast: Validate required fields (Defensibility)
-    try:
-        query = state["query"]
-    except KeyError as e:
-        logger.error("retrieve_chunks called without query in state")
-        raise KeyError("State must contain 'query' field for retrieval") from e
+    query = state["query"]
 
-    # Use expanded query if available (for vague queries like "engineering")
-    query_for_retrieval = state.get("expanded_query", query)
-
-    # Perform retrieval (delegated to RAG engine - Encapsulation)
     try:
-        results = rag_engine.retrieve(query_for_retrieval, top_k=top_k)
+        chunks = rag_engine.retrieve(query, top_k=top_k)
+        state["retrieved_chunks"] = chunks.get("chunks", [])
+        state["analytics_metadata"]["retrieval_count"] = len(state["retrieved_chunks"])
+
+        # Observability: Track average similarity score for quality monitoring
+        if state["retrieved_chunks"]:
+            similarities = [c.get("similarity", 0) for c in state["retrieved_chunks"]]
+            avg_similarity = sum(similarities) / len(similarities)
+            state["analytics_metadata"]["avg_similarity"] = round(avg_similarity, 3)
+
+            logger.info(f"Retrieved {len(state['retrieved_chunks'])} chunks, avg_similarity={avg_similarity:.3f}")
     except Exception as e:
-        logger.error(f"RAG retrieval failed: {e}")
-        # Fail-safe: Return empty results (Defensibility)
-        results = {"chunks": [], "matches": [], "scores": []}
+        # Enhanced error context for debugging
+        logger.error(f"Retrieval failed for query '{query[:50]}...': {e}", exc_info=True)
+        state["retrieved_chunks"] = []
+        state["analytics_metadata"]["retrieval_error"] = str(e)
 
-    # Build partial update dict (Loose Coupling)
-    update: Dict[str, Any] = {
-        "retrieved_chunks": results.get("chunks", []),
-        "retrieval_matches": results.get("matches", []),
-        "retrieval_scores": results.get("scores", [])
-    }
-
-    # Log if we used expansion (Observability)
-    if state.get("vague_query_expanded", False):
-        logger.info(f"Retrieved {len(results.get('chunks', []))} chunks using expanded query")
-
-    return update
+    return state
 
 
 def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
@@ -155,7 +130,8 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
     # Just set a placeholder for now
     if state.get("data_display_requested", False):
         update["answer"] = "Fetching live analytics data from Supabase..."
-        return update
+        state.update(update)
+        return state
 
     # Check if we have sufficient context
     # If vague query was expanded but we still have no good matches, help the user
@@ -175,7 +151,8 @@ I'm here to help you understand Noah's capabilities and how generative AI applic
         update["answer"] = fallback_answer
         update["fallback_used"] = True
         logger.info(f"Used fallback for vague query '{query}' with no matches")
-        return update
+        state.update(update)
+        return state
 
     # Check for very low retrieval quality (all scores below threshold)
     retrieval_scores = state.get("retrieval_scores", [])
@@ -195,7 +172,8 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         update["answer"] = fallback_answer
         update["fallback_used"] = True
         logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
-        return update
+        state.update(update)
+        return state
 
     # Use the LLM to generate a response with retrieved context
     # Add display intelligence based on query classification
@@ -273,7 +251,11 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
 
     # Clean up any SQL artifacts that leaked from retrieval (Maintainability)
     update["answer"] = sanitize_generated_answer(answer)
-    return update
+
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state.update(update)
+    return state
 
 
 def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
@@ -542,8 +524,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[
     # Combine all components into final enriched answer
     enriched_answer = "".join(components)
 
-    # Return partial update (Loose Coupling)
-    return {"answer": enriched_answer}
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state["answer"] = enriched_answer
+    return state
 
 
 def log_and_notify(
@@ -592,11 +576,17 @@ def log_and_notify(
         )
         message_id = supabase_analytics.log_interaction(interaction)
 
-        # Store analytics metadata in state
-        update["message_id"] = message_id
-        update["logged_at"] = True
+        # Store analytics metadata in state (inside analytics_metadata dict)
+        if "analytics_metadata" not in state:
+            state["analytics_metadata"] = {}
+        state["analytics_metadata"]["message_id"] = message_id
+        state["analytics_metadata"]["logged_at"] = True
     except Exception as exc:
         logger.error("Failed logging analytics: %s", exc)
-        update["logged_at"] = False
+        if "analytics_metadata" not in state:
+            state["analytics_metadata"] = {}
+        state["analytics_metadata"]["logged_at"] = False
 
-    return update
+    # Note: update dict no longer needed since we write directly to state
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    return state
