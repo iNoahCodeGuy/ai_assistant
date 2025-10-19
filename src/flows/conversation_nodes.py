@@ -59,10 +59,10 @@ def handle_greeting(state, rag_engine):
     Returns:
         Updated state with greeting as answer, or unchanged if not a greeting
     """
-    if should_show_greeting(state.query, state.chat_history):
-        greeting = get_role_greeting(state.role)
-        state.set_answer(greeting)
-        state.stash("is_greeting", True)
+    if should_show_greeting(state["query"], state["chat_history"]):
+        greeting = get_role_greeting(state["role"])
+        state["answer"] = greeting
+        state["is_greeting"] = True
     return state
 
 

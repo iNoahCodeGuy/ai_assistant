@@ -41,8 +41,8 @@ def run_conversation_flow(
         lambda s: handle_greeting(s, rag_engine),  # Check for first-turn greetings
         classify_query,
         extract_job_details_from_query,  # Extract job details if provided (Task 9)
-        lambda s: retrieve_chunks(s, rag_engine) if not s.fetch("is_greeting") else s,
-        lambda s: generate_answer(s, rag_engine) if not s.fetch("is_greeting") else s,
+        lambda s: retrieve_chunks(s, rag_engine) if not s.get("is_greeting") else s,
+        lambda s: generate_answer(s, rag_engine) if not s.get("is_greeting") else s,
         plan_actions,
         lambda s: apply_role_context(s, rag_engine),
         execute_actions,

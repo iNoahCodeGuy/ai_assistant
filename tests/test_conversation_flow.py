@@ -5,6 +5,7 @@ import pytest
 
 from src.state.conversation_state import ConversationState
 from src.flows import conversation_nodes as nodes
+from src.flows import action_execution
 from src.flows.conversation_flow import run_conversation_flow
 
 
@@ -13,6 +14,10 @@ class DummyResponseGenerator:
         self._response = response
 
     def generate_basic_response(self, query: str, fallback_docs: List[str], chat_history: List[Dict[str, str]] | None = None) -> str:
+        history_note = f" ({len(chat_history)} messages)" if chat_history else ""
+        return f"{self._response} | {query}{history_note}"
+
+    def generate_contextual_response(self, query: str, context: List[Any], role: str, chat_history: List[Dict[str, str]] | None = None, extra_instructions: str | None = None) -> str:
         history_note = f" ({len(chat_history)} messages)" if chat_history else ""
         return f"{self._response} | {query}{history_note}"
 
@@ -165,8 +170,8 @@ def test_log_and_notify_records_metadata(monkeypatch: pytest.MonkeyPatch, base_s
     nodes.classify_query(base_state)
     result = nodes.log_and_notify(base_state, session_id="test-session", latency_ms=123)
 
-    # log_and_notify returns a dict with analytics metadata
-    assert result["message_id"] == 99
+    # log_and_notify returns state with analytics metadata stored in analytics_metadata dict
+    assert result["analytics_metadata"]["message_id"] == 99
     assert logged_payloads[0]["role_mode"] == "Hiring Manager (nontechnical)"
     assert logged_payloads[0]["latency_ms"] == 123
 
@@ -236,6 +241,9 @@ def test_execute_actions_send_resume(monkeypatch: pytest.MonkeyPatch) -> None:
             self.sent.append((to_email, to_name, resume_url, message))
             return {"status": "sent"}
 
+        def send_contact_notification(self, **payload) -> Dict[str, Any]:
+            return {"status": "sent"}
+
     class DummyTwilio:
         def __init__(self):
             self.alerts = []
@@ -248,9 +256,12 @@ def test_execute_actions_send_resume(monkeypatch: pytest.MonkeyPatch) -> None:
     dummy_resend = DummyResend()
     dummy_twilio = DummyTwilio()
 
-    monkeypatch.setattr(nodes, "get_storage_service", lambda: dummy_storage)
-    monkeypatch.setattr(nodes, "get_resend_service", lambda: dummy_resend)
-    monkeypatch.setattr(nodes, "get_twilio_service", lambda: dummy_twilio)
+    # Reset cached services before monkeypatching (important for global executor)
+    action_execution._action_executor.reset_services()
+
+    monkeypatch.setattr(action_execution, "get_storage_service", lambda: dummy_storage)
+    monkeypatch.setattr(action_execution, "get_resend_service", lambda: dummy_resend)
+    monkeypatch.setattr(action_execution, "get_twilio_service", lambda: dummy_twilio)
 
     nodes.execute_actions(state)
 
@@ -301,8 +312,11 @@ def test_execute_actions_contact_notifications(monkeypatch: pytest.MonkeyPatch) 
     dummy_resend = DummyResend()
     dummy_twilio = DummyTwilio()
 
-    monkeypatch.setattr(nodes, "get_resend_service", lambda: dummy_resend)
-    monkeypatch.setattr(nodes, "get_twilio_service", lambda: dummy_twilio)
+    # Reset cached services before monkeypatching (important for global executor)
+    action_execution._action_executor.reset_services()
+
+    monkeypatch.setattr(action_execution, "get_resend_service", lambda: dummy_resend)
+    monkeypatch.setattr(action_execution, "get_twilio_service", lambda: dummy_twilio)
 
     nodes.execute_actions(state)
 

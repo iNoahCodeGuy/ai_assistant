@@ -107,7 +107,10 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     if state.get("vague_query_expanded", False):
         logger.info(f"Retrieved {len(results.get('chunks', []))} chunks using expanded query")
 
-    return update
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state.update(update)
+    return state
 
 
 def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
@@ -155,7 +158,8 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
     # Just set a placeholder for now
     if state.get("data_display_requested", False):
         update["answer"] = "Fetching live analytics data from Supabase..."
-        return update
+        state.update(update)
+        return state
 
     # Check if we have sufficient context
     # If vague query was expanded but we still have no good matches, help the user
@@ -175,7 +179,8 @@ I'm here to help you understand Noah's capabilities and how generative AI applic
         update["answer"] = fallback_answer
         update["fallback_used"] = True
         logger.info(f"Used fallback for vague query '{query}' with no matches")
-        return update
+        state.update(update)
+        return state
 
     # Check for very low retrieval quality (all scores below threshold)
     retrieval_scores = state.get("retrieval_scores", [])
@@ -195,7 +200,8 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         update["answer"] = fallback_answer
         update["fallback_used"] = True
         logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
-        return update
+        state.update(update)
+        return state
 
     # Use the LLM to generate a response with retrieved context
     # Add display intelligence based on query classification
@@ -273,7 +279,11 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
 
     # Clean up any SQL artifacts that leaked from retrieval (Maintainability)
     update["answer"] = sanitize_generated_answer(answer)
-    return update
+
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state.update(update)
+    return state
 
 
 def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
@@ -542,8 +552,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[
     # Combine all components into final enriched answer
     enriched_answer = "".join(components)
 
-    # Return partial update (Loose Coupling)
-    return {"answer": enriched_answer}
+    # Update state in-place (current functional pipeline pattern)
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    state["answer"] = enriched_answer
+    return state
 
 
 def log_and_notify(
@@ -592,11 +604,17 @@ def log_and_notify(
         )
         message_id = supabase_analytics.log_interaction(interaction)
 
-        # Store analytics metadata in state
-        update["message_id"] = message_id
-        update["logged_at"] = True
+        # Store analytics metadata in state (inside analytics_metadata dict)
+        if "analytics_metadata" not in state:
+            state["analytics_metadata"] = {}
+        state["analytics_metadata"]["message_id"] = message_id
+        state["analytics_metadata"]["logged_at"] = True
     except Exception as exc:
         logger.error("Failed logging analytics: %s", exc)
-        update["logged_at"] = False
+        if "analytics_metadata" not in state:
+            state["analytics_metadata"] = {}
+        state["analytics_metadata"]["logged_at"] = False
 
-    return update
+    # Note: update dict no longer needed since we write directly to state
+    # When we migrate to LangGraph StateGraph, this will return partial dict only
+    return state
