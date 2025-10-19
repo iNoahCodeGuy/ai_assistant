@@ -496,7 +496,7 @@ LangSmith Dashboard: https://smith.langchain.com/...
 
 ### External Resources
 - **Production Monitoring (Phase 2):** [QA_STRATEGY.md § Phase 2: Production Monitoring](../QA_STRATEGY.md#phase-2-production-monitoring-with-langsmith)
-- **Observability Guide:** `docs/OBSERVABILITY.md` (tracing, logging, metrics)
+- **Observability Guide:** `docs/platform_operations.md` (current), `docs/LANGSMITH_SETUP.md` (setup details)
 - **External Services:** `docs/EXTERNAL_SERVICES.md` (Twilio, Resend, Supabase setup)
 
 ---

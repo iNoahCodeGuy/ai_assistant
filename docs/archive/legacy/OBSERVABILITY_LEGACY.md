@@ -1,5 +1,7 @@
 # 🔍 Observability & Monitoring Guide
 
+> ⚠️ **ARCHIVED (October 19, 2025)**: This document has been superseded by `docs/platform_operations.md` for current observability practices. Preserved here for historical reference only.
+
 ## Overview
 
 Noah's AI Assistant includes comprehensive observability features for monitoring RAG (Retrieval Augmented Generation) performance, tracking metrics, and evaluating response quality.

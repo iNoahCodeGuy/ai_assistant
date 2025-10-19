@@ -1,5 +1,7 @@
 # 🔗 LangSmith Setup Guide
 
+> ⚠️ **ARCHIVED (October 19, 2025)**: This document has been superseded by `docs/platform_operations.md` and `docs/LANGSMITH_SETUP.md`. Preserved here for historical reference only.
+
 Complete guide to setting up LangSmith for observability in Noah's AI Assistant.
 
 ## 📋 Table of Contents

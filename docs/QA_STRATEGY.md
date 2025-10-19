@@ -3515,7 +3515,7 @@ When reviewing code that involves external services or user input:
 - **Test Implementation**: `tests/test_error_handling.py` (400 lines, 15 tests)
 - **Service Patterns**: See individual services in `src/services/` (Twilio, Resend, Storage)
 - **Production Monitoring (Phase 2)**: See [Phase 2: Production Monitoring with LangSmith](#phase-2-production-monitoring-with-langsmith)
-- **Observability Guide**: `docs/OBSERVABILITY.md`
+- **Observability Guide**: `docs/platform_operations.md` (current), `docs/archive/legacy/OBSERVABILITY_LEGACY.md` (historical)
 
 ---
 

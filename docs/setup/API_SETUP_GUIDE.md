@@ -1036,7 +1036,7 @@ def check_rate_limit(ip: str, limit: int = 6, window: int = 60) -> bool:
 ### Documentation
 - **This Guide**: `docs/setup/API_SETUP_GUIDE.md`
 - **Analytics Implementation**: `docs/features/ANALYTICS_IMPLEMENTATION.md`
-- **Observability**: `docs/OBSERVABILITY.md`
+- **Observability**: `docs/platform_operations.md` (current operations guide)
 - **Archived**: `docs/archive/setup/API_INTEGRATION_OCT_16_2025.md`
 
 ### Code Files
