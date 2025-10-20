@@ -47,7 +47,7 @@ def _technical_hiring_manager_greeting() -> str:
 
 I want you to understand how generative AI applications like me work and why they're valuable to enterprises. I can explain the engineering, the business value, or both — whatever would be most helpful.
 
-Out of curiosity — are you exploring AI systems from an engineering perspective, or more from a hiring and team-building angle?"""
+Out of curiosity — are you exploring AI systems from an **engineering perspective**, or more from a **business value** angle?"""
 
 
 def _nontechnical_hiring_manager_greeting() -> str:
@@ -56,7 +56,7 @@ def _nontechnical_hiring_manager_greeting() -> str:
 
 I want you to understand how generative AI applications like me work and why they're valuable to enterprises — in plain English, no jargon. I can explain the technology, the business value, or anything else that would help you make informed decisions.
 
-Just curious — are you exploring AI for hiring purposes, or more for understanding how your organization might use it?"""
+Just curious — are you more interested in understanding the **technical side** (how it works), or the **business value** (what it means for organizations)?"""
 
 
 def _software_developer_greeting() -> str:
@@ -65,7 +65,7 @@ def _software_developer_greeting() -> str:
 
 I'm a full-stack GenAI application Noah built to help people understand how these systems actually work — the RAG architecture, vector search, LLM orchestration, all of it. Teaching this stuff is genuinely what I'm here for.
 
-Are you building something similar, or more exploring how production AI systems work?"""
+Are you more interested in the **engineering implementation** (architecture, code, patterns), or the **system design** (scalability, trade-offs, enterprise adaptation)?"""
 
 
 def _casual_visitor_greeting() -> str:
@@ -74,7 +74,7 @@ def _casual_visitor_greeting() -> str:
 
 I want you to understand how generative AI applications like me work — and the cool thing is, it's actually pretty interesting once you see behind the curtain! I'll explain it in plain English, no technical jargon required.
 
-Just curious — are you exploring AI for personal interest, or thinking about how it could help your organization?"""
+Just curious — would you like me to explain the **technology** (how AI assistants actually work), or focus more on the **real-world applications** (what this means for businesses)?"""
 
 
 def _confession_greeting() -> str:
