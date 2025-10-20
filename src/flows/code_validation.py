@@ -64,6 +64,8 @@ SANITIZE_PREFIX_PATTERNS = [
     re.compile(r"^[\}\)\]\{\(\[]+$"),  # Lines with only braces/brackets
     re.compile(r"^SELECT\.?$", re.IGNORECASE),  # SQL SELECT tokens
     re.compile(r"^FROM\.?$", re.IGNORECASE),  # SQL FROM tokens
+    re.compile(r"^END;?$", re.IGNORECASE),  # SQL block terminators like END or END;
+    re.compile(r"^BEGIN\.?$", re.IGNORECASE),  # SQL BEGIN tokens
 ]
 
 
@@ -108,4 +110,24 @@ def sanitize_generated_answer(answer: str) -> str:
     if not sanitized_lines:
         return ""
 
-    return "\n".join(sanitized_lines).lstrip()
+    cleaned = "\n".join(sanitized_lines).lstrip()
+
+    # SECONDARY CLEANUP: remove lines anywhere in the answer that are pure
+    # SQL/PLPGSQL control tokens which sometimes leak from migration files
+    # (examples: "END;", "BEGIN", etc.). We remove standalone lines only
+    # to avoid accidentally changing legitimate prose.
+    any_remove_patterns = [
+        re.compile(r"^END;?$", re.IGNORECASE),
+        re.compile(r"^BEGIN\.?$", re.IGNORECASE),
+        re.compile(r"^\$\$;$"),  # PL/pgSQL dollar-quoted terminator lines
+    ]
+
+    final_lines = []
+    for line in cleaned.splitlines():
+        stripped = line.strip()
+        if any(p.match(stripped) for p in any_remove_patterns):
+            # Skip this standalone SQL artifact line
+            continue
+        final_lines.append(line)
+
+    return "\n".join(final_lines).lstrip()
