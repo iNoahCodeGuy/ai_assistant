@@ -31,15 +31,44 @@ from src.state.conversation_state import ConversationState
 logger = logging.getLogger(__name__)
 
 
-# Vague query expansion mappings
+# Ambiguous queries that should trigger "Ask Mode" - Portfolia asks clarifying questions
+# These are too broad and should prompt the user to specify what aspect they want
+AMBIGUOUS_QUERIES = {
+    "engineering": {
+        "options": ["frontend", "backend", "data pipelines", "architecture", "qa/testing", "deployment"],
+        "context": "Portfolia herself as example (frontend chat UI, backend RAG, data pipeline, architecture design, testing, Vercel deployment)"
+    },
+    "engineer": {
+        "options": ["frontend", "backend", "data pipelines", "architecture", "qa/testing", "deployment"],
+        "context": "Portfolia herself as example"
+    },
+    "technical": {
+        "options": ["code examples", "architecture", "stack choices", "system design", "performance"],
+        "context": "Portfolia's implementation"
+    },
+    "architecture": {
+        "options": ["frontend", "backend", "data layer", "full stack overview"],
+        "context": "Portfolia's architecture (Streamlit+Vercel frontend, LangGraph backend, pgvector data)"
+    },
+    "show me how you work": {
+        "options": ["code snippets", "data flow", "system diagram", "high-level explanation"],
+        "context": "How Portfolia answers questions"
+    },
+    "how do you work": {
+        "options": ["code snippets", "data flow", "system diagram", "high-level explanation"],
+        "context": "RAG pipeline and conversation flow"
+    },
+    "how does this work": {
+        "options": ["code examples", "data flow", "architecture diagram", "plain English"],
+        "context": "Portfolia's RAG system"
+    },
+}
+
+# Vague query expansion mappings (for queries that are specific enough but too short)
 VAGUE_QUERY_EXPANSIONS = {
-    "engineering": "What are Noah's software engineering skills, principles, and experience with production systems?",
-    "engineer": "What are Noah's software engineering skills, principles, and experience with production systems?",
-    "technical": "What are Noah's technical skills and experience with software development?",
     "skills": "What technical skills does Noah have in software engineering and AI?",
     "ai": "What is Noah's experience with AI, machine learning, and GenAI systems?",
     "genai": "What does Noah understand about production GenAI systems and patterns?",
-    "architecture": "How does Noah approach system architecture and what patterns has he implemented?",
     "rag": "What is Noah's experience with Retrieval-Augmented Generation and how did he implement it?",
     "python": "How strong is Noah's Python and what has he built with it?",
     "projects": "What projects has Noah built with AI and software engineering?",
@@ -73,12 +102,43 @@ def _is_data_display_request(lowered_query: str) -> bool:
     return any(keyword in lowered_query for keyword in DATA_DISPLAY_KEYWORDS)
 
 
+def _is_ambiguous_query(query: str) -> tuple[bool, dict | None]:
+    """Check if query is ambiguous and should trigger Ask Mode.
+
+    Ambiguous queries are too broad and should prompt Portfolia to ask
+    clarifying questions about what specific aspect the user wants to explore.
+
+    Args:
+        query: Original user query
+
+    Returns:
+        Tuple of (is_ambiguous, ambiguity_config) where config contains
+        options and context for crafting the clarifying question
+    """
+    # Check if query matches any ambiguous patterns
+    lowered = query.lower().strip()
+    clean_query = re.sub(r'[^\w\s]', '', lowered)
+
+    if clean_query in AMBIGUOUS_QUERIES:
+        return True, AMBIGUOUS_QUERIES[clean_query]
+
+    # Also check if query is a longer phrase that matches
+    for pattern, config in AMBIGUOUS_QUERIES.items():
+        if pattern in lowered:
+            return True, config
+
+    return False, None
+
+
 def _expand_vague_query(query: str) -> str:
     """Expand single-word or vague queries into fuller questions.
 
-    When users ask vague questions like 'engineering' or 'skills', we expand
+    When users ask vague questions like 'skills' or 'rag', we expand
     them into more specific queries that will retrieve better context from
     the knowledge base.
+
+    Note: Ambiguous queries (like 'engineering', 'architecture') should
+    NOT be expanded - they trigger Ask Mode instead.
 
     Args:
         query: Original user query
@@ -150,7 +210,21 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
     # Initialize partial update dict (only fields we're modifying)
     update: Dict[str, Any] = {}
 
-    # Expand vague queries for better retrieval (pure function)
+    # First, check if query is ambiguous (should trigger Ask Mode)
+    is_ambiguous, ambiguity_config = _is_ambiguous_query(query)
+
+    if is_ambiguous:
+        update["is_ambiguous"] = True  # Critical: downstream nodes check this flag
+        update["ambiguous_query"] = True
+        update["ambiguity_options"] = ambiguity_config["options"]
+        update["ambiguity_context"] = ambiguity_config["context"]
+        update["query_type"] = "ambiguous"
+        logger.info(f"Ambiguous query detected: '{query}' → Ask Mode triggered")
+        # Don't expand ambiguous queries - we want user to clarify
+        state.update(update)
+        return state
+
+    # If not ambiguous, expand vague queries for better retrieval (pure function)
     expanded_query = _expand_vague_query(query)
 
     if expanded_query != query:

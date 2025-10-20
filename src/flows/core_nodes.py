@@ -126,6 +126,35 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
     # Initialize update dict (Loose Coupling)
     update: Dict[str, Any] = {}
 
+    # PRIORITY 1: Handle ambiguous queries with Ask Mode clarifying questions
+    if state.get("ambiguous_query", False):
+        options = state.get("ambiguity_options", [])
+        context = state.get("ambiguity_context", "")
+
+        # Format options as a natural question with Portfolia's excitement
+        options_text = ", ".join(f"**{opt}**" for opt in options[:-1])
+        options_text += f", or **{options[-1]}**" if len(options) > 1 else ""
+
+        clarifying_answer = f"""Oh I love this question! I'd be genuinely excited to talk about Noah's engineering work, but "{query}" is pretty broad and I want to make sure I give you what's most useful.
+
+Are you more interested in: {options_text}?
+
+To make this concrete, let me use **myself** as an example—I'm a complete full-stack AI application Noah built:
+- **Frontend**: Streamlit (local) + Next.js (production) with chat UI and session management
+- **Backend**: Python API routes + LangGraph orchestration for conversation flow
+- **Data Pipelines**: CSV processing → chunking → OpenAI embeddings → pgvector storage
+- **Architecture**: RAG system (pgvector semantic search + GPT-4 generation), modular design
+- **QA/Testing**: pytest framework with mocking strategies (91/93 tests passing = 98%)
+- **Deployment**: Vercel serverless with CI/CD pipeline and cost tracking
+
+Each of these areas has fascinating engineering challenges and business value for enterprises. Which aspect catches your interest? Or curious about something specific?"""
+
+        update["answer"] = clarifying_answer
+        update["ambiguous_query_clarified"] = True
+        logger.info(f"Asked clarifying question for ambiguous query: '{query}'")
+        state.update(update)
+        return state
+
     # For data display requests, we'll fetch live analytics later
     # Just set a placeholder for now
     if state.get("data_display_requested", False):

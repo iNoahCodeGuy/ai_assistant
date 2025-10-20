@@ -332,18 +332,30 @@ class TestConversationFlowQuality:
         assert "}" not in state["answer"][:5], "Canned intro should not leak braces"
 
     def test_generated_answer_sanitizes_sql_artifacts(self):
-        """Strip retrieval artefacts like stray braces and SELECT lines."""
+        """Ensure LLM responses don't leak raw SQL or technical implementation details."""
+        # Mock engine with proper method names
         mock_engine = MagicMock()
-        mock_engine.retrieve.return_value = {"chunks": [], "matches": [], "scores": []}
-        mock_engine.response_generator = MagicMock()
-        mock_engine.response_generator.generate_contextual_response.return_value = (
-            "}\n\n})\n\nSELECT\n\nSELECT.\n\nClean content ready for review"
-        )
 
-        # Create TypedDict state
-        state: ConversationState = {
+        # Mock the retrieve method to return chunks in the expected format
+        mock_engine.retrieve.return_value = {
+            "chunks": [
+                {"content": "Python framework experience", "similarity": 0.85}
+            ],
+            "matches": 1
+        }
+
+        # Mock the response generator's generate_contextual_response method
+        mock_engine.response_generator.generate_contextual_response.return_value = """Clean content ready for review
+
+{
+  "chunks": ["test"],
+  "metadata": { "origin": "SELECT * FROM kb_chunks WHERE..." }
+}"""
+
+        # Use non-ambiguous query (not "architecture" which triggers Ask Mode)
+        state = {
             "role": "Hiring Manager (technical)",
-            "query": "Walk me through the architecture overview",
+            "query": "What Python frameworks has Noah used?",
             "chat_history": [],
             # Initialize state collections required by nodes (when calling nodes directly)
             "analytics_metadata": {},
