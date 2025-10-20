@@ -135,19 +135,18 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
         options_text = ", ".join(f"**{opt}**" for opt in options[:-1])
         options_text += f", or **{options[-1]}**" if len(options) > 1 else ""
 
-        clarifying_answer = f"""Oh I love this question! I'd be genuinely excited to talk about Noah's engineering work, but "{query}" is pretty broad and I want to make sure I give you what's most useful.
+        # Progressive disclosure: Start with enthusiasm, offer concrete example using herself
+        clarifying_answer = f"""Ah, "{query}" — I love this topic! Let me help you get exactly what you need.
 
-Are you more interested in: {options_text}?
+I can walk you through: {options_text}.
 
-To make this concrete, let me use **myself** as an example—I'm a complete full-stack AI application Noah built:
-- **Frontend**: Streamlit (local) + Next.js (production) with chat UI and session management
-- **Backend**: Python API routes + LangGraph orchestration for conversation flow
-- **Data Pipelines**: CSV processing → chunking → OpenAI embeddings → pgvector storage
-- **Architecture**: RAG system (pgvector semantic search + GPT-4 generation), modular design
-- **QA/Testing**: pytest framework with mocking strategies (91/93 tests passing = 98%)
-- **Deployment**: Vercel serverless with CI/CD pipeline and cost tracking
+**Here's how this works with me as the example** (I'm a full-stack AI application Noah built):
 
-Each of these areas has fascinating engineering challenges and business value for enterprises. Which aspect catches your interest? Or curious about something specific?"""
+When you ask me a question, my **backend** (Python + LangGraph) routes it through a conversation pipeline. My **data layer** (Supabase pgvector) searches 500+ embedded knowledge chunks for relevant context. Then my **RAG engine** (OpenAI GPT-4) generates a grounded answer using only retrieved facts—no hallucinations.
+
+That's just the retrieval flow. My **frontend** (Vercel + Next.js) handles session management, my **testing** layer (pytest) ensures 98% pass rate, and my **deployment** pipeline runs on Vercel serverless with cost tracking.
+
+Which layer would you like me to explain in depth? I can show you code, visualize the data flow, or walk through a specific engineering decision — whatever helps you understand how production GenAI systems work."""
 
         update["answer"] = clarifying_answer
         update["ambiguous_query_clarified"] = True
@@ -204,6 +203,62 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
         state.update(update)
         return state
 
+    # RUNTIME AWARENESS: Detect technical deep dive requests (SOFTWARE DEVELOPER ONLY)
+    # Based on PORTFOLIA_LANGGRAPH_CONTEXT.md - Section: "When User Asks Technical Questions"
+    runtime_awareness_triggered = False
+    runtime_content_block = None
+
+    if role == "Software Developer":
+        query_lower = query.lower()
+
+        # Architecture questions → Show conversation flow diagram or full stack
+        if any(kw in query_lower for kw in ["architecture", "how do you work", "how does this work", "system design", "how are you built"]):
+            if "rag" in query_lower or "retrieval" in query_lower or "search" in query_lower:
+                # RAG-specific architecture
+                runtime_content_block = content_blocks.rag_pipeline_explanation()
+                runtime_awareness_triggered = True
+                logger.info("Runtime awareness: RAG pipeline explanation triggered")
+            elif "flow" in query_lower or "pipeline" in query_lower or "nodes" in query_lower:
+                # Conversation flow
+                runtime_content_block = content_blocks.conversation_flow_diagram()
+                runtime_awareness_triggered = True
+                logger.info("Runtime awareness: Conversation flow diagram triggered")
+            else:
+                # General architecture
+                runtime_content_block = content_blocks.architecture_stack_explanation()
+                runtime_awareness_triggered = True
+                logger.info("Runtime awareness: Architecture stack explanation triggered")
+
+        # Performance questions → Show metrics table
+        elif any(kw in query_lower for kw in ["performance", "latency", "speed", "how fast", "metrics", "p95", "p99"]):
+            runtime_content_block = content_blocks.performance_metrics_table()
+            runtime_awareness_triggered = True
+            logger.info("Runtime awareness: Performance metrics table triggered")
+
+        # Code questions → Show actual retrieval code
+        elif any(kw in query_lower for kw in ["show me code", "show code", "show me the code", "retrieval code", "how do you retrieve"]):
+            runtime_content_block = content_blocks.code_example_retrieval_method()
+            runtime_awareness_triggered = True
+            logger.info("Runtime awareness: Code example triggered")
+
+        # SQL/query questions → Show pgvector query
+        elif any(kw in query_lower for kw in ["sql", "query", "vector search", "pgvector", "how do you search"]):
+            runtime_content_block = content_blocks.pgvector_query_example()
+            runtime_awareness_triggered = True
+            logger.info("Runtime awareness: pgvector query example triggered")
+
+        # Cost questions → Show cost analysis
+        elif any(kw in query_lower for kw in ["cost", "expensive", "pricing", "how much", "budget"]):
+            runtime_content_block = content_blocks.cost_analysis_table()
+            runtime_awareness_triggered = True
+            logger.info("Runtime awareness: Cost analysis table triggered")
+
+        # Scaling questions → Show enterprise scaling strategy
+        elif any(kw in query_lower for kw in ["scale", "scaling", "enterprise", "100k users", "production", "deployment"]):
+            runtime_content_block = content_blocks.enterprise_scaling_strategy()
+            runtime_awareness_triggered = True
+            logger.info("Runtime awareness: Enterprise scaling strategy triggered")
+
     # Use the LLM to generate a response with retrieved context
     # Add display intelligence based on query classification
     extra_instructions = []
@@ -214,6 +269,15 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "This is a teaching moment - provide a comprehensive, well-structured explanation. "
             "Break down concepts clearly, connect technical details to business value, and "
             "help the user truly understand. Use examples where helpful."
+        )
+
+    # Runtime awareness: Add content block to context if triggered
+    if runtime_awareness_triggered and runtime_content_block:
+        extra_instructions.append(
+            f"RUNTIME AWARENESS: The user asked a technical question about Portfolia's architecture/performance. "
+            f"Below is a self-referential teaching block showing live data. Reference this in your explanation, "
+            f"weave it into your narrative naturally, and expand on it conversationally. "
+            f"Maintain warmth and curiosity while being technically precise.\n\n{runtime_content_block}"
         )
 
     # EXPLICIT code request - user specifically asked

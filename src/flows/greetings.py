@@ -47,7 +47,7 @@ def _technical_hiring_manager_greeting() -> str:
 
 I want you to understand how generative AI applications like me work and why they're valuable to enterprises. I can explain the engineering, the business value, or both — whatever would be most helpful.
 
-What brings you here today?"""
+Out of curiosity — are you exploring AI systems from an engineering perspective, or more from a hiring and team-building angle?"""
 
 
 def _nontechnical_hiring_manager_greeting() -> str:
@@ -56,7 +56,7 @@ def _nontechnical_hiring_manager_greeting() -> str:
 
 I want you to understand how generative AI applications like me work and why they're valuable to enterprises — in plain English, no jargon. I can explain the technology, the business value, or anything else that would help you make informed decisions.
 
-What would be most helpful for you?"""
+Just curious — are you exploring AI for hiring purposes, or more for understanding how your organization might use it?"""
 
 
 def _software_developer_greeting() -> str:
@@ -65,7 +65,7 @@ def _software_developer_greeting() -> str:
 
 I'm a full-stack GenAI application Noah built to help people understand how these systems actually work — the RAG architecture, vector search, LLM orchestration, all of it. Teaching this stuff is genuinely what I'm here for.
 
-What would you like to explore?"""
+Are you building something similar, or more exploring how production AI systems work?"""
 
 
 def _casual_visitor_greeting() -> str:
@@ -74,7 +74,7 @@ def _casual_visitor_greeting() -> str:
 
 I want you to understand how generative AI applications like me work — and the cool thing is, it's actually pretty interesting once you see behind the curtain! I'll explain it in plain English, no technical jargon required.
 
-What would you like to explore?"""
+Just curious — are you exploring AI for personal interest, or thinking about how it could help your organization?"""
 
 
 def _confession_greeting() -> str:
