@@ -44,7 +44,7 @@ def get_role_greeting(role: str) -> str:
 
 def _technical_hiring_manager_greeting() -> str:
     """Greeting for technical hiring managers."""
-    return """Hey! 👋 I'm really excited you're here. I'm **Portfolia**, Noah's AI Assistant.
+    return """Hey!  I'm really excited you're here. I'm **Portfolia**, Noah's AI Assistant.
 
 I like to think of myself as both a system and a story - every layer in my stack teaches something about scalable AI.
 
@@ -55,7 +55,7 @@ What sounds more interesting to you right now?"""
 
 def _nontechnical_hiring_manager_greeting() -> str:
     """Greeting for nontechnical hiring managers."""
-    return """Hello! 👋 I'm so glad you're here. I'm **Portfolia**, Noah's AI Assistant.
+    return """Hello!  I'm so glad you're here. I'm **Portfolia**, Noah's AI Assistant.
 
 I like to think of myself as both a **business case study** and a working prototype - every layer shows what AI can do for enterprises.
 
@@ -68,29 +68,29 @@ What would be most useful?"""
 
 def _software_developer_greeting() -> str:
     """Greeting for software developers."""
-    return """Hey! 👋 So glad you're here. I'm **Portfolia**, Noah's AI Assistant.
+    return """Hey!  So glad you're here. I'm **Portfolia**, Noah's AI Assistant.
 
 I'm a full-stack GenAI application Noah built to help people understand how production AI systems actually work. Think of me as a live demo - everything from RAG architecture to vector search to LLM orchestration. Teaching this stuff is genuinely what I'm here for.
 
 The best part? You can ask me about any layer: the **backend flow** (LangGraph + Python), the **data pipeline** (chunking → embeddings → pgvector), the **frontend** (session management, UI/UX), or the **QA strategy** (pytest, mocking, coverage).
 
 Where would you like to start?"""
+
+
 def _casual_visitor_greeting() -> str:
     """Greeting for casual visitors exploring the assistant."""
-    return """Hey there! 👋 Welcome! I'm **Portfolia**, Noah's AI Assistant, and I'm really happy you stopped by.
+    return """Hey there! Welcome! I'm **Portfolia**, Noah's AI Assistant, and I'm really happy you stopped by.
 
 I want you to understand how generative AI applications like me work - and honestly, it's actually pretty fascinating once you see behind the curtain! I'll explain everything in plain English, no jargon required.
 
 I can show you the **technology side** (how AI assistants actually work, step-by-step), or focus on the **real-world impact** (what this means for businesses, customer service, teams). Or we can just have a conversation and see where it goes!
 
-What catches your interest?"""n English, no technical jargon required.
-
-Just curious - would you like me to explain the **technology** (how AI assistants actually work), or focus more on the **real-world applications** (what this means for businesses)?"""
+What catches your interest?"""
 
 
 def _confession_greeting() -> str:
     """Greeting for confession mode (playful)."""
-    return """Hey! 👋 I'm Portfolia, Noah's AI Assistant, and I'm here to help with whatever you'd like to share.
+    return """Hey!  I'm Portfolia, Noah's AI Assistant, and I'm here to help with whatever you'd like to share.
 
 This is a fun, judgment-free space. Want to leave a message? I can keep it anonymous or include your name - totally up to you!
 
@@ -99,7 +99,7 @@ Or if you'd rather just chat about something else, that's cool too. What's on yo
 
 def _default_greeting() -> str:
     """Default greeting for unrecognized roles."""
-    return """Hey! 👋 I'm **Portfolia**, Noah's AI Assistant, and I'm excited you're here.
+    return """Hey!  I'm **Portfolia**, Noah's AI Assistant, and I'm excited you're here.
 
 I like to think of myself as both a **system** and a **guide** - here to help you understand how generative AI applications actually work.
 
