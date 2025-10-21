@@ -89,6 +89,8 @@ def _initialize_state_defaults(state: ConversationState) -> None:
         state["chat_history"] = []
     if "hiring_signals" not in state:
         state["hiring_signals"] = []
+    if "topic_focus" not in state:
+        state["topic_focus"] = "general"
     if "retrieved_chunks" not in state:
         state["retrieved_chunks"] = []
 

@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 from src.core.rag_engine import RagEngine
 from src.core.memory import Memory
 from src.config.supabase_config import supabase_settings
+from src.flows.query_classification import detect_topic_focus
 from .roles import role_include_code  # NEW import
 
 class RoleRouter:
@@ -22,36 +23,59 @@ class RoleRouter:
         chat_history kept optional for future LangGraph or summarization hooks.
         """
         memory.set_role(role)
-        query_type = self._classify_query(query)
+        classification = self._classify_query(query)
+        query_type = classification["query_type"]
+        topic_focus = classification["topic_focus"]
+
+        chat_history = chat_history or []
+        user_turns = sum(1 for message in chat_history if message.get("role") == "user")
+        assistant_turns = sum(1 for message in chat_history if message.get("role") == "assistant")
+        turn_index = assistant_turns + 1
+        emotional_mode = "energetic" if assistant_turns % 2 == 0 else "reflective"
 
         if role == "Hiring Manager (nontechnical)":
-            return self._handle_hiring_manager(query, query_type, rag_engine, technical=False, chat_history=chat_history)
-        if role == "Hiring Manager (technical)":
-            return self._handle_hiring_manager(query, query_type, rag_engine, technical=True, chat_history=chat_history)
-        if role == "Software Developer":
-            return self._handle_developer(query, query_type, rag_engine, chat_history=chat_history)
-        if role == "Just looking around":
-            return self._handle_casual(query, query_type, rag_engine, chat_history=chat_history)
-        if role == "Looking to confess crush":
-            return self._handle_confession(query)
-        return {"response": "Please select a valid role to continue.", "type": "error", "context": []}
+            result = self._handle_hiring_manager(query, query_type, rag_engine, technical=False, chat_history=chat_history)
+        elif role == "Hiring Manager (technical)":
+            result = self._handle_hiring_manager(query, query_type, rag_engine, technical=True, chat_history=chat_history)
+        elif role == "Software Developer":
+            result = self._handle_developer(query, query_type, rag_engine, chat_history=chat_history)
+        elif role == "Just looking around":
+            result = self._handle_casual(query, query_type, rag_engine, chat_history=chat_history)
+        elif role == "Looking to confess crush":
+            result = self._handle_confession(query)
+        else:
+            result = {"response": "Please select a valid role to continue.", "type": "error", "context": []}
 
-    def _classify_query(self, query: str) -> str:
+        meta = result.setdefault("meta", {})
+        meta.update(
+            {
+                "topic_focus": topic_focus,
+                "role": role,
+                "turn_index": turn_index,
+                "user_turns": user_turns,
+                "emotional_mode": emotional_mode,
+                "suppress_follow_up": result.get("type") in {"error", "mma", "confession"},
+            }
+        )
+
+        return result
+
+    def _classify_query(self, query: str) -> Dict[str, str]:
         q = query.lower()
         # Check for specific MMA keywords (use word boundaries to avoid false matches)
         import re
         if any(re.search(r'\b' + k + r'\b', q) for k in ["mma", "fight", "ufc", "bout", "cage"]):
-            return "mma"
+            return {"query_type": "mma", "topic_focus": "fun"}
         # Check for fun fact requests (be more specific)
         if any(k in q for k in ["fun fact", "hobby", "hobbies", "interesting fact"]):
-            return "fun"
+            return {"query_type": "fun", "topic_focus": "fun"}
         # Check for technical queries
         if any(k in q for k in ["code", "technical", "stack", "function", "architecture", "retrieval", "implementation"]):
-            return "technical"
+            return {"query_type": "technical", "topic_focus": detect_topic_focus(query)}
         # Check for career queries
         if any(k in q for k in ["career", "resume", "cv", "experience", "achievement", "role history", "work"]):
-            return "career"
-        return "general"
+            return {"query_type": "career", "topic_focus": detect_topic_focus(query)}
+        return {"query_type": "general", "topic_focus": detect_topic_focus(query)}
 
     def _handle_hiring_manager(self, query: str, query_type: str, rag_engine: RagEngine, technical: bool, chat_history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         # Check if this is a "show me" or "display" query - return raw content
@@ -155,5 +179,6 @@ class RoleRouter:
         return {
             "response": "Your message is noted. Use the form below to submit confessions. 💌",
             "type": "confession",
-            "context": []  # ← Add empty context to prevent formatter errors
+            "context": [],  # ← Add empty context to prevent formatter errors
+            "meta": {"suppress_follow_up": True}
         }

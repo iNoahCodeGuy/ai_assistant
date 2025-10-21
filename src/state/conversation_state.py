@@ -94,6 +94,9 @@ class ConversationState(TypedDict, total=False):
     is_greeting: bool
     """True if query is a greeting (allows pipeline short-circuit)."""
 
+    topic_focus: str
+    """Primary topical focus of the query (architecture, data, testing, etc.)."""
+
     # --- Retrieval Results (RAG Pipeline) ---
     retrieved_chunks: List[Dict[str, Any]]
     """Top-k semantic search results from pgvector knowledge base.

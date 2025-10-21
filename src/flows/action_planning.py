@@ -106,7 +106,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
             add_action("suggest_technical_role_switch")
 
         # Offer resume after a few turns
-        if not resume_requested and not linkedin_requested and user_turns >= 2:
+        if not resume_requested and not linkedin_requested and user_turns >= 3:
             add_action("offer_resume_prompt")
 
     elif state["role"] == "Hiring Manager (technical)":
@@ -125,7 +125,7 @@ def plan_actions(state: ConversationState) -> ConversationState:
                 add_action("include_code_snippets")
 
         # Offer resume after a few turns
-        if not resume_requested and not linkedin_requested and user_turns >= 2:
+        if not resume_requested and not linkedin_requested and user_turns >= 3:
             add_action("offer_resume_prompt")
 
     elif state["role"] == "Software Developer":

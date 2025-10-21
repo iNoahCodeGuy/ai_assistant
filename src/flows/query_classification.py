@@ -30,6 +30,96 @@ from src.state.conversation_state import ConversationState
 
 logger = logging.getLogger(__name__)
 
+TOPIC_KEYWORDS = {
+    "architecture": [
+        "architecture",
+        "system design",
+        "diagram",
+        "pipeline",
+        "orchestration",
+        "flow",
+        "graph",
+        "node",
+        "frontend",
+        "backend",
+        "full stack",
+        "infra",
+        "infrastructure",
+        "orchestrator",
+        "deployment",
+        "scale",
+        "scalability",
+    ],
+    "data": [
+        "data layer",
+        "pgvector",
+        "supabase",
+        "vector store",
+        "embeddings",
+        "similarity",
+        "index",
+        "schema",
+        "analytics",
+        "metrics",
+        "dataset",
+        "latency",
+        "performance",
+        "p95",
+        "p99",
+        "throughput",
+        "cost",
+        "budget",
+    ],
+    "retrieval": [
+        "retrieval",
+        "rag",
+        "search",
+        "query",
+        "chunk",
+        "grounding",
+        "context",
+    ],
+    "testing": [
+        "testing",
+        "pytest",
+        "qa",
+        "quality",
+        "reliability",
+        "monitoring",
+        "observability",
+    ],
+    "career": [
+        "career",
+        "experience",
+        "background",
+        "resume",
+        "history",
+        "projects",
+    ],
+    "mma": [
+        "mma",
+        "fight",
+        "ufc",
+        "bout",
+        "cage",
+    ],
+    "fun": [
+        "fun fact",
+        "hobby",
+        "hot dog",
+        "interesting fact",
+    ],
+}
+
+
+def detect_topic_focus(query: str) -> str:
+    """Detect the primary topic focus for conversational follow-ups."""
+    lowered = query.lower()
+    for topic, keywords in TOPIC_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            return topic
+    return "general"
+
 
 # Ambiguous queries that should trigger "Ask Mode" - Portfolia asks clarifying questions
 # These are too broad and should prompt the user to specify what aspect they want
@@ -210,10 +300,22 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
     # Initialize partial update dict (only fields we're modifying)
     update: Dict[str, Any] = {}
 
+    chat_history = state.get("chat_history", [])
+    user_turns = sum(1 for message in chat_history if message.get("role") == "user")
+    if user_turns:
+        update["conversation_turn"] = user_turns
+        update["emotional_pacing"] = "surge" if user_turns % 2 else "reflect"
+    else:
+        update["conversation_turn"] = 0
+        update["emotional_pacing"] = "surge"
+
+    update["topic_focus"] = detect_topic_focus(query)
+
     # First, check if query is ambiguous (should trigger Ask Mode)
     is_ambiguous, ambiguity_config = _is_ambiguous_query(query)
 
     if is_ambiguous:
+        update["topic_focus"] = detect_topic_focus(query)
         update["is_ambiguous"] = True  # Critical: downstream nodes check this flag
         update["ambiguous_query"] = True
         update["ambiguity_options"] = ambiguity_config["options"]
@@ -349,6 +451,8 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
             update["query_type"] = "career"
     elif "query_type" not in update:
         update["query_type"] = "general"
+
+    update["topic_focus"] = detect_topic_focus(expanded_query)
 
     # Update state in-place (current functional pipeline pattern)
     # When we migrate to LangGraph StateGraph, this will return partial dict only
