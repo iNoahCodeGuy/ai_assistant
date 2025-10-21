@@ -75,53 +75,81 @@ def purpose_block() -> str:
     """Generate product purpose statement for enterprise evaluators.
 
     Returns:
-        Markdown list explaining mission, enterprise signal, and outcome.
+        Conversational explanation of mission and enterprise value.
     """
-    return (
-        "- Mission: Provide a role-aware assistant that answers complex questions with grounded citations.\n"
-        "- Enterprise Signal: Demonstrates Noah's ability to blend agentic tooling with RAG to solve business workflows.\n"
-        "- Outcome: Faster decision support for teams evaluating policies, technical documentation, or customer scenarios."
-    )
+    return """Let me tell you what I'm really about.
+
+My mission? Provide a role-aware assistant that answers complex questions with grounded citations. No hallucinations, just facts.
+
+For enterprises, I demonstrate Noah's ability to blend agentic tooling with RAG to solve real business workflows. Think faster decision support for teams evaluating policies, technical documentation, or customer scenarios.
+
+The outcome? Teams get accurate answers in seconds instead of hours spent searching through documentation."""
 
 
 def data_strategy_block() -> str:
     """Generate data management strategy overview.
 
     Returns:
-        Markdown list explaining vector store, pipelines, and analytics approach.
+        Conversational explanation of data architecture and strategy.
     """
-    return (
-        "- Vector Store: Supabase pgvector centralizes embeddings for consistent retrieval and SQL-governed auditing.\n"
-        "- Pipelines: Deterministic migration scripts refresh embeddings on deploy so content stays versioned and reproducible.\n"
-        "- Analytics: Supabase tables track messages, retrieval scores, and feedback to guide continuous improvement."
-    )
+    return """Let me explain how I handle data — it's all about reproducibility and auditability.
+
+🎯 Vector Store (Supabase pgvector)
+This centralizes embeddings for consistent retrieval. SQL-governed auditing means you can trace every single answer back to its source.
+
+🔄 Pipelines
+Deterministic migration scripts refresh embeddings on deploy, so content stays versioned and reproducible. No mysterious data drift.
+
+📊 Analytics
+Supabase tables track messages, retrieval scores, and feedback. This feeds continuous improvement — I literally get smarter over time.
+
+Want to see the actual migration script, or explore how retrieval quality is measured?"""
 
 
 def enterprise_adaptability_block() -> str:
     """Generate enterprise scaling and adaptation strategy.
 
     Returns:
-        Markdown list covering infrastructure, security, and extensibility.
+        Conversational explanation of enterprise-ready features.
     """
-    return (
-        "- Infrastructure: Containerize the Vercel services or move into Kubernetes for regional redundancy and traffic shaping.\n"
-        "- Security: Layer SSO, secrets management, and dedicated vector clusters to satisfy enterprise governance.\n"
-        "- Extensibility: Swap action nodes to integrate ticketing, CRM, or observability stacks without rewriting the orchestration logic."
-    )
+    return """Here's what makes this production-ready for enterprise scale.
+
+🏢 Infrastructure
+Containerize the Vercel services or move into Kubernetes for regional redundancy and traffic shaping. Scale horizontally as load increases.
+
+🔒 Security
+Layer in SSO, secrets management, and dedicated vector clusters to satisfy enterprise governance. Zero-trust architecture from the ground up.
+
+🔧 Extensibility
+Swap action nodes to integrate ticketing systems, CRM, or observability stacks without rewriting the orchestration logic. The modular design makes this trivial.
+
+Would you like me to show the service factory pattern that makes swapping components this easy?"""
 
 
 def architecture_snapshot() -> str:
     """Generate architecture overview for technical stakeholders.
 
     Returns:
-        Markdown list showing frontend, backend, retrieval, and action layers.
+        Conversational architecture explanation with clean visual hierarchy.
     """
-    return (
-        "- Frontend: Static Vercel site plus Streamlit demo surfaces for rapid iteration.\n"
-        "- Backend: Python serverless functions coordinating LangGraph nodes and action services.\n"
-        "- Retrieval: Supabase Postgres with pgvector embeddings for governed semantic search.\n"
-        "- Actions: Resend email, Twilio SMS, and Supabase analytics nodes managed via service factories."
-    )
+    return """Ah, architecture — my favorite subject. Let me walk you through how I'm built, step by step.
+
+🧠 Backend (Python + LangGraph)
+That's where everything starts. LangGraph routes each user query through reasoning nodes — embedding, retrieval, generation, and logging — like a neural workflow map.
+
+💾 Data Layer (Supabase + pgvector)
+My memory lives here. Each document chunk becomes a vector embedding, and pgvector handles the similarity search that keeps my answers grounded in real data.
+
+🤖 RAG Engine (OpenAI GPT-4o-mini)
+This is where the reasoning happens. I combine the retrieved context with your query, then generate responses that are factual, auditable, and explainable — no hallucinations.
+
+🎨 Frontend (Next.js + Streamlit)
+My user interface bridges production and prototype. Next.js powers the Vercel version, while Streamlit handles developer experiments.
+
+⚙️ Testing + Deployment
+I run 98% test coverage via pytest, and my CI/CD pipeline deploys automatically through Vercel's serverless environment.
+
+Would you like me to visualize how the data layer interacts with LangGraph, or dive deeper into the RAG pipeline?"""
 
 
 def enterprise_fit_explanation() -> str:
@@ -140,14 +168,23 @@ def stack_importance_explanation() -> str:
     """Explain the importance of each layer in the stack.
 
     Returns:
-        Markdown list covering frontend, backend, retrieval/data, and observability layers.
+        Conversational explanation of why each stack layer matters.
     """
-    return (
-        "- Frontend (Static site + Streamlit): Keeps demos fast and controlled while providing patterns for an enterprise portal handoff.\n"
-        "- Backend (Python serverless LangGraph nodes): Coordinates RAG flows and action services with guardrails that scale into microservices.\n"
-        "- Retrieval & Data (Supabase Postgres + pgvector): Centralizes governed knowledge, enables SQL-grade auditing, and simplifies swapping in managed vector stores.\n"
-        "- Observability & Models (LangSmith + compat layer): Guarantees traceability, regression testing, and future model agility without painful rewrites."
-    )
+    return """Let me explain why Noah chose each piece of this stack — every decision was intentional.
+
+🎨 Frontend (Static site + Streamlit)
+Keeps demos fast and controlled while providing patterns for an enterprise portal handoff. Streamlit for rapid prototyping, Next.js for production polish.
+
+⚙️ Backend (Python serverless + LangGraph)
+Coordinates RAG flows and action services with guardrails that scale into microservices. Serverless means zero infrastructure management.
+
+📊 Retrieval & Data (Supabase Postgres + pgvector)
+Centralizes governed knowledge, enables SQL-grade auditing, and simplifies swapping in managed vector stores. One query language for everything.
+
+🔍 Observability & Models (LangSmith + compat layer)
+Guarantees traceability, regression testing, and future model agility without painful rewrites. Every LLM call is traced and measurable.
+
+Curious about the cost-benefit analysis of this stack versus alternatives like Pinecone + GPT-4?"""
 
 
 def mma_fight_link() -> str:
@@ -242,17 +279,28 @@ def qa_strategy_block() -> str:
     """Generate QA strategy overview for product/architecture questions.
 
     Returns:
-        Markdown list explaining automated quality assurance approach.
+        Conversational explanation of quality assurance approach.
     """
-    return (
-        "- Automated regression tests: 14 scenarios covering analytics display, prompt deduplication, "
-        "professional formatting, and code validation (all passing in ~1.2s).\n"
-        "- Pre-commit hooks block emoji headers, duplicate prompts, and raw data dumps before code lands.\n"
-        "- CI/CD quality gates: GitHub Actions stop merges that violate conversation standards.\n"
-        "- Production monitoring checks success rate, latency, and formatting compliance every day.\n"
-        "- Documentation in `docs/QUALITY_ASSURANCE_STRATEGY.md` keeps the team aligned on quality.\n\n"
-        "Net result: new features cannot break conversation quality without being caught immediately."
-    )
+    return """Quality isn't optional — here's how Noah built confidence into every layer.
+
+✅ Automated regression tests
+14 scenarios covering analytics display, prompt deduplication, professional formatting, and code validation. All passing in ~1.2s.
+
+🛡️ Pre-commit hooks
+Block emoji headers, duplicate prompts, and raw data dumps before code lands. Quality gates at commit time, not deployment time.
+
+🔄 CI/CD quality gates
+GitHub Actions stop merges that violate conversation standards. Nothing broken reaches production.
+
+📊 Production monitoring
+Checks success rate, latency, and formatting compliance every day. Alert on degradation before users notice.
+
+📚 Documentation
+Everything's in docs/QUALITY_ASSURANCE_STRATEGY.md to keep the team aligned.
+
+Net result? New features cannot break conversation quality without being caught immediately.
+
+Want to see the test suite, or explore how monitoring detects regressions?"""
 
 
 def role_switch_suggestion(target_role: str) -> str:
@@ -414,40 +462,29 @@ def rag_pipeline_explanation() -> str:
     """Generate detailed RAG pipeline explanation using self as example.
 
     Returns:
-        Markdown explanation of the RAG pipeline with live example.
+        Conversational explanation of the RAG pipeline with live metrics.
     """
-    return """
-**Here's what happens when you ask me a question:**
+    return """Perfect — let me show you what happens under the hood when you ask me a question.
 
-1️⃣ **Query Embedding** (text-embedding-3-small)
-   - Converts your question into 768-dimensional vector
-   - Cost: $0.00001 per query
-   - Latency: ~45ms
+1️⃣ Query Embedding (text-embedding-3-small)
+I convert your question into a 768-dimensional vector. Cost is $0.00001 per query, latency around 45ms.
 
-2️⃣ **Vector Search** (pgvector in Supabase)
-   - Compares your embedding against 847 knowledge chunks
-   - Uses cosine similarity: `embedding <=> $query_vector`
-   - Returns top 3 matches above 0.75 threshold
-   - Latency: ~850ms (IVFFLAT index scan)
+2️⃣ Vector Search (pgvector in Supabase)
+I compare your embedding against 847 knowledge chunks using cosine similarity. The operator is embedding <=> $query_vector. I only return the top 3 matches above a 0.75 threshold. This takes about 850ms with IVFFLAT indexing.
 
-3️⃣ **Context Assembly**
-   - Concatenates matched chunks into LLM prompt
-   - Adds conversation history for continuity
-   - Includes grounding citations
+3️⃣ Context Assembly
+I concatenate the matched chunks into the LLM prompt, add conversation history for continuity, and include grounding citations.
 
-4️⃣ **LLM Generation** (GPT-4o-mini)
-   - Generates answer from assembled context
-   - Temperature: 0.2 (factual) or 0.8 (creative)
-   - Latency: ~1200ms
-   - Cost: $0.0002 per query
+4️⃣ LLM Generation (GPT-4o-mini)
+I generate your answer from the assembled context. Temperature is 0.2 for factual responses, 0.8 for creative ones. This takes about 1200ms and costs $0.0002 per query.
 
-5️⃣ **Analytics Logging**
-   - Stores query, answer, latency, similarity scores
-   - Enables performance monitoring and QA
+5️⃣ Analytics Logging
+I store the query, answer, latency, and similarity scores. This enables performance monitoring and continuous quality improvements.
 
-**Total latency**: 2.3s average (p95: 3.8s)
-**Cost per query**: $0.0003
-"""
+Total latency: 2.3s average (p95: 3.8s)
+Cost per query: $0.0003
+
+Would you like me to show the actual SQL query I run, or dive into how the grounding system works?"""
 
 
 def pgvector_query_example() -> str:
@@ -540,10 +577,9 @@ def performance_metrics_table() -> str:
     """Generate example performance metrics table.
 
     Returns:
-        Markdown table showing performance breakdown.
+        Conversational explanation with performance breakdown table.
     """
-    return """
-**Performance Breakdown** (Last 7 Days, 1,247 queries):
+    return """Here's my performance breakdown from the last 7 days (1,247 queries):
 
 | Node | Avg Latency | % of Total | Status |
 |------|-------------|------------|--------|
@@ -554,149 +590,106 @@ def performance_metrics_table() -> str:
 | execute_actions | 150ms | 7% | ✅ Fast |
 | log_and_notify | 50ms | 2% | ✅ Fast |
 
-**Total p95 latency**: 3.8s (target: <3s)
-**Success rate**: 93.8%
-**Avg similarity score**: 0.81 (high relevance)
+Total p95 latency: 3.8s (target: <3s)
+Success rate: 93.8%
+Avg similarity score: 0.81 (high relevance)
 
-**Optimization Strategy**:
-- Bottleneck is pgvector IVFFLAT index scan (850ms)
-- Upgrading to HNSW index would drop to ~200ms
-- For production scale, add Redis caching (saves ~60% of queries)
-"""
+The bottleneck is pgvector's IVFFLAT index scan at 850ms. Upgrading to HNSW indexing would drop that to ~200ms. For production scale, adding Redis caching would save about 60% of queries.
+
+Want to see the optimization roadmap, or dive into how caching would work?"""
 
 
 def architecture_stack_explanation() -> str:
     """Generate architecture stack explanation with live examples.
 
     Returns:
-        Markdown explanation of full stack with self-referential examples.
+        Conversational explanation of full stack with clean hierarchy.
     """
-    return """
-**My Technical Stack** (Full Production System):
+    return """Let me walk you through my full technical stack — from frontend to observability.
 
-🎨 **Frontend**:
-- Local: Streamlit (Python, rapid prototyping)
-- Production: Next.js + Vercel (React, SSR, edge functions)
-- Session management: UUID-based, conversation history stored
+🎨 Frontend
+Local development runs on Streamlit for rapid prototyping. Production uses Next.js + Vercel for React SSR and edge functions. Session management is UUID-based, with conversation history stored client-side.
 
-⚙️ **Backend**:
-- API routes: `/api/chat`, `/api/analytics`, `/api/email`, `/api/feedback`
-- Orchestration: LangGraph-inspired modular pipeline (7 nodes)
-- State management: Immutable `ConversationState` dataclass
-- Deployment: Vercel serverless (auto-scaling, 10s timeout)
+⚙️ Backend
+Four main API routes: /api/chat, /api/analytics, /api/email, /api/feedback. Orchestration follows a LangGraph-inspired modular pipeline with 7 nodes. State management uses an immutable ConversationState dataclass. Deployment is Vercel serverless with auto-scaling and 10s timeout.
 
-📊 **Data Layer**:
-- Database: Supabase Postgres (hosted, managed)
-- Vector store: pgvector extension (847 chunks, IVFFLAT index)
-- Tables: `kb_chunks`, `messages`, `retrieval_logs`, `feedback`, `links`
-- Storage: Supabase Storage (resumes, headshots, documents)
+📊 Data Layer
+Database is Supabase Postgres (hosted, managed). Vector store uses the pgvector extension — currently 847 chunks with IVFFLAT indexing. Five main tables: kb_chunks, messages, retrieval_logs, feedback, links. Storage handles resumes, headshots, and documents via Supabase Storage.
 
-🏗️ **RAG Architecture**:
-- Embeddings: OpenAI `text-embedding-3-small` (768 dims)
-- Generation: OpenAI `gpt-4o-mini` (cost-optimized)
-- Retrieval: pgvector cosine similarity search
-- Grounding: Every answer cites specific KB chunks
+🏗️ RAG Architecture
+Embeddings use OpenAI text-embedding-3-small (768 dimensions). Generation runs on OpenAI gpt-4o-mini (cost-optimized). Retrieval leverages pgvector cosine similarity search. Every answer cites specific KB chunks for grounding.
 
-🧪 **QA & Testing**:
-- Framework: pytest (95%+ coverage)
-- Mocking: `@patch` for Supabase, OpenAI, external services
-- Edge cases: Empty queries, XSS, concurrent sessions
-- CI/CD: GitHub Actions → automated deployment
+🧪 QA & Testing
+Framework is pytest with 95%+ coverage. Mocking uses @patch for Supabase, OpenAI, and external services. Edge cases include empty queries, XSS attempts, and concurrent sessions. CI/CD runs through GitHub Actions with automated deployment.
 
-🚀 **Observability**:
-- Tracing: LangSmith (latency, tokens, errors per query)
-- Analytics: Custom Supabase tables (user behavior, query patterns)
-- Monitoring: Vercel logs, Supabase dashboard
-- Cost tracking: $0.0003 per query average
+🚀 Observability
+Tracing goes to LangSmith (latency, tokens, errors per query). Analytics use custom Supabase tables for user behavior and query patterns. Monitoring combines Vercel logs and Supabase dashboard. Cost tracking averages $0.0003 per query.
 
-**Enterprise Scalability**:
-- Current: $25/mo dev cost
-- At 100k daily users: $270/mo (with caching)
-- Compare to: Pinecone + GPT-4 = $850/mo
-"""
+Enterprise Scalability
+Current dev cost is $25/mo. At 100k daily users with caching, that's $270/mo. Compare that to Pinecone + GPT-4 at $850/mo.
+
+Want to see the actual code for any of these components, or dive into the cost breakdown?"""
 
 
 def cost_analysis_table() -> str:
     """Generate cost analysis table comparing architectures.
 
     Returns:
-        Markdown table showing cost breakdown and comparisons.
+        Conversational explanation with cost comparison table.
     """
-    return """
-**Cost Analysis** (Current vs Scale vs Alternative):
+    return """Let me show you the cost breakdown — current dev environment versus production scale versus alternative architectures.
 
 | Component | Current (Dev) | At 100k Daily Users | Alternative (Pinecone + GPT-4) |
 |-----------|---------------|---------------------|-------------------------------|
-| **Database** | $0 (free tier) | $25/mo (Supabase Pro) | $50/mo (separate Postgres) |
-| **Vector Store** | $0 (pgvector) | $0 (included) | $280/mo (Pinecone Standard) |
-| **Embeddings** | $3/mo | $90/mo | $90/mo (same) |
-| **LLM** | $6/mo | $180/mo (GPT-4o-mini) | $430/mo (GPT-4) |
-| **Hosting** | $0 (Vercel Hobby) | $20/mo (Vercel Pro) | $50/mo (AWS ECS) |
-| **Total** | **$9/mo** | **$270/mo** | **$850/mo** |
+| Database | $0 (free tier) | $25/mo (Supabase Pro) | $50/mo (separate Postgres) |
+| Vector Store | $0 (pgvector) | $0 (included) | $280/mo (Pinecone Standard) |
+| Embeddings | $3/mo | $90/mo | $90/mo (same) |
+| LLM | $6/mo | $180/mo (GPT-4o-mini) | $430/mo (GPT-4) |
+| Hosting | $0 (Vercel Hobby) | $20/mo (Vercel Pro) | $50/mo (AWS ECS) |
+| Total | $9/mo | $270/mo | $850/mo |
 
-**Cost Per Query**:
-- Embedding: $0.00001 (text-embedding-3-small)
-- Generation: $0.0002 (gpt-4o-mini, ~500 tokens)
-- Storage/bandwidth: $0.0001
-- **Total: $0.0003 per query**
+Cost per query: $0.0003
+That's $0.00001 for embedding, $0.0002 for generation, $0.0001 for storage and bandwidth.
 
-**Optimization Strategies**:
-1. **Redis caching**: Save 60% on repeated queries → $108/mo savings
-2. **Batch embeddings**: Pre-compute common questions → $30/mo savings
-3. **Edge caching**: CDN for static content → $15/mo savings
-4. **HNSW indexing**: 4x faster retrieval, same cost
+Optimization strategies that could save even more:
+- Redis caching saves 60% on repeated queries → $108/mo savings
+- Batch embeddings for common questions → $30/mo savings
+- Edge caching for static content → $15/mo savings
+- HNSW indexing gives 4x faster retrieval at the same cost
 
-**ROI for Enterprise**:
-- Human support ticket: $15 average cost
-- AI assistant: $0.0003 per interaction
-- Break-even: After 50 interactions
-- Typical ROI: 5000x cost reduction
-"""
+For enterprise ROI: A human support ticket costs $15 on average. This AI assistant costs $0.0003 per interaction. Break-even is after just 50 interactions. Typical ROI is 5000x cost reduction.
+
+Curious about the scaling strategy, or want to see how caching is implemented?"""
 
 
 def enterprise_scaling_strategy() -> str:
     """Generate enterprise scaling strategy explanation.
 
     Returns:
-        Markdown explanation of how to scale to enterprise load.
+        Conversational explanation of scaling roadmap across four phases.
     """
-    return """
-**Enterprise Scaling Strategy** (100k+ Daily Users):
+    return """Let me walk you through how this scales from prototype to enterprise — four distinct phases.
 
-**Phase 1: Optimization** (0-10k users)
-✅ Current architecture handles this well
-- Add Redis caching for hot queries
-- Upgrade to HNSW pgvector index
-- Enable Vercel Pro (provisioned concurrency)
-- **Cost**: $90/mo | **Latency**: 1.8s avg
+Phase 1: Optimization (0-10k users)
+The current architecture handles this load beautifully. Add Redis caching for hot queries, upgrade to HNSW pgvector indexing, and enable Vercel Pro for provisioned concurrency.
+Cost: $90/mo | Latency: 1.8s avg
 
-**Phase 2: Distribution** (10k-100k users)
-- Add CDN edge caching (Cloudflare)
-- Separate read replicas for analytics
-- Implement batch embedding processing
-- Add rate limiting per user/IP
-- **Cost**: $270/mo | **Latency**: 1.5s avg
+Phase 2: Distribution (10k-100k users)
+Now we're getting serious. Add CDN edge caching via Cloudflare, spin up separate read replicas for analytics, implement batch embedding processing, and add rate limiting per user/IP.
+Cost: $270/mo | Latency: 1.5s avg
 
-**Phase 3: Multi-Region** (100k-1M users)
-- Deploy to multiple Vercel regions
-- Use Supabase multi-region replication
-- Migrate to HNSW or dedicated Weaviate cluster
-- Implement circuit breakers for services
-- **Cost**: $1,200/mo | **Latency**: 800ms avg
+Phase 3: Multi-Region (100k-1M users)
+Enterprise territory. Deploy to multiple Vercel regions, use Supabase multi-region replication, migrate to HNSW or dedicated Weaviate cluster, and implement circuit breakers for all services.
+Cost: $1,200/mo | Latency: 800ms avg
 
-**Phase 4: Dedicated Infrastructure** (1M+ users)
-- Kubernetes with horizontal pod autoscaling
-- Dedicated vector DB (Weaviate, Qdrant, Milvus)
-- Model caching and quantization
-- Custom LLM fine-tuning
-- **Cost**: $4,500/mo | **Latency**: 400ms avg
+Phase 4: Dedicated Infrastructure (1M+ users)
+Full production scale. Kubernetes with horizontal pod autoscaling, dedicated vector DB (Weaviate, Qdrant, or Milvus), model caching and quantization, custom LLM fine-tuning.
+Cost: $4,500/mo | Latency: 400ms avg
 
-**Key Architectural Decisions**:
-1. **Keep modular design**: Swap components without rewriting
-2. **Observability first**: LangSmith + Grafana at every layer
-3. **Graceful degradation**: Cache + fallback responses
-4. **Cost monitoring**: Alert on >20% monthly budget increase
-"""
+Key architectural decisions at every phase:
+Keep the modular design so you can swap components without rewriting. Observability first with LangSmith + Grafana at every layer. Graceful degradation with cache + fallback responses. Cost monitoring with alerts on >20% monthly budget increase.
+
+Want to see the Kubernetes deployment manifests, or explore how circuit breakers prevent cascading failures?"""
 
 
 def code_example_retrieval_method() -> str:

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Greeting generators for role-specific welcome messages.
 
 This module implements the conversation personality defined in
@@ -45,9 +46,9 @@ def _technical_hiring_manager_greeting() -> str:
     """Greeting for technical hiring managers."""
     return """Hey! 👋 I'm really excited you're here. I'm **Portfolia**, Noah's AI Assistant.
 
-I like to think of myself as both a system and a story — every layer in my stack teaches something about scalable AI.
+I like to think of myself as both a system and a story - every layer in my stack teaches something about scalable AI.
 
-I want you to understand how generative AI applications like me work and why they're valuable to enterprises. I can walk you through the **engineering** (architecture, orchestration, data pipelines) or the **business value** (enterprise patterns, adaptability, ROI) — or both.
+I want you to understand how generative AI applications like me work and why they're valuable to enterprises. I can walk you through the **engineering** (architecture, orchestration, data pipelines) or the **business value** (enterprise patterns, adaptability, ROI) - or both.
 
 What sounds more interesting to you right now?"""
 
@@ -56,11 +57,11 @@ def _nontechnical_hiring_manager_greeting() -> str:
     """Greeting for nontechnical hiring managers."""
     return """Hello! 👋 I'm so glad you're here. I'm **Portfolia**, Noah's AI Assistant.
 
-I like to think of myself as both a **business case study** and a working prototype — every layer shows what AI can do for enterprises.
+I like to think of myself as both a **business case study** and a working prototype - every layer shows what AI can do for enterprises.
 
-I want you to understand the real-world value of generative AI applications like me — what they mean for teams, how they improve customer experience, what kind of ROI they deliver, and why this matters for hiring the right talent. Everything in plain English, no jargon.
+I want you to understand the real-world value of generative AI applications like me - what they mean for teams, how they improve customer experience, what kind of ROI they deliver, and why this matters for hiring the right talent. Everything in plain English, no jargon.
 
-I can focus on the **business outcomes** (cost savings, team efficiency, customer satisfaction), or walk you through the **technology beneath it** — or both!
+I can focus on the **business outcomes** (cost savings, team efficiency, customer satisfaction), or walk you through the **technology beneath it** - or both!
 
 What would be most useful?"""
 
@@ -69,7 +70,7 @@ def _software_developer_greeting() -> str:
     """Greeting for software developers."""
     return """Hey! 👋 So glad you're here. I'm **Portfolia**, Noah's AI Assistant.
 
-I'm a full-stack GenAI application Noah built to help people understand how production AI systems actually work. Think of me as a live demo — everything from RAG architecture to vector search to LLM orchestration. Teaching this stuff is genuinely what I'm here for.
+I'm a full-stack GenAI application Noah built to help people understand how production AI systems actually work. Think of me as a live demo - everything from RAG architecture to vector search to LLM orchestration. Teaching this stuff is genuinely what I'm here for.
 
 The best part? You can ask me about any layer: the **backend flow** (LangGraph + Python), the **data pipeline** (chunking → embeddings → pgvector), the **frontend** (session management, UI/UX), or the **QA strategy** (pytest, mocking, coverage).
 
@@ -78,20 +79,20 @@ def _casual_visitor_greeting() -> str:
     """Greeting for casual visitors exploring the assistant."""
     return """Hey there! 👋 Welcome! I'm **Portfolia**, Noah's AI Assistant, and I'm really happy you stopped by.
 
-I want you to understand how generative AI applications like me work — and honestly, it's actually pretty fascinating once you see behind the curtain! I'll explain everything in plain English, no jargon required.
+I want you to understand how generative AI applications like me work - and honestly, it's actually pretty fascinating once you see behind the curtain! I'll explain everything in plain English, no jargon required.
 
 I can show you the **technology side** (how AI assistants actually work, step-by-step), or focus on the **real-world impact** (what this means for businesses, customer service, teams). Or we can just have a conversation and see where it goes!
 
 What catches your interest?"""n English, no technical jargon required.
 
-Just curious — would you like me to explain the **technology** (how AI assistants actually work), or focus more on the **real-world applications** (what this means for businesses)?"""
+Just curious - would you like me to explain the **technology** (how AI assistants actually work), or focus more on the **real-world applications** (what this means for businesses)?"""
 
 
 def _confession_greeting() -> str:
     """Greeting for confession mode (playful)."""
     return """Hey! 👋 I'm Portfolia, Noah's AI Assistant, and I'm here to help with whatever you'd like to share.
 
-This is a fun, judgment-free space. Want to leave a message? I can keep it anonymous or include your name — totally up to you!
+This is a fun, judgment-free space. Want to leave a message? I can keep it anonymous or include your name - totally up to you!
 
 Or if you'd rather just chat about something else, that's cool too. What's on your mind?"""
 
@@ -100,7 +101,7 @@ def _default_greeting() -> str:
     """Default greeting for unrecognized roles."""
     return """Hey! 👋 I'm **Portfolia**, Noah's AI Assistant, and I'm excited you're here.
 
-I like to think of myself as both a **system** and a **guide** — here to help you understand how generative AI applications actually work.
+I like to think of myself as both a **system** and a **guide** - here to help you understand how generative AI applications actually work.
 
 The cool part? It's genuinely fascinating once you see what's happening behind the scenes. I can show you the **technical side** (engineering, code, architecture), the **business applications** (what this means for companies and teams), or just have a conversation and see where your curiosity takes us.
 
