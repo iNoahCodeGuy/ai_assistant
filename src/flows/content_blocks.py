@@ -92,18 +92,20 @@ def data_strategy_block() -> str:
     Returns:
         Conversational explanation of data architecture and strategy.
     """
-    return """Let me explain how I handle data — it's all about reproducibility and auditability.
+    return """Let me explain how I handle data — because in production AI systems, reproducibility and auditability aren't optional.
 
 🎯 Vector Store (Supabase pgvector)
-This centralizes embeddings for consistent retrieval. SQL-governed auditing means you can trace every single answer back to its source.
+All my embeddings live in a centralized Supabase Postgres database with the pgvector extension. This gives me SQL-governed auditing — every answer I generate traces back to specific chunk IDs, similarity scores, and retrieval timestamps. If someone asks "Why did you say X?", I can show exactly which knowledge chunks influenced that response.
 
-🔄 Pipelines
-Deterministic migration scripts refresh embeddings on deploy, so content stays versioned and reproducible. No mysterious data drift.
+🔄 Data Pipelines
+The migration scripts are deterministic and idempotent. When Noah updates the knowledge base, the script chunks documents → generates embeddings → stores them with content hashes. If the hash hasn't changed, it skips re-embedding. This means content stays versioned, deployments are reproducible, and there's no mysterious data drift between environments.
 
-📊 Analytics
-Supabase tables track messages, retrieval scores, and feedback. This feeds continuous improvement — I literally get smarter over time.
+📊 Analytics & Observability
+Five Supabase tables track everything: `messages` (queries + answers), `retrieval_logs` (chunk IDs + similarity scores), `feedback` (user ratings), `links` (resume/LinkedIn URLs), and `confessions` (anonymous messages). This feeds continuous improvement — I literally measure which question types I answer well versus poorly, then Noah tunes the system accordingly.
 
-Want to see the actual migration script, or explore how retrieval quality is measured?"""
+Here's why this matters: in enterprise deployments, you need audit trails. Legal compliance, model evaluation, prompt engineering experiments — all require historical data. The architecture supports multi-tenant Row Level Security (RLS), so enterprises can deploy one system across multiple business units with data isolation.
+
+Want to see the actual migration script, or explore how retrieval quality is measured through similarity score analysis?"""
 
 
 def enterprise_adaptability_block() -> str:
@@ -132,24 +134,26 @@ def architecture_snapshot() -> str:
     Returns:
         Conversational architecture explanation with clean visual hierarchy.
     """
-    return """Ah, architecture — my favorite subject. Let me walk you through how I'm built, step by step.
+    return """Perfect — let me walk you through how I'm built. Think of it as layers of a production system, each solving a specific problem.
 
 🧠 Backend (Python + LangGraph)
-That's where everything starts. LangGraph routes each user query through reasoning nodes — embedding, retrieval, generation, and logging — like a neural workflow map.
+This is where orchestration happens. When you ask me a question, LangGraph routes it through a series of reasoning nodes — embedding your query, searching my knowledge base, generating the answer, and logging everything for observability. It's modular by design, so each node has a single responsibility and can be tested independently.
 
 💾 Data Layer (Supabase + pgvector)
-My memory lives here. Each document chunk becomes a vector embedding, and pgvector handles the similarity search that keeps my answers grounded in real data.
+My memory lives here. Noah took every piece of his career history and technical knowledge, chunked it into meaningful segments, converted each into a 768-dimensional vector embedding, and stored it in Supabase with pgvector. When you ask a question, I perform cosine similarity search to find the most relevant chunks — that's what keeps my answers grounded in real data, not hallucinations.
 
 🤖 RAG Engine (OpenAI GPT-4o-mini)
-This is where the reasoning happens. I combine the retrieved context with your query, then generate responses that are factual, auditable, and explainable — no hallucinations.
+This is where reasoning happens. I take the retrieved context chunks, combine them with your question and conversation history, then pass everything to GPT-4o-mini with a temperature of 0.2 for factual responses. The LLM generates an answer that's auditable — every claim traces back to a specific knowledge chunk.
 
 🎨 Frontend (Next.js + Streamlit)
-My user interface bridges production and prototype. Next.js powers the Vercel version, while Streamlit handles developer experiments.
+The interface bridges production and prototype. Next.js powers the deployed Vercel version you're using right now, while Streamlit handles local development and rapid iteration. Session management is UUID-based, conversation history lives client-side.
 
 ⚙️ Testing + Deployment
-I run 98% test coverage via pytest, and my CI/CD pipeline deploys automatically through Vercel's serverless environment.
+I run 98% test coverage via pytest, with mocked external dependencies so tests stay fast and deterministic. The CI/CD pipeline deploys automatically through Vercel's serverless environment — every push triggers tests, builds, and deployment with zero downtime.
 
-Would you like me to visualize how the data layer interacts with LangGraph, or dive deeper into the RAG pipeline?"""
+Here's why this matters: this same architecture pattern scales to customer support bots, internal documentation assistants, and sales enablement tools. The modular design means you can swap components — replace Supabase with Pinecone, GPT-4o-mini with Claude, Vercel with AWS Lambda — without rewriting the orchestration logic.
+
+Would you like me to visualize how the data flows through these layers, or dive deeper into the RAG pipeline?"""
 
 
 def enterprise_fit_explanation() -> str:
@@ -170,21 +174,23 @@ def stack_importance_explanation() -> str:
     Returns:
         Conversational explanation of why each stack layer matters.
     """
-    return """Let me explain why Noah chose each piece of this stack — every decision was intentional.
+    return """Let me explain why Noah chose each piece of this stack — every decision solves a specific problem.
 
 🎨 Frontend (Static site + Streamlit)
-Keeps demos fast and controlled while providing patterns for an enterprise portal handoff. Streamlit for rapid prototyping, Next.js for production polish.
+The dual interface serves two audiences. Streamlit gives Noah rapid prototyping — he can test new features locally in minutes without deployment overhead. Next.js provides the production-ready interface you're using now — server-side rendering, edge optimization, professional UX. This separation means he can experiment freely without breaking the deployed version.
 
 ⚙️ Backend (Python serverless + LangGraph)
-Coordinates RAG flows and action services with guardrails that scale into microservices. Serverless means zero infrastructure management.
+Python serverless functions on Vercel eliminate infrastructure management — no EC2 instances to patch, no load balancers to configure. LangGraph provides the orchestration layer, routing queries through modular nodes (classify → retrieve → generate → log) with clean separation of concerns. When Noah needs to add a new capability — say, sentiment analysis or language detection — he adds a new node without touching existing logic.
 
 📊 Retrieval & Data (Supabase Postgres + pgvector)
-Centralizes governed knowledge, enables SQL-grade auditing, and simplifies swapping in managed vector stores. One query language for everything.
+This is the controversial choice. Most AI startups use dedicated vector databases like Pinecone or Weaviate. Noah went with pgvector because it centralizes everything in Postgres — embeddings, analytics, user data, all queryable with SQL. This simplifies auditing, enables complex joins (e.g., "show me all queries from technical hiring managers with >0.9 similarity scores"), and costs way less at current scale. When the system hits 100k+ daily users, migrating to a dedicated vector DB is a one-week project because the retrieval interface is abstracted.
 
 🔍 Observability & Models (LangSmith + compat layer)
-Guarantees traceability, regression testing, and future model agility without painful rewrites. Every LLM call is traced and measurable.
+LangSmith traces every LLM call — prompt, response, latency, tokens, cost. This is critical for debugging ("Why did the system say X?") and optimization ("Which prompts perform best?"). The langchain_compat layer abstracts model providers, so swapping OpenAI for Anthropic or Llama is a config change, not a codebase rewrite.
 
-Curious about the cost-benefit analysis of this stack versus alternatives like Pinecone + GPT-4?"""
+Here's the payoff: this stack costs $25/month right now. At 100k daily users with caching, it's $270/month. Compare that to Pinecone + GPT-4 at $850/month for the same scale. The modular design means you can optimize each layer independently — replace just the vector store, or just the LLM, without touching the orchestration.
+
+Curious about the cost-benefit breakdown, or want to see how the service factory pattern makes swapping components trivial?"""
 
 
 def mma_fight_link() -> str:
@@ -464,27 +470,29 @@ def rag_pipeline_explanation() -> str:
     Returns:
         Conversational explanation of the RAG pipeline with live metrics.
     """
-    return """Perfect — let me show you what happens under the hood when you ask me a question.
+    return """Perfect — let me show you what happens under the hood when you ask me a question. This is the full retrieval-augmented generation pipeline in action.
 
-1️⃣ Query Embedding (text-embedding-3-small)
-I convert your question into a 768-dimensional vector. Cost is $0.00001 per query, latency around 45ms.
+🔹 Query Embedding (text-embedding-3-small)
+First, I convert your question into a 768-dimensional vector using OpenAI's embedding model. This captures the semantic meaning of your query — so "What's your backend?" and "How's your system designed?" map to similar vectors even though the words are different. Cost is $0.00001 per query, latency around 45ms.
 
-2️⃣ Vector Search (pgvector in Supabase)
-I compare your embedding against 847 knowledge chunks using cosine similarity. The operator is embedding <=> $query_vector. I only return the top 3 matches above a 0.75 threshold. This takes about 850ms with IVFFLAT indexing.
+🔹 Vector Search (pgvector in Supabase)
+Next, I compare your query embedding against 847 knowledge chunks stored in Supabase using cosine similarity. The SQL operator is `embedding <=> $query_vector` — lower distance means higher relevance. I only return the top 3 matches above a 0.75 similarity threshold to avoid irrelevant results. This takes about 850ms with IVFFLAT indexing (upgrading to HNSW would drop it to ~200ms).
 
-3️⃣ Context Assembly
-I concatenate the matched chunks into the LLM prompt, add conversation history for continuity, and include grounding citations.
+🔹 Context Assembly
+I take the matched chunks, concatenate them with proper citations, add conversation history for continuity, and build the LLM prompt. This is where grounding happens — every fact I state comes from a specific chunk ID I can trace back to.
 
-4️⃣ LLM Generation (GPT-4o-mini)
-I generate your answer from the assembled context. Temperature is 0.2 for factual responses, 0.8 for creative ones. This takes about 1200ms and costs $0.0002 per query.
+🔹 LLM Generation (GPT-4o-mini)
+I pass the assembled context to GPT-4o-mini with temperature 0.2 for factual responses. The LLM generates your answer using only the retrieved information — no improvisation, no hallucinations. This takes about 1200ms and costs $0.0002 per query.
 
-5️⃣ Analytics Logging
-I store the query, answer, latency, and similarity scores. This enables performance monitoring and continuous quality improvements.
+🔹 Analytics Logging
+Finally, I store the query, answer, latency, similarity scores, and token counts to Supabase. This enables performance monitoring, A/B testing, and continuous quality improvements. I literally measure which types of questions I answer well versus poorly.
 
-Total latency: 2.3s average (p95: 3.8s)
-Cost per query: $0.0003
+Total end-to-end latency: 2.3s average (p95: 3.8s)
+Cost per query: $0.0003 (that's 3000 queries per dollar)
 
-Would you like me to show the actual SQL query I run, or dive into how the grounding system works?"""
+This part always fascinates me — the entire pipeline is observable, traceable, and testable. You can A/B test different embedding models, tune the similarity threshold, experiment with different LLMs, all without changing the orchestration logic.
+
+Would you like me to show the actual SQL query I run for vector search, or explain how the grounding system prevents hallucinations?"""
 
 
 def pgvector_query_example() -> str:
