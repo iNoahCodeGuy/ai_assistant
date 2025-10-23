@@ -1,48 +1,34 @@
-"""Lightweight orchestrator for LangGraph-style conversation flow.
+"""LangGraph-style orchestrator aligned with PORTFOLIA_NODE_STRUCTURE.md.
 
-Educational Mission: This module demonstrates production GenAI orchestration patterns.
+Educational mission: make every conversation a live case study of production RAG
+patterns with clear node boundaries, traceability, and cinematic-yet-grounded tone.
 
-Architecture Overview (Linear Pipeline - Week 1):
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. handle_greeting → 2. classify_query → 3. extract_job_details    │
-│        ↓                      ↓                      ↓              │
-│ 4. retrieve_chunks → 5. generate_answer → 6. plan_actions          │
-│        ↓                      ↓                      ↓              │
-│ 7. apply_role_context → 8. execute_actions → 9. log_and_notify     │
-└─────────────────────────────────────────────────────────────────────┘
+Conversation Pipeline Overview:
+1. initialize_conversation_state → normalize state containers and load memory
+2. handle_greeting → warm intro without RAG cost for first-turn hellos
+3. classify_role_mode → decouple persona selection from intent detection
+4. classify_intent → determine engineering vs business focus and data needs
+5. detect_hiring_signals / handle_resume_request → passive hiring intelligence
+6. extract_entities → capture company, role, timeline, contact hints
+7. assess/ask_clarification → clarify vague prompts before retrieval
+8. compose_query → build retrieval-ready prompt with persona + entity context
+9. retrieve_chunks → Supabase pgvector lookup (LangSmith traced)
+10. re_rank_and_dedup → diversify context for grounded answers
+11. validate_grounding / handle_grounding_gap → stop hallucinations early
+12. generate_draft → role-aware LLM generation (stored as draft_answer)
+13. hallucination_check → attach citations and mark safety status
+14. plan_actions → decide on resumes, LinkedIn, analytics, etc.
+15. format_answer → add enterprise content blocks without breaking plain text rule
+16. execute_actions → fire side-effects (email/SMS/logging)
+17. suggest_followups → cinematic curiosity prompts
+18. update_memory → store soft signals for next turns
+19. log_and_notify → Supabase analytics + LangSmith metadata (always executed)
 
-Design Principles Applied:
-- Single Responsibility (SRP #1): Each node does ONE thing
-- Loose Coupling (#3): Nodes don't call each other directly
-- Observability: LangSmith tracing on all LLM calls
-- Reliability (#4): Graceful degradation if services unavailable
-- Clarity: Functional pipeline pattern (easy to understand flow)
-
-Node Descriptions:
-1. handle_greeting: Detects first-turn "hello" → returns greeting (short-circuit)
-2. classify_query: Intent analysis → sets needs_longer_response, code_would_help flags
-3. extract_job_details: Extracts company/position from query (hiring managers only)
-4. retrieve_chunks: RAG retrieval → pgvector cosine similarity search (top-k=4)
-5. generate_answer: LLM generation (gpt-4o-mini) → grounded in retrieved context
-6. plan_actions: Determines side effects → resume_send, sms_notify, analytics
-7. apply_role_context: Role-specific enhancements → follow-ups, contact offers
-8. execute_actions: Side effects execution → email, SMS, analytics logging
-9. log_and_notify: Persistence → Supabase messages + retrieval_logs tables
-
-Performance Characteristics:
-- Typical latency: 1.2s (embedding 0.2s + retrieval 0.3s + generation 0.7s)
-- Greeting short-circuit: <50ms (no LLM calls, no DB queries)
-- Cold start (Vercel): ~3s (Lambda init + model load)
-- p95 latency target: <3s
-
-Migration Path (see LANGGRAPH_ALIGNMENT.md):
-- Current (Week 1): TypedDict state + functional pipeline (STABLE)
-- Future (Week 2+): StateGraph with conditional edges (OPTIMIZED)
-- Rationale: Prioritize stability for launch, then optimize
-
-References:
-- https://github.com/techwithtim/LangGraph-Tutorial.git (LangGraph patterns)
-- docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md (detailed flow explanation)
+Performance characteristics remain consistent with Week 1 launch targets:
+- Typical latency ~1.2s
+- Greeting short-circuit <50ms
+- Cold start ~3s on Vercel
+- p95 latency <3s with tracing enabled
 """
 
 from __future__ import annotations
@@ -53,46 +39,32 @@ from typing import Callable, Optional, Sequence
 from src.core.rag_engine import RagEngine
 from src.state.conversation_state import ConversationState
 from src.flows.conversation_nodes import (
-    classify_query,
-    retrieve_chunks,
-    generate_answer,
-    plan_actions,
-    apply_role_context,
-    execute_actions,
-    log_and_notify,
+    initialize_conversation_state,
     handle_greeting,
-    extract_job_details_from_query,
+    classify_role_mode,
+    classify_intent,
+    detect_hiring_signals,
+    handle_resume_request,
+    extract_entities,
+    assess_clarification_need,
+    ask_clarifying_question,
+    compose_query,
+    retrieve_chunks,
+    re_rank_and_dedup,
+    validate_grounding,
+    handle_grounding_gap,
+    generate_draft,
+    hallucination_check,
+    plan_actions,
+    format_answer,
+    execute_actions,
+    suggest_followups,
+    update_memory,
+    log_and_notify,
 )
 
 
 Node = Callable[[ConversationState], ConversationState]
-
-
-def _initialize_state_defaults(state: ConversationState) -> None:
-    """Initialize required state fields with safe defaults (defensive programming).
-
-    Ensures all nodes can safely access required collections without KeyError.
-    Must be called at the start of run_conversation_flow before any nodes execute.
-
-    Design Principle: Defensibility (#6) - Initialize collections to prevent KeyError
-
-    Args:
-        state: ConversationState to initialize (modified in-place)
-    """
-    if "analytics_metadata" not in state:
-        state["analytics_metadata"] = {}
-    if "pending_actions" not in state:
-        state["pending_actions"] = []
-    if "job_details" not in state:
-        state["job_details"] = {}
-    if "chat_history" not in state:
-        state["chat_history"] = []
-    if "hiring_signals" not in state:
-        state["hiring_signals"] = []
-    if "topic_focus" not in state:
-        state["topic_focus"] = "general"
-    if "retrieved_chunks" not in state:
-        state["retrieved_chunks"] = []
 
 
 def run_conversation_flow(
@@ -135,23 +107,35 @@ def run_conversation_flow(
         >>> print(result["answer"])  # Grounded explanation from KB
         >>> print(len(result["retrieved_chunks"]))  # Should be 1-4 chunks
     """
-    # Initialize required collections (Defensibility - prevent KeyError in nodes)
-    _initialize_state_defaults(state)
-
     pipeline = nodes or (
-        lambda s: handle_greeting(s, rag_engine),  # Check for first-turn greetings
-        classify_query,
-        extract_job_details_from_query,  # Extract job details if provided (Task 9)
-        lambda s: retrieve_chunks(s, rag_engine) if not s.get("is_greeting") else s,
-        lambda s: generate_answer(s, rag_engine) if not s.get("is_greeting") else s,
+        initialize_conversation_state,
+        lambda s: handle_greeting(s, rag_engine),
+        classify_role_mode,
+        classify_intent,
+        detect_hiring_signals,
+        handle_resume_request,
+        extract_entities,
+        assess_clarification_need,
+        ask_clarifying_question,
+        compose_query,
+        lambda s: retrieve_chunks(s, rag_engine),
+        re_rank_and_dedup,
+        validate_grounding,
+        handle_grounding_gap,
+        lambda s: generate_draft(s, rag_engine),
+        hallucination_check,
         plan_actions,
-        lambda s: apply_role_context(s, rag_engine),
+        lambda s: format_answer(s, rag_engine),
         execute_actions,
+        suggest_followups,
+        update_memory,
     )
 
     start = time.time()
     for node in pipeline:
         state = node(state)
+        if state.get("pipeline_halt") or state.get("is_greeting"):
+            break
 
     elapsed_ms = int((time.time() - start) * 1000)
     state = log_and_notify(state, session_id=session_id, latency_ms=elapsed_ms)

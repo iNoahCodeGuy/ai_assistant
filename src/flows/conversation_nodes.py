@@ -20,12 +20,25 @@ See docs/CONVERSATION_PIPELINE_MODULES.md for implementation details.
 from __future__ import annotations
 
 # Import all conversation nodes from their focused modules
-from src.flows.query_classification import classify_query
+from src.flows.session_management import initialize_conversation_state
+from src.flows.role_routing import classify_role_mode
+from src.flows.query_classification import classify_intent, classify_query
+from src.flows.entity_extraction import extract_entities
+from src.flows.clarification import assess_clarification_need, ask_clarifying_question
+from src.flows.query_composition import compose_query
 from src.flows.core_nodes import (
     retrieve_chunks,
+    re_rank_and_dedup,
+    validate_grounding,
+    handle_grounding_gap,
+    generate_draft,
     generate_answer,
+    hallucination_check,
+    format_answer,
     apply_role_context,
-    log_and_notify
+    log_and_notify,
+    suggest_followups,
+    update_memory,
 )
 from src.flows.action_planning import plan_actions
 from src.flows.action_execution import execute_actions
@@ -78,13 +91,28 @@ def handle_greeting(state, rag_engine):
 
 # Export all nodes for use in conversation_flow.py
 __all__ = [
-    "classify_query",
+    "initialize_conversation_state",
+    "classify_role_mode",
+    "classify_intent",
+    "classify_query",  # backward-compatible alias
+    "extract_entities",
+    "assess_clarification_need",
+    "ask_clarifying_question",
+    "compose_query",
     "retrieve_chunks",
-    "generate_answer",
+    "re_rank_and_dedup",
+    "validate_grounding",
+    "handle_grounding_gap",
+    "generate_draft",
+    "generate_answer",  # backward-compatible alias
+    "hallucination_check",
+    "format_answer",
+    "apply_role_context",  # backward-compatible alias
     "plan_actions",
-    "apply_role_context",
     "execute_actions",
     "log_and_notify",
+    "suggest_followups",
+    "update_memory",
     "handle_greeting",
     "get_role_greeting",
     "is_first_turn",

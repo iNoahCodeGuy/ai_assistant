@@ -10,7 +10,7 @@ This document catalogs the modules and services invoked during a standard Stream
 
 ## Core Runtime Modules
 - `src/flows/conversation_state.py` – shared state container for the LangGraph-style pipeline.
-- `src/flows/conversation_flow.py` – orchestrator wiring `classify_query`, `retrieve_chunks`, `generate_answer`, `plan_actions`, `apply_role_context`, `execute_actions`, and `log_and_notify`.
+- `src/flows/conversation_flow.py` – orchestrator wiring `initialize_conversation_state`, `handle_greeting`, `classify_role_mode`, `classify_intent`, `retrieve_chunks`, `generate_draft`, `plan_actions`, `format_answer`, `execute_actions`, `suggest_followups`, `update_memory`, and `log_and_notify`.
 - `src/core/rag_engine.py` – handles retrieval and response generation.
 - `src/core/memory.py` – maintains multi-turn memory for the legacy RoleRouter path.
 - `src/analytics/supabase_analytics.py` – logs interactions to Supabase.

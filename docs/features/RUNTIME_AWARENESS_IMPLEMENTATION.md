@@ -50,7 +50,7 @@ This document describes the implementation of Portfolia's **Runtime Awareness** 
 **A. Self-Referential Teaching**:
 ```python
 # Architecture Questions
-"Let me show you my actual pipeline: classify_query → retrieve_chunks → generate_answer..."
+"Let me show you my actual pipeline: classify_intent → retrieve_chunks → generate_draft → format_answer..."
 
 # RAG Questions
 "Here's what happens when you ask me something: [show SQL query]"
@@ -70,8 +70,8 @@ This document describes the implementation of Portfolia's **Runtime Awareness** 
 
 **C. Node-Based Narration** (for advanced users):
 - "I'm currently in my retrieve_chunks node, fetching from Supabase pgvector..."
-- "This answer was generated in my generate_answer node after retrieval returned 3 chunks..."
-- "My conversation flow: classify → retrieve → generate → plan → execute → log"
+- "This answer was drafted in my generate_draft node after retrieval returned 3 chunks..."
+- "My conversation flow: initialize → clarify → draft → format → execute → log"
 
 **D. Performance Transparency**:
 ```markdown
@@ -132,8 +132,9 @@ LIMIT 3;
 
 **Content**:
 ```
-User Query → classify_query → retrieve_chunks → generate_answer →
-plan_actions → execute_actions → log_and_notify
+User Query → classify_role_mode → classify_intent → retrieve_chunks →
+re_rank_and_dedup → generate_draft → format_answer → execute_actions →
+suggest_followups → update_memory → log_and_notify
 ```
 - Each node with bullet points explaining responsibility
 - Key design decisions (modular, immutable state, graceful degradation)
@@ -148,8 +149,11 @@ plan_actions → execute_actions → log_and_notify
 **Content**:
 | Node | Avg Latency | % of Total | Status |
 |------|-------------|------------|--------|
-| retrieve_chunks | 850ms | 37% | ⚠️ Bottleneck |
-| generate_answer | 1200ms | 52% | ✅ Expected |
+| initialize_conversation_state + handle_greeting | 30ms | 1% | ✅ Fast |
+| classify_role_mode + classify_intent | 70ms | 3% | ✅ Fast |
+| retrieve_chunks + re_rank_and_dedup | 850ms | 37% | ⚠️ Bottleneck |
+| generate_draft + hallucination_check | 1200ms | 52% | ✅ Expected |
+| format_answer + execute_actions + log_and_notify | 200ms | 7% | ✅ Fast |
 
 - Total p95 latency: 3.8s
 - Success rate: 93.8%

@@ -13,51 +13,76 @@ This system exists to **teach how generative AI applications work** by using its
 
 ### Conceptual Flow (What's Happening)
 ```
-Classify user intent → Retrieve relevant knowledge → Generate grounded answer →
-Enhance with role context → Execute side effects → Log for observability
+Initialize conversation → Short-circuit greetings → Classify role & intent →
+Clarify ambiguous asks → Compose retrieval query → Retrieve & validate context →
+Draft grounded answer → Format, act, and follow up → Log observability signals
 ```
 
 ### Actual Implementation (The Code)
 ```python
 # Pipeline defined in src/flows/conversation_flow.py
+initialize_conversation_state
+  → Loads session memory, normalizes state containers, attaches analytics metadata
+  → Source: src/flows/session_management.py
+
 handle_greeting
   → Detects first-turn "hello" and returns greeting without RAG
   → Short-circuits pipeline if user just said hi (efficiency!)
+  → Source: src/flows/greetings.py
 
-classify_query
+classify_role_mode
+  → Confirms persona selection (developer, hiring manager, etc.) and teaching defaults
+  → Splits role adaptation from pure intent detection for clarity
+  → Source: src/flows/role_routing.py
+
+classify_intent
   → Analyzes user intent: teaching moment? code request? data request?
   → Sets flags: needs_longer_response, code_would_help, data_would_help
   → Source: src/flows/query_classification.py
 
-detect_hiring_signals (NEW - Passive Tracking for HM Roles)
+detect_hiring_signals (Passive Tracking for HM Roles)
   → Scans query for hiring indicators (mentioned_hiring, described_role, team_context)
   → Accumulates signals in state.hiring_signals list (passive tracking)
   → Does NOT trigger proactive offers - only enables subtle availability mentions
-  → Source: src/flows/conversation_nodes.py
+  → Source: src/flows/resume_distribution.py
 
-handle_resume_request (NEW - Explicit Requests for HM Roles)
+handle_resume_request (Explicit Requests for HM Roles)
   → Detects explicit resume requests ("can I get your resume", "send me your CV")
   → Sets state.resume_explicitly_requested = True (triggers email collection)
   → Immediate response without qualification - user asked, we deliver
-  → Source: src/flows/conversation_nodes.py
-
-extract_job_details_from_query (NEW - Post-Interest Job Details)
-  → Extracts company, position, timeline from user's follow-up response
-  → Only runs AFTER resume sent - conversational gathering, not interrogation
-  → Uses regex patterns to detect: "I'm with Acme Corp", "hiring for Senior Engineer"
   → Source: src/flows/resume_distribution.py
 
+extract_entities
+  → Pulls company names, role titles, timelines, and contact hints for later prompts
+  → Keeps entity extraction decoupled from retrieval logic
+  → Source: src/flows/entity_extraction.py
+
+assess_clarification_need / ask_clarifying_question
+  → Detects vague or underspecified queries before spending tokens
+  → Either inserts a clarification question or green-lights retrieval
+  → Source: src/flows/clarification.py
+
+compose_query
+  → Builds retrieval-ready prompt with persona + entity context + clarified details
+  → Source: src/flows/query_composition.py
+
 retrieve_chunks (THIS IS RAG!)
-  → Converts query to embedding via text-embedding-3-small (768 dims)
+  → Converts composed query to embedding via text-embedding-3-small (768 dims)
   → Searches Supabase kb_chunks using pgvector cosine similarity
   → Returns top-k relevant context chunks with similarity scores
   → Source: src/flows/core_nodes.py → src/retrieval/pgvector_retriever.py
 
-generate_answer
-  → Calls OpenAI GPT-4o-mini with retrieved context
-  → Injects dynamic instructions based on query classification
-  → Handles narrative (explain concepts) and code display (show implementation)
-  → Uses role-specific prompts (Technical HM, Developer, General)
+re_rank_and_dedup
+  → Lightweight diversification guard so similar chunks do not crowd the context window
+  → Source: src/flows/core_nodes.py
+
+validate_grounding / handle_grounding_gap
+  → Ensures similarity scores are high enough; otherwise pauses and asks for more detail
+  → Source: src/flows/core_nodes.py
+
+generate_draft
+  → Calls OpenAI GPT-4o-mini with retrieved context to create a draft answer
+  → Injects dynamic instructions based on query classification and runtime awareness
   → For HM roles: Uses should_add_availability_mention() to add subtle mention if ≥2 hiring signals
   → For HM roles (post-resume): Uses should_gather_job_details() to add job details question
   → Source: src/flows/core_nodes.py → src/core/response_generator.py
@@ -70,18 +95,20 @@ Helper Functions (Resume Distribution Support):
   • extract_name_from_query(query) - Regex-based name extraction
   → Source: src/flows/resume_distribution.py
 
+hallucination_check
+  → Adds lightweight citations and flags grounding status for observability dashboards
+  → Source: src/flows/core_nodes.py
+
 plan_actions
   → Determines side effects needed: send analytics? offer contact? log feedback?
   → For HM roles: Plans resume_send action if explicitly requested
   → Creates action plan without executing yet (separation of concerns)
-  → Source: src/flows/conversation_nodes.py
+  → Source: src/flows/action_planning.py
 
-apply_role_context
-  → Adds role-specific enhancements (follow-ups, contact offers, personality)
-  → Software Developer → technical follow-ups + code examples
-  → Hiring Manager → business value + education-first (subtle availability if signaled)
-  → Just exploring → fun facts + casual tone
-  → Source: src/flows/conversation_nodes.py
+format_answer
+  → Applies role-specific formatting, injects content blocks, enforces ≤40 line code rule
+  → Bridges raw draft into polished, persona-aware reply
+  → Source: src/flows/core_nodes.py
 
 execute_actions
   → Runs planned side effects: email via Resend, SMS via Twilio, analytics logging
@@ -89,10 +116,18 @@ execute_actions
   → Handles failures gracefully (degraded mode - logs errors but doesn't crash)
   → Source: src/flows/action_execution.py
 
+suggest_followups
+  → Generates curiosity-driven follow-up prompts aligned with invitation culture
+  → Source: src/flows/core_nodes.py
+
+update_memory
+  → Stores soft session signals (preferred modality, hiring signals, follow-ups asked)
+  → Source: src/flows/core_nodes.py
+
 log_and_notify
   → Logs interaction to Supabase messages + retrieval_logs tables
   → Tracks latency, tokens, success/failure for observability
-  → Source: src/flows/conversation_nodes.py
+  → Source: src/flows/core_nodes.py
 ```
 
 **Teaching insights:**

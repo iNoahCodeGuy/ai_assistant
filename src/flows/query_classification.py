@@ -249,8 +249,8 @@ def _expand_vague_query(query: str) -> str:
     return query
 
 
-def classify_query(state: ConversationState) -> Dict[str, Any]:
-    """Classify the incoming query and return partial state update.
+def classify_intent(state: ConversationState) -> Dict[str, Any]:
+    """Classify the incoming query intent and return an updated state.
 
     This is the first node in the conversation pipeline. It looks at the
     user's question and figures out what category it falls into.
@@ -289,9 +289,9 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
     # Fail-fast validation (Defensibility principle)
     try:
         query = state["query"]
-        role = state.get("role", "Developer")  # Has default, optional
+        role = state.get("role_mode") or state.get("role", "Developer")  # Persona already normalized upstream
     except KeyError as e:
-        logger.error(f"classify_query: Missing required field: {e}")
+        logger.error(f"classify_intent: Missing required field: {e}")
         return {
             "error": "classification_failed",
             "error_message": f"Missing required field for classification: {e}"
@@ -454,7 +454,14 @@ def classify_query(state: ConversationState) -> Dict[str, Any]:
 
     update["topic_focus"] = detect_topic_focus(expanded_query)
 
+    update["query_intent"] = update.get("query_type", "general")
+    update["intent_confidence"] = 0.9
+
     # Update state in-place (current functional pipeline pattern)
-    # When we migrate to LangGraph StateGraph, this will return partial dict only
     state.update(update)
     return state
+
+
+def classify_query(state: ConversationState) -> Dict[str, Any]:
+    """Backward-compatible alias preserving older node name."""
+    return classify_intent(state)

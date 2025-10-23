@@ -1,10 +1,15 @@
-"""Core conversation nodes - the main pipeline.
+"""Core conversation nodes - retrieval, generation, and analytics layers.
 
-This module contains the essential conversation flow nodes:
-1. retrieve_chunks - Get relevant knowledge from the database
-2. generate_answer - Create LLM response with retrieved context
-3. apply_role_context - Add role-specific content (code, data, links)
-4. log_and_notify - Save analytics and trigger notifications
+This module houses the retrieval + generation stack for the LangGraph pipeline:
+1. retrieve_chunks → Supabase pgvector search
+2. re_rank_and_dedup → Lightweight diversification guard
+3. validate_grounding / handle_grounding_gap → Early hallucination gate
+4. generate_draft → LLM response before formatting
+5. hallucination_check → Attach lightweight citations
+6. format_answer → Role-aware formatting (replaces apply_role_context)
+7. log_and_notify → Persist analytics and retrieval traces
+8. suggest_followups → Curiosity prompts
+9. update_memory → Store soft session signals
 
 Junior dev note: These are the "middle" of the pipeline. They sit between
 query classification (query_classification.py) and action execution (action_execution.py).
@@ -14,14 +19,19 @@ For the full flow, see: docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md
 
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from src.state.conversation_state import ConversationState
 from src.core.rag_engine import RagEngine
-from src.analytics.supabase_analytics import supabase_analytics, UserInteractionData
+from src.analytics.supabase_analytics import (
+    supabase_analytics,
+    UserInteractionData,
+    RetrievalLogData,
+)
 from src.flows import content_blocks
 from src.flows.data_reporting import render_full_data_report
 from src.flows.code_validation import is_valid_code_snippet, sanitize_generated_answer
+from src.observability.langsmith_tracer import create_custom_span
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -62,31 +72,116 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     - Reliability (#4): Graceful handling if retrieval fails (returns empty chunks)
     - Observability: Logs retrieval metadata for LangSmith tracing
     """
-    query = state["query"]
+    query = state.get("composed_query") or state["query"]
 
-    try:
-        chunks = rag_engine.retrieve(query, top_k=top_k)
-        state["retrieved_chunks"] = chunks.get("chunks", [])
-        state["analytics_metadata"]["retrieval_count"] = len(state["retrieved_chunks"])
+    with create_custom_span("retrieve_chunks", {"query": query[:120], "top_k": top_k}):
+        try:
+            chunks = rag_engine.retrieve(query, top_k=top_k)
+            state["retrieved_chunks"] = chunks.get("chunks", [])
+            scores = [chunk.get("similarity", 0.0) for chunk in state["retrieved_chunks"]]
+            state["retrieval_scores"] = scores
+            state["analytics_metadata"]["retrieval_count"] = len(state["retrieved_chunks"])
 
-        # Observability: Track average similarity score for quality monitoring
-        if state["retrieved_chunks"]:
-            similarities = [c.get("similarity", 0) for c in state["retrieved_chunks"]]
-            avg_similarity = sum(similarities) / len(similarities)
-            state["analytics_metadata"]["avg_similarity"] = round(avg_similarity, 3)
-
-            logger.info(f"Retrieved {len(state['retrieved_chunks'])} chunks, avg_similarity={avg_similarity:.3f}")
-    except Exception as e:
-        # Enhanced error context for debugging
-        logger.error(f"Retrieval failed for query '{query[:50]}...': {e}", exc_info=True)
-        state["retrieved_chunks"] = []
-        state["analytics_metadata"]["retrieval_error"] = str(e)
+            if scores:
+                avg_similarity = sum(scores) / len(scores)
+                state["analytics_metadata"]["avg_similarity"] = round(avg_similarity, 3)
+                logger.info(
+                    "Retrieved %s chunks, avg_similarity=%.3f",
+                    len(state["retrieved_chunks"]),
+                    avg_similarity,
+                )
+        except Exception as e:
+            logger.error(
+                "Retrieval failed for query '%s...': %s",
+                query[:50],
+                e,
+                exc_info=True,
+            )
+            state["retrieved_chunks"] = []
+            state["retrieval_scores"] = []
+            state["analytics_metadata"]["retrieval_error"] = str(e)
 
     return state
 
 
-def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
-    """Generate an assistant response using retrieved context.
+def re_rank_and_dedup(state: ConversationState) -> ConversationState:
+    """Apply lightweight MMR-style diversification to retrieved chunks."""
+    with create_custom_span(
+        "re_rank_and_dedup",
+        {"retrieval_count": len(state.get("retrieved_chunks", []))}
+    ):
+        chunks = state.get("retrieved_chunks", [])
+        if not chunks:
+            return state
+
+        sorted_chunks = sorted(
+            chunks,
+            key=lambda chunk: chunk.get("similarity", 0.0),
+            reverse=True,
+        )
+
+        seen_signatures = set()
+        diversified: List[Dict[str, Any]] = []
+        for chunk in sorted_chunks:
+            signature = (chunk.get("section"), (chunk.get("content") or "")[:200])
+            if signature in seen_signatures:
+                continue
+            seen_signatures.add(signature)
+            diversified.append(chunk)
+
+        state["retrieved_chunks"] = diversified
+        state["retrieval_scores"] = [c.get("similarity", 0.0) for c in diversified]
+        state.setdefault("analytics_metadata", {})["post_rank_count"] = len(diversified)
+
+    return state
+
+
+def validate_grounding(state: ConversationState, threshold: float = 0.45) -> ConversationState:
+    """Ensure retrieval produced sufficiently similar chunks before generation."""
+    scores = state.get("retrieval_scores", [])
+    top_score = max(scores) if scores else 0.0
+
+    status = "ok"
+    if not scores:
+        status = "no_results"
+    elif top_score < threshold:
+        status = "insufficient"
+
+    state["grounding_status"] = status
+    state.setdefault("analytics_metadata", {})["top_similarity"] = round(top_score, 3)
+
+    if status != "ok":
+        state["clarification_needed"] = True
+        state["clarifying_question"] = (
+            "I want to keep this grounded. Could you share a bit more detail so I can "
+            "search the right knowledge?"
+        )
+    else:
+        state["clarification_needed"] = False
+
+    return state
+
+
+def handle_grounding_gap(state: ConversationState) -> ConversationState:
+    """Respond gracefully when grounding is insufficient."""
+    if state.get("grounding_status") == "ok":
+        return state
+
+    message = (
+        "I could not find context precise enough to stay factual yet. "
+        "Tell me a little more about what you want to explore and I will pull "
+        "the exact architecture notes or data you need."
+    )
+
+    with create_custom_span("grounding_gap_response", {"status": state.get("grounding_status")}):
+        state["answer"] = message
+        state["pipeline_halt"] = True
+
+    return state
+
+
+def generate_draft(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
+    """Generate a draft assistant response using retrieved context.
 
     This is where the LLM creates the actual answer to the user's question.
     It uses the chunks we retrieved in the previous step as context.
@@ -115,7 +210,7 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
     try:
         query = state["query"]
     except KeyError as e:
-        logger.error("generate_answer called without query in state")
+        logger.error("generate_draft called without query in state")
         raise KeyError("State must contain 'query' field for generation") from e
 
     # Access optional fields safely (Defensibility)
@@ -126,80 +221,18 @@ def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str
     # Initialize update dict (Loose Coupling)
     update: Dict[str, Any] = {}
 
-    # PRIORITY 1: Handle ambiguous queries with Ask Mode clarifying questions
-    if state.get("ambiguous_query", False):
-        options = state.get("ambiguity_options", [])
-        context = state.get("ambiguity_context", "")
+    if state.get("pipeline_halt"):
+        return state
 
-        # Format options as a natural question with Portfolia's excitement
-        options_text = ", ".join(f"**{opt}**" for opt in options[:-1])
-        options_text += f", or **{options[-1]}**" if len(options) > 1 else ""
-
-        # Progressive disclosure: Start with enthusiasm, offer concrete example using herself
-        clarifying_answer = f"""Ah, "{query}" — I love this topic! Let me help you get exactly what you need.
-
-I can walk you through: {options_text}.
-
-**Here's how this works with me as the example** (I'm a full-stack AI application Noah built):
-
-When you ask me a question, my **backend** (Python + LangGraph) routes it through a conversation pipeline. My **data layer** (Supabase pgvector) searches 500+ embedded knowledge chunks for relevant context. Then my **RAG engine** (OpenAI GPT-4) generates a grounded answer using only retrieved facts—no hallucinations.
-
-That's just the retrieval flow. My **frontend** (Vercel + Next.js) handles session management, my **testing** layer (pytest) ensures 98% pass rate, and my **deployment** pipeline runs on Vercel serverless with cost tracking.
-
-Which layer would you like me to explain in depth? I can show you code, visualize the data flow, or walk through a specific engineering decision — whatever helps you understand how production GenAI systems work."""
-
-        update["answer"] = clarifying_answer
-        update["ambiguous_query_clarified"] = True
-        logger.info(f"Asked clarifying question for ambiguous query: '{query}'")
-        state.update(update)
+    if state.get("grounding_status") not in {"ok", "unknown"}:
         return state
 
     # For data display requests, we'll fetch live analytics later
     # Just set a placeholder for now
     if state.get("data_display_requested", False):
-        update["answer"] = "Fetching live analytics data from Supabase..."
-        state.update(update)
-        return state
-
-    # Check if we have sufficient context
-    # If vague query was expanded but we still have no good matches, help the user
-    if state.get("vague_query_expanded", False) and len(retrieved_chunks) == 0:
-        expanded_query = state.get("expanded_query", "")
-
-        fallback_answer = f"""I'd love to answer your question about "{query}"!
-
-Could you be more specific? For example:
-- If you're curious about my engineering skills, try: "What are your software engineering skills?"
-- If you want to know about specific technologies, ask: "What's your experience with Python and AI?"
-- If you're wondering about projects, try: "What projects have you built?"
-- If you want to understand my architecture approach, ask: "How do you design systems?"
-
-I'm here to help you understand Noah's capabilities and how generative AI applications like me work. What would you like to explore?"""
-
-        update["answer"] = fallback_answer
-        update["fallback_used"] = True
-        logger.info(f"Used fallback for vague query '{query}' with no matches")
-        state.update(update)
-        return state
-
-    # Check for very low retrieval quality (all scores below threshold)
-    retrieval_scores = state.get("retrieval_scores", [])
-    if retrieval_scores and all(score < 0.4 for score in retrieval_scores):
-        fallback_answer = f"""I'm not finding great matches for "{query}" in my knowledge base, but I'd love to help!
-
-Here are some things I can tell you about:
-- **Noah's engineering skills and experience** - "What are your software engineering skills?"
-- **Production GenAI systems** - "What do you understand about production GenAI systems?"
-- **System architecture** - "How do you approach system architecture?"
-- **Specific projects** - "What projects have you built?"
-- **Technical stack and tools** - "What technologies do you use?"
-- **Career background** - "Tell me about your career journey"
-
-Or ask me to explain how I work - I love teaching about RAG, vector search, and LLM orchestration! What sounds interesting?"""
-
-        update["answer"] = fallback_answer
-        update["fallback_used"] = True
-        logger.info(f"Used fallback for low-quality retrieval (scores: {retrieval_scores})")
+        placeholder = "Fetching live analytics data from Supabase..."
+        update["answer"] = placeholder
+        update["draft_answer"] = placeholder
         state.update(update)
         return state
 
@@ -342,16 +375,38 @@ Or ask me to explain how I work - I love teaching about RAG, vector search, and 
             "Please try rephrasing your question or ask something else!"
         )
 
-    # Clean up any SQL artifacts that leaked from retrieval (Maintainability)
-    update["answer"] = sanitize_generated_answer(answer)
+    cleaned_answer = sanitize_generated_answer(answer)
+    update["draft_answer"] = cleaned_answer
+    update["answer"] = cleaned_answer
 
     # Update state in-place (current functional pipeline pattern)
-    # When we migrate to LangGraph StateGraph, this will return partial dict only
     state.update(update)
     return state
 
 
-def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
+def hallucination_check(state: ConversationState) -> ConversationState:
+    """Attach lightweight citations and flag hallucination risk."""
+    draft = state.get("draft_answer")
+    chunks = state.get("retrieved_chunks", [])
+
+    if not draft or not chunks:
+        state["hallucination_safe"] = False if not chunks else state.get("hallucination_safe", True)
+        return state
+
+    citations = []
+    for idx, chunk in enumerate(chunks, start=1):
+        section = chunk.get("section") or f"knowledge chunk {idx}"
+        citations.append(f"{idx}. {section}")
+
+    citation_text = "; ".join(citations[:3])
+    if citation_text and "Sources:" not in draft:
+        state["draft_answer"] = f"{draft}\n\nSources: {citation_text}"
+
+    state["hallucination_safe"] = True
+    return state
+
+
+def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
     """Add role-specific content blocks to the answer.
 
     This is where we enrich the base answer with extra content based on
@@ -378,11 +433,10 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[
         KeyError: If required 'answer' field missing from state
     """
     # Fail-fast: Validate required fields (Defensibility)
-    try:
-        base_answer = state["answer"]
-    except KeyError as e:
-        logger.error("apply_role_context called without answer in state")
-        raise KeyError("State must contain 'answer' field for enrichment") from e
+    base_answer = state.get("draft_answer") or state.get("answer")
+    if base_answer is None:
+        logger.error("format_answer called without draft_answer")
+        raise KeyError("State must contain 'draft_answer' or 'answer' for enrichment")
 
     # If no answer, skip enrichment (fail-safe)
     if not base_answer:
@@ -430,7 +484,7 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[
             from src.flows.analytics_renderer import render_live_analytics
             analytics_report = render_live_analytics(
                 analytics_data,
-                state.role,
+                state.get("role"),
                 focus=None
             )
 
@@ -617,6 +671,9 @@ def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[
     # Combine all components into final enriched answer
     enriched_answer = "".join(components)
 
+    # Remove Markdown bold markers to honor plain-text presentation rules
+    enriched_answer = enriched_answer.replace("**", "")
+
     # Update state in-place (current functional pipeline pattern)
     # When we migrate to LangGraph StateGraph, this will return partial dict only
     state["answer"] = enriched_answer
@@ -674,6 +731,17 @@ def log_and_notify(
             state["analytics_metadata"] = {}
         state["analytics_metadata"]["message_id"] = message_id
         state["analytics_metadata"]["logged_at"] = True
+
+        if message_id and state.get("retrieved_chunks"):
+            topk_ids = [chunk.get("id") for chunk in state["retrieved_chunks"] if chunk.get("id")]
+            scores = state.get("retrieval_scores", [])
+            retrieval_log = RetrievalLogData(
+                message_id=message_id,
+                topk_ids=topk_ids,
+                scores=scores,
+                grounded=state.get("grounding_status") == "ok",
+            )
+            supabase_analytics.log_retrieval(retrieval_log)
     except Exception as exc:
         logger.error("Failed logging analytics: %s", exc)
         if "analytics_metadata" not in state:
@@ -683,3 +751,79 @@ def log_and_notify(
     # Note: update dict no longer needed since we write directly to state
     # When we migrate to LangGraph StateGraph, this will return partial dict only
     return state
+
+
+def suggest_followups(state: ConversationState) -> ConversationState:
+    """Generate curiosity-driven follow-up prompts."""
+    intent = state.get("query_intent") or state.get("query_type") or "general"
+    role_mode = state.get("role_mode", "explorer")
+
+    suggestions: List[str] = []
+    if intent in {"technical", "engineering", "technical"}:
+        suggestions = [
+            "Want me to walk through the LangGraph node transitions in detail?",
+            "Curious how the Supabase pgvector query works under load?",
+            "Should we map this architecture to your internal stack?",
+        ]
+    elif intent in {"data", "analytics"}:
+        suggestions = [
+            "Need the retrieval accuracy metrics for last week?",
+            "Want the cost-per-query breakdown?",
+            "Should we compare grounding confidence across roles?",
+        ]
+    elif intent in {"career", "general"}:
+        suggestions = [
+            "Want the story behind building this assistant end to end?",
+            "Should I outline Noah's production launch checklist?",
+            "Curious how this adapts to your team's workflow?",
+        ]
+
+    if role_mode == "confession":
+        suggestions = []  # Confession mode stays focused on the message
+
+    if suggestions:
+        state["followup_prompts"] = suggestions
+        followup_lines = "\n".join(f"- {item}" for item in suggestions)
+        existing_answer = state.get("answer") or ""
+        state["answer"] = (
+            f"{existing_answer}\n\nNext directions I can cover:\n{followup_lines}"
+            if existing_answer
+            else f"Next directions I can cover:\n{followup_lines}"
+        )
+
+    return state
+
+
+def update_memory(state: ConversationState) -> ConversationState:
+    """Store soft signals in session memory for future turns."""
+    memory = state.setdefault("session_memory", {})
+    topics = memory.setdefault("topics", [])
+    intent = state.get("query_intent")
+    if intent and intent not in topics:
+        topics.append(intent)
+
+    entities = state.get("entities", {})
+    if entities:
+        stored_entities = memory.setdefault("entities", {})
+        for key, value in entities.items():
+            if value and key not in stored_entities:
+                stored_entities[key] = value
+
+    memory["last_grounding_status"] = state.get("grounding_status")
+
+    return state
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible wrappers (tests and legacy modules)
+# ---------------------------------------------------------------------------
+
+
+def generate_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
+    """Backward-compatible alias for generate_draft."""
+    return generate_draft(state, rag_engine)
+
+
+def apply_role_context(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
+    """Backward-compatible alias for format_answer."""
+    return format_answer(state, rag_engine)

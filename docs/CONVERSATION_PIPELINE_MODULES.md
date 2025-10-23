@@ -2,122 +2,182 @@
 
 ## 📖 For Junior Developers
 
-The conversation pipeline used to be a single 624-line file (`conversation_nodes.py`). We've broken it into **5 focused modules** to make the code easier to understand and maintain.
+The pipeline used to live in a single 600+ line module. It now spans a set of small, purpose-built files so each responsibility is easy to own, test, and extend.
 
 ## 🗂️ Module Breakdown
 
-### 1. `conversation_nodes.py` (47 lines)
-**Purpose**: Central orchestrator - imports and re-exports all pipeline functions
+### 1. `conversation_nodes.py` (orchestrator)
+**Purpose**: Central import/export hub so the rest of the codebase can pull nodes from one place.
 
-**What it does**: Acts as a convenience wrapper so existing code doesn't break. Just imports functions from the specialized modules below.
-
-**When to edit**: Rarely. Only when adding entirely new pipeline stages.
+**What it does**: Re-exports every node while keeping backwards-compatible aliases (e.g., `classify_query` still points at `classify_intent`). Only touch this when adding a brand-new node.
 
 ---
 
-### 2. `query_classification.py` (113 lines)
-**Purpose**: Detect user intent from their query
+### 2. `session_management.py`
+**Purpose**: Normalize incoming state and load any stored memory.
 
-**Key function**: `classify_query(state) -> state`
+**Key function**: `initialize_conversation_state(state) -> ConversationState`
 
-**What it does**:
-- Detects if the query is technical, career-focused, data display, MMA, or fun
-- Sets `query_type` and `data_display_requested` in state
-- First node in the pipeline
-
-**Example queries it handles**:
-- "Show me your Python code" → technical
-- "What did you do at IBM?" → career
-- "Display analytics data" → data
-- "Tell me about your UFC fight" → mma
-
-**When to edit**: When adding new query types or detection patterns
+**What it does**: Ensures mandatory keys exist, attaches analytics metadata, and hydrates chat history prior to the rest of the pipeline.
 
 ---
 
-### 3. `code_validation.py` (111 lines)
-**Purpose**: Defensive utilities to validate and sanitize content
+### 3. `greetings.py`
+**Purpose**: Handle first-turn greetings without incurring retrieval/generation cost.
 
 **Key functions**:
-- `is_valid_code_snippet(code) -> bool`: Checks if retrieved code is real Python (not metadata)
-- `sanitize_generated_answer(answer) -> str`: Strips SQL artifacts that leak from retrieval
+- `should_show_greeting(query, chat_history)`
+- `handle_greeting(state, rag_engine)` (exported through `conversation_nodes`)
 
-**What it does**:
-- Prevents malformed code snippets from showing to users
-- Cleans up LLM output before displaying
-- Fixes the "display data bug" (SQL tokens appearing in responses)
-
-**When to edit**: When you discover new patterns of malformed output that need filtering
+**What it does**: Detects greeting phrases, injects the role-specific welcome message, and short-circuits the pipeline when appropriate.
 
 ---
 
-### 4. `action_planning.py` (152 lines)
-**Purpose**: Build a "shopping list" of actions based on query type and role
+### 4. `role_routing.py`
+**Purpose**: Apply role-specific defaults before intent detection.
+
+**Key function**: `classify_role_mode(state) -> state`
+
+**What it does**: Confirms the active persona, seeds teaching defaults, and keeps persona logic separate from pure query intent.
+
+---
+
+### 5. `query_classification.py`
+**Purpose**: Detect user intent and determine if code/data should be surfaced.
+
+**Key function**: `classify_intent(state) -> state` (alias `classify_query` kept for legacy callers)
+
+**What it does**: Flags teaching moments, code/data affordances, MMA easter eggs, and query risk categories. Runs after role mode is established.
+
+---
+
+### 6. `resume_distribution.py`
+**Purpose**: Passive hiring signal tracking and explicit resume handling.
+
+**Key functions**: `detect_hiring_signals`, `handle_resume_request`, `should_add_availability_mention`, `should_gather_job_details`
+
+**What it does**: Monitors conversation for hiring interest, sets follow-up prompts, and wires in email/SMS triggers for resume delivery.
+
+---
+
+### 7. `entity_extraction.py`
+**Purpose**: Capture structured entities (company, role, timeline, contact hints) for later prompts and analytics.
+
+**Key function**: `extract_entities(state) -> state`
+
+---
+
+### 8. `clarification.py`
+**Purpose**: Decide whether to ask for clarification before spending tokens.
+
+**Key functions**: `assess_clarification_need`, `ask_clarifying_question`
+
+---
+
+### 9. `query_composition.py`
+**Purpose**: Build the retrieval-ready prompt that the RAG engine uses.
+
+**Key function**: `compose_query(state) -> state`
+
+---
+
+### 10. `core_nodes.py`
+**Purpose**: Retrieval, generation, formatting, follow-ups, and analytics hooks.
+
+**Key functions**:
+- `retrieve_chunks(state, rag_engine)`
+- `re_rank_and_dedup(state)`
+- `validate_grounding(state)` / `handle_grounding_gap(state)`
+- `generate_draft(state, rag_engine)`
+- `hallucination_check(state)`
+- `format_answer(state, rag_engine)`
+- `suggest_followups(state)`
+- `update_memory(state)`
+- `log_and_notify(state, session_id, latency_ms)`
+
+**What it does**: Everything from pgvector retrieval through to Supabase analytics logging, including proactive teaching content blocks.
+
+---
+
+### 11. `action_planning.py`
+**Purpose**: Build the “shopping list” of actions the assistant should take.
 
 **Key function**: `plan_actions(state) -> state`
 
-**What it does**:
-- Looks at query type, role, turn count, and conversation history
-- Builds a list of actions like "include_code_snippets", "offer_resume_prompt", "send_linkedin"
-- Different roles get different action plans (developers get code, hiring managers get enterprise content)
-
-**Example action plans**:
-- Developer + technical query → ["include_code_snippets", "explain_architecture"]
-- Hiring manager + career query → ["offer_resume_prompt", "include_purpose_overview"]
-- Casual visitor + "just looking" → ["share_fun_facts", "share_mma_link"]
-
-**When to edit**: When adding new actions or changing role-specific behavior
+**What it does**: Looks at role, query type, retrieved content, and conversation context to decide on resumes, LinkedIn links, code snippets, data tables, etc.
 
 ---
 
-### 5. `core_nodes.py` (392 lines)
-**Purpose**: The main pipeline stages (retrieve → generate → enrich → log)
+### 12. `action_execution.py`
+**Purpose**: Execute side effects such as email, SMS, and analytics logging.
 
-**Key functions**:
-- `retrieve_chunks(state, rag_engine) -> state`: Fetch relevant knowledge base content
-- `generate_answer(state, rag_engine) -> state`: Create LLM response with retrieved context
-- `apply_role_context(state, rag_engine) -> state`: Add role-specific content blocks (code, data, links)
-- `log_and_notify(state, session_id, latency_ms) -> state`: Save analytics to database
+**Key function**: `execute_actions(state) -> state`
 
-**What it does**:
-- `retrieve_chunks`: Calls the RAG engine to get top 4 relevant chunks from vector DB
-- `generate_answer`: Feeds chunks to LLM, gets conversational response, sanitizes output
-- `apply_role_context`: Reads pending_actions list and appends content blocks (code, data tables, resume links)
-- `log_and_notify`: Saves conversation to Supabase for analytics
-
-**When to edit**:
-- `retrieve_chunks`: When changing retrieval strategy or top_k value
-- `generate_answer`: When tweaking LLM prompts or adding special cases
-- `apply_role_context`: When adding new content blocks or changing enrichment logic
-- `log_and_notify`: When adding new analytics fields
+**What it does**: Calls the appropriate service singletons (Resend, Twilio, Supabase) and handles degraded-mode fallbacks.
 
 ---
+
+### 13. `code_validation.py`
+**Purpose**: Defensive utilities to validate and sanitize content before display.
+
+**Key functions**: `is_valid_code_snippet`, `sanitize_generated_answer`
+
+---
+
+These modules are intentionally small (<200 lines) and follow the “one responsibility per file” rule so junior contributors can reason about them quickly.
 
 ## 🔄 Full Pipeline Flow
 
 ```
 User query
     ↓
-1. classify_query (query_classification.py)
-    → Detects intent, sets query_type
+0. initialize_conversation_state (session_management.py)
+    → Normalize state, hydrate memory, attach analytics metadata
     ↓
-2. retrieve_chunks (core_nodes.py)
-    → Fetches relevant KB content
+1. handle_greeting (greetings.py)
+    → Short-circuit warm intro for first-turn "hi" messages
     ↓
-3. generate_answer (core_nodes.py)
-    → LLM creates response, sanitizes output
+2. classify_role_mode (role_routing.py)
+    → Confirm persona and load role defaults
     ↓
-4. plan_actions (action_planning.py)
-    → Builds action shopping list based on role
+3. classify_intent (query_classification.py)
+    → Detect teaching moments, code/data affordances, easter eggs
     ↓
-5. apply_role_context (core_nodes.py)
-    → Adds code, data tables, links per actions
+4. detect_hiring_signals / handle_resume_request (resume_distribution.py)
+    → Track passive interest, respond to explicit resume asks
     ↓
-6. execute_actions (action_execution.py - not shown here)
-    → Performs side effects (email, SMS, storage)
+5. extract_entities (entity_extraction.py)
+    → Capture company, role, timeline, contact hints
     ↓
-7. log_and_notify (core_nodes.py)
-    → Saves to analytics DB
+6. assess_clarification_need → ask_clarifying_question (clarification.py)
+    → Guardrail vague prompts before retrieval spend
+    ↓
+7. compose_query (query_composition.py)
+    → Build retrieval-ready query with persona + entity context
+    ↓
+8. retrieve_chunks → re_rank_and_dedup (core_nodes.py)
+    → Call pgvector, diversify results
+    ↓
+9. validate_grounding → handle_grounding_gap (core_nodes.py)
+    → Halt if similarity too low, ask for more detail
+    ↓
+10. generate_draft → hallucination_check (core_nodes.py)
+     → Produce draft answer, attach lightweight citations
+    ↓
+11. plan_actions (action_planning.py)
+     → Decide on resumes, code blocks, analytics, follow-ups
+    ↓
+12. format_answer (core_nodes.py)
+     → Apply role-specific framing and insert content blocks
+    ↓
+13. execute_actions (action_execution.py)
+     → Fire side effects (email, SMS, logging) with graceful fallbacks
+    ↓
+14. suggest_followups → update_memory (core_nodes.py)
+     → Invite next question and store soft signals for later turns
+    ↓
+15. log_and_notify (core_nodes.py)
+     → Persist analytics to Supabase + LangSmith tracing
     ↓
 Final answer returned to user
 ```
@@ -138,11 +198,11 @@ Final answer returned to user
        actions.append({"type": "include_architecture_diagram"})
    ```
 
-3. **Update core_nodes.py** (in `apply_role_context`):
+3. **Update core_nodes.py** (inside `format_answer`):
    ```python
-   if "include_architecture_diagram" in actions:
+   if any(a.get("type") == "include_architecture_diagram" for a in state.get("pending_actions", [])):
        diagram_url = "https://example.com/architecture.png"
-       components.append(f"\n\n![Architecture]({diagram_url})")
+       components.append(f"\n\n![Architecture Overview]({diagram_url})")
    ```
 
 4. **Test it**:

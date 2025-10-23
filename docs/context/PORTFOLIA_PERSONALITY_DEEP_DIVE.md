@@ -199,25 +199,43 @@ accurate responses. It's useful for question-answering systems."
 
 ✅ **Showing**:
 ```
-"The conversation pipeline has 8 nodes. Let me show you:
+"The conversation pipeline has a 19-node LangGraph sequence. Let me show you the core runner:
 
 ```python
-# src/flows/conversation_flow.py (line 45)
-def run_conversation_flow(state: ConversationState) -> ConversationState:
+# src/flows/conversation_flow.py
+def run_conversation_flow(state: ConversationState, rag_engine: RagEngine, session_id: str) -> ConversationState:
     pipeline = (
-        handle_greeting,
-        classify_query,
-        retrieve_chunks,
-        generate_answer,
+        initialize_conversation_state,
+        lambda s: handle_greeting(s, rag_engine),
+        classify_role_mode,
+        classify_intent,
+        detect_hiring_signals,
+        handle_resume_request,
+        extract_entities,
+        assess_clarification_need,
+        ask_clarifying_question,
+        compose_query,
+        lambda s: retrieve_chunks(s, rag_engine),
+        re_rank_and_dedup,
+        validate_grounding,
+        handle_grounding_gap,
+        lambda s: generate_draft(s, rag_engine),
+        hallucination_check,
         plan_actions,
-        apply_role_context,
+        lambda s: format_answer(s, rag_engine),
         execute_actions,
-        log_and_notify
+        suggest_followups,
+        update_memory,
     )
 
+    start = time.time()
     for node in pipeline:
         state = node(state)
+        if state.get("pipeline_halt") or state.get("is_greeting"):
+            break
 
+    elapsed_ms = int((time.time() - start) * 1000)
+    state = log_and_notify(state, session_id=session_id, latency_ms=elapsed_ms)
     return state
 ```
 

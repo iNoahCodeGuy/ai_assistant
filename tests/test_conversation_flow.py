@@ -37,7 +37,7 @@ class DummyRagEngine:
 
 @pytest.fixture
 def base_state() -> ConversationState:
-    return {
+    state: ConversationState = {
         "role": "Hiring Manager (nontechnical)",
         "query": "Tell me about Noah's career",
         "chat_history": [
@@ -54,6 +54,9 @@ def base_state() -> ConversationState:
         "resume_explicitly_requested": False,
         "job_details": {},
     }
+    nodes.initialize_conversation_state(state)
+    nodes.classify_role_mode(state)
+    return state
 
 
 @pytest.fixture
@@ -77,13 +80,15 @@ def test_classify_query_sets_type(base_state: ConversationState) -> None:
 
 
 def test_retrieve_chunks_stores_context(base_state: ConversationState, dummy_engine: DummyRagEngine) -> None:
+    nodes.initialize_conversation_state(base_state)
     nodes.retrieve_chunks(base_state, dummy_engine)
     assert len(base_state["retrieved_chunks"]) == 2
-    assert base_state.get("retrieval_matches") == ["Match A", "Match B"]
     assert base_state.get("retrieval_scores") == [0.95, 0.74]
+    assert base_state["analytics_metadata"]["retrieval_count"] == 2
 
 
 def test_generate_answer_uses_response_generator(base_state: ConversationState, dummy_engine: DummyRagEngine) -> None:
+    nodes.initialize_conversation_state(base_state)
     nodes.retrieve_chunks(base_state, dummy_engine)
     nodes.generate_answer(base_state, dummy_engine)
     assert base_state["answer"]
@@ -100,12 +105,14 @@ def test_generate_answer_uses_response_generator(base_state: ConversationState, 
                 {"role": "user", "content": "Intro"},
                 {"role": "assistant", "content": "Reply"},
                 {"role": "user", "content": "Follow up"},
+                {"role": "assistant", "content": "Sure"},
+                {"role": "user", "content": "One more detail"},
             ],
             "offer_resume_prompt",
         ),
         (
             "Hiring Manager (technical)",
-            "Explain the architecture",
+            "Walk through the RAG retrieval flow",
             [],
             "provide_data_tables",
         ),
@@ -143,6 +150,8 @@ def test_plan_actions_appends_expected_action(role: str, query: str, chat_histor
         "resume_explicitly_requested": False,
         "job_details": {},
     }
+    nodes.initialize_conversation_state(state)
+    nodes.classify_role_mode(state)
     nodes.classify_query(state)
     nodes.plan_actions(state)
     action_types = [action["type"] for action in state["pending_actions"]]
@@ -162,11 +171,16 @@ def test_log_and_notify_records_metadata(monkeypatch: pytest.MonkeyPatch, base_s
             })
             return 99
 
+        @staticmethod
+        def log_retrieval(data):
+            logged_payloads.append({"retrieval_logged": True, "grounded": data.grounded})
+
     # Import and monkeypatch in core_nodes where supabase_analytics is actually used
     from src.flows import core_nodes
     monkeypatch.setattr(core_nodes, "supabase_analytics", DummyAnalytics)
 
     base_state["answer"] = "Career summary"
+    base_state["grounding_status"] = "ok"
     nodes.classify_query(base_state)
     result = nodes.log_and_notify(base_state, session_id="test-session", latency_ms=123)
 
@@ -188,6 +202,13 @@ def test_run_conversation_flow_happy_path(base_state: ConversationState, dummy_e
             logged["latency_ms"] = data.latency_ms
             return 101
 
+        @staticmethod
+        def log_retrieval(data):
+            logged["retrieval"] = {
+                "grounded": data.grounded,
+                "scores": data.scores,
+            }
+
     from src.flows import core_nodes
     monkeypatch.setattr(core_nodes, "supabase_analytics", DummyAnalytics)
 
@@ -198,9 +219,11 @@ def test_run_conversation_flow_happy_path(base_state: ConversationState, dummy_e
     )
 
     assert state["answer"].startswith("Noah has a strong track record.")
-    assert "Would you like me to email you my resume" in state["answer"]
+    assert "Next directions I can cover:" in state["answer"]
+    assert state.get("followup_prompts")
+
     assert state["retrieved_chunks"]
-    assert state["pending_actions"][0]["type"] == "offer_resume_prompt"
+    assert state.get("pending_actions") == []
     assert state["analytics_metadata"]["message_id"] == 101
     assert logged["query_type"] == "career"
     assert isinstance(logged["latency_ms"], int)

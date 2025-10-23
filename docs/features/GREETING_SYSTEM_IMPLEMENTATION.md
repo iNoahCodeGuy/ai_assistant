@@ -32,9 +32,14 @@ Added to conversation pipeline:
 ### 3. Updated Conversation Flow
 **New pipeline order:**
 ```
-handle_greeting → classify → retrieve → generate → plan → apply → execute → log
+initialize_conversation_state → handle_greeting → classify_role_mode → classify_intent →
+detect_hiring_signals → handle_resume_request → extract_entities → assess_clarification_need →
+ask_clarifying_question → compose_query → retrieve_chunks → re_rank_and_dedup →
+validate_grounding → handle_grounding_gap → generate_draft → hallucination_check →
+plan_actions → format_answer → execute_actions → suggest_followups → update_memory →
+log_and_notify
                     ↓
-         (short-circuit if greeting detected)
+         (short-circuit after handle_greeting if greeting detected)
 ```
 
 ### 4. Enhanced Streamlit UI
@@ -118,12 +123,33 @@ def should_show_greeting(query: str, chat_history: list) -> bool:
 ```python
 # In conversation_flow.py
 pipeline = (
-    lambda s: handle_greeting(s, rag_engine),  # Check first
-    classify_query,
-    lambda s: retrieve_chunks(s, rag_engine) if not s.fetch("is_greeting") else s,  # Skip if greeting
-    lambda s: generate_answer(s, rag_engine) if not s.fetch("is_greeting") else s,  # Skip if greeting
-    # ... rest of pipeline
+   initialize_conversation_state,
+   lambda s: handle_greeting(s, rag_engine),
+   classify_role_mode,
+   classify_intent,
+   detect_hiring_signals,
+   handle_resume_request,
+   extract_entities,
+   assess_clarification_need,
+   ask_clarifying_question,
+   compose_query,
+   lambda s: retrieve_chunks(s, rag_engine),
+   re_rank_and_dedup,
+   validate_grounding,
+   handle_grounding_gap,
+   lambda s: generate_draft(s, rag_engine),
+   hallucination_check,
+   plan_actions,
+   lambda s: format_answer(s, rag_engine),
+   execute_actions,
+   suggest_followups,
+   update_memory,
 )
+
+for node in pipeline:
+   state = node(state)
+   if state.get("is_greeting") or state.get("pipeline_halt"):
+      break
 ```
 
 ## Key Features

@@ -39,8 +39,8 @@ class State(TypedDict):
 **Our Implementation:**
 ```python
 # src/flows/conversation_nodes.py
-def classify_query(state: ConversationState, rag_engine: RagEngine) -> ConversationState:
-    """Classify user query intent."""
+def classify_intent(state: ConversationState) -> ConversationState:
+    """Classify user query intent and set retrieval affordances."""
     # Logic here
     return state
 ```
@@ -61,15 +61,39 @@ def chatbot(state: State):
 **Our Implementation:**
 ```python
 # src/flows/conversation_flow.py
-def run_conversation_flow(state, rag_engine, session_id):
-    state = handle_greeting(state, rag_engine)
-    state = classify_query(state, rag_engine)
-    state = retrieve_chunks(state, rag_engine)
-    state = generate_answer(state, rag_engine)
-    state = plan_actions(state)
-    state = apply_role_context(state)
-    state = execute_actions(state)
-    state = log_and_notify(state, rag_engine, session_id)
+def run_conversation_flow(state: ConversationState, rag_engine: RagEngine, session_id: str) -> ConversationState:
+    pipeline = (
+        initialize_conversation_state,
+        lambda s: handle_greeting(s, rag_engine),
+        classify_role_mode,
+        classify_intent,
+        detect_hiring_signals,
+        handle_resume_request,
+        extract_entities,
+        assess_clarification_need,
+        ask_clarifying_question,
+        compose_query,
+        lambda s: retrieve_chunks(s, rag_engine),
+        re_rank_and_dedup,
+        validate_grounding,
+        handle_grounding_gap,
+        lambda s: generate_draft(s, rag_engine),
+        hallucination_check,
+        plan_actions,
+        lambda s: format_answer(s, rag_engine),
+        execute_actions,
+        suggest_followups,
+        update_memory,
+    )
+
+    start = time.time()
+    for node in pipeline:
+        state = node(state)
+        if state.get("pipeline_halt") or state.get("is_greeting"):
+            break
+
+    elapsed_ms = int((time.time() - start) * 1000)
+    state = log_and_notify(state, session_id=session_id, latency_ms=elapsed_ms)
     return state
 ```
 
@@ -81,7 +105,7 @@ graph_builder.add_edge("chatbot", END)
 graph = graph_builder.compile()
 ```
 
-⚠️ **Partially Aligned**: We have linear flow, but not using StateGraph builder
+⚠️ **Partially Aligned**: We maintain a linear pipeline but still run it manually instead of compiling a StateGraph
 ✅ **Works**: Our pipeline is clean and predictable
 🔄 **Improvement**: Migrate to StateGraph for official pattern
 
@@ -134,15 +158,16 @@ graph_builder.add_conditional_edges(
 **Our Current Approach:**
 ```python
 # We handle routing within nodes
-def classify_query(state, rag_engine):
-    if _is_data_display_request(state.query):
+def classify_intent(state: ConversationState) -> ConversationState:
+    if _is_data_display_request(state["query"].lower()):
         state.stash("query_type", "data")
     # Logic continues linearly
+    return state
 ```
 
 **Why This Difference:**
 - ✅ All our queries go through same pipeline (no branching needed)
-- ✅ Role-specific behavior handled in `apply_role_context` node
+- ✅ Role-specific behavior handled in `format_answer` node
 - ❌ Could benefit from parallel execution (e.g., retrieve + fetch code simultaneously)
 
 **Migration Plan: Week 2** (add conditional edges for performance)
@@ -198,25 +223,58 @@ from src.state.conversation_state import ConversationState
 graph_builder = StateGraph(ConversationState)
 
 # Add nodes
+graph_builder.add_node("initialize_conversation_state", initialize_conversation_state)
 graph_builder.add_node("handle_greeting", handle_greeting)
-graph_builder.add_node("classify_query", classify_query)
+graph_builder.add_node("classify_role_mode", classify_role_mode)
+graph_builder.add_node("classify_intent", classify_intent)
+graph_builder.add_node("detect_hiring_signals", detect_hiring_signals)
+graph_builder.add_node("handle_resume_request", handle_resume_request)
+graph_builder.add_node("extract_entities", extract_entities)
+graph_builder.add_node("assess_clarification_need", assess_clarification_need)
+graph_builder.add_node("ask_clarifying_question", ask_clarifying_question)
+graph_builder.add_node("compose_query", compose_query)
 graph_builder.add_node("retrieve_chunks", retrieve_chunks)
-graph_builder.add_node("generate_answer", generate_answer)
+graph_builder.add_node("re_rank_and_dedup", re_rank_and_dedup)
+graph_builder.add_node("validate_grounding", validate_grounding)
+graph_builder.add_node("handle_grounding_gap", handle_grounding_gap)
+graph_builder.add_node("generate_draft", generate_draft)
+graph_builder.add_node("hallucination_check", hallucination_check)
 graph_builder.add_node("plan_actions", plan_actions)
-graph_builder.add_node("apply_role_context", apply_role_context)
+graph_builder.add_node("format_answer", format_answer)
 graph_builder.add_node("execute_actions", execute_actions)
+graph_builder.add_node("suggest_followups", suggest_followups)
+graph_builder.add_node("update_memory", update_memory)
 graph_builder.add_node("log_and_notify", log_and_notify)
 
 # Add edges (linear flow for now)
-graph_builder.add_edge(START, "handle_greeting")
-graph_builder.add_edge("handle_greeting", "classify_query")
-graph_builder.add_edge("classify_query", "retrieve_chunks")
-graph_builder.add_edge("retrieve_chunks", "generate_answer")
-graph_builder.add_edge("generate_answer", "plan_actions")
-graph_builder.add_edge("plan_actions", "apply_role_context")
-graph_builder.add_edge("apply_role_context", "execute_actions")
-graph_builder.add_edge("execute_actions", "log_and_notify")
-graph_builder.add_edge("log_and_notify", END)
+pipeline_edges = [
+    (START, "initialize_conversation_state"),
+    ("initialize_conversation_state", "handle_greeting"),
+    ("handle_greeting", "classify_role_mode"),
+    ("classify_role_mode", "classify_intent"),
+    ("classify_intent", "detect_hiring_signals"),
+    ("detect_hiring_signals", "handle_resume_request"),
+    ("handle_resume_request", "extract_entities"),
+    ("extract_entities", "assess_clarification_need"),
+    ("assess_clarification_need", "ask_clarifying_question"),
+    ("ask_clarifying_question", "compose_query"),
+    ("compose_query", "retrieve_chunks"),
+    ("retrieve_chunks", "re_rank_and_dedup"),
+    ("re_rank_and_dedup", "validate_grounding"),
+    ("validate_grounding", "handle_grounding_gap"),
+    ("handle_grounding_gap", "generate_draft"),
+    ("generate_draft", "hallucination_check"),
+    ("hallucination_check", "plan_actions"),
+    ("plan_actions", "format_answer"),
+    ("format_answer", "execute_actions"),
+    ("execute_actions", "suggest_followups"),
+    ("suggest_followups", "update_memory"),
+    ("update_memory", "log_and_notify"),
+    ("log_and_notify", END),
+]
+
+for src, dest in pipeline_edges:
+    graph_builder.add_edge(src, dest)
 
 # Compile graph
 conversation_graph = graph_builder.compile()
@@ -227,7 +285,7 @@ conversation_graph = graph_builder.compile()
 # src/flows/conversation_flow.py
 def run_conversation_flow(state, rag_engine, session_id):
     # OLD: Manual pipeline
-    # state = classify_query(state, rag_engine)
+    # state = classify_intent(state)
     # state = retrieve_chunks(state, rag_engine)
     # ...
 
@@ -271,7 +329,7 @@ def route_query_type(state: ConversationState):
         return "standard_retrieval"
 
 graph_builder.add_conditional_edges(
-    "classify_query",
+    "classify_intent",
     route_query_type,
     {
         "data_display_node": "data_display_node",
@@ -413,7 +471,7 @@ def role_router(state: ConversationState):
 
 # Add to graph
 graph_builder.add_conditional_edges(
-    "classify_query",
+    "classify_intent",
     role_router,
     {
         "technical_pipeline": "retrieve_code",
@@ -440,15 +498,15 @@ graph_builder.add_conditional_edges(
 
 **How We Could Apply:**
 ```python
-# Instead of one generate_answer node, split by role:
+# Instead of one generate_draft node, split by role:
 
-def generate_developer_answer(state):
+def generate_developer_draft(state):
     """Generate answer with code snippets for developers."""
     # Technical system prompt
     # Include code examples
     # Deep dive explanations
 
-def generate_business_answer(state):
+def generate_business_draft(state):
     """Generate business-focused answer."""
     # Plain English system prompt
     # Business value focus
@@ -459,8 +517,8 @@ graph_builder.add_conditional_edges(
     "retrieve_chunks",
     lambda state: state.get("role"),
     {
-        "Software Developer": "generate_developer_answer",
-        "Hiring Manager (nontechnical)": "generate_business_answer",
+        "Software Developer": "generate_developer_draft",
+        "Hiring Manager (nontechnical)": "generate_business_draft",
         # ...
     }
 )
@@ -471,7 +529,7 @@ graph_builder.add_conditional_edges(
 - ✅ Easier to optimize each role separately
 - ✅ Clear separation of concerns
 
-**Migration Plan: Week 3** (split generate_answer by role)
+**Migration Plan: Week 3** (split generate_draft by role)
 
 ---
 
@@ -503,7 +561,7 @@ graph_builder.add_conditional_edges(
 **Tasks**:
 1. Add conditional edges for query type routing
 2. Implement parallel retrieval (career + code)
-3. Split generate_answer by role
+3. Split generate_draft by role
 4. Add structured output for classification
 5. Performance benchmarking
 

@@ -22,7 +22,7 @@ Unified reference for observability, tracing, and monitoring across Noah's AI As
 3. Export the same values in CI/hosting environments if tracing is required. Disable with `LANGCHAIN_TRACING_V2=false` for tests or latency-sensitive runs.
 
 ## Monitoring Workflow
-- Traces appear automatically whenever `LANGCHAIN_TRACING_V2=true`. Each flow run produces spans for `classify_query`, `retrieve_chunks`, `generate_answer`, `plan_actions`, `apply_role_context`, and `execute_actions`.
+- Traces appear automatically whenever `LANGCHAIN_TRACING_V2=true`. Each flow run produces spans for key nodes such as `initialize_conversation_state`, `handle_greeting`, `classify_role_mode`, `classify_intent`, `retrieve_chunks`, `generate_draft`, `plan_actions`, `format_answer`, `execute_actions`, and `log_and_notify`.
 - Retrieval metrics (chunk ids, scores, latency) are written to Supabase via `supabase_analytics.log_interaction`.
 - Action execution updates analytics keys such as `resume_email_status`, `linkedin_offer`, and `message_id` for downstream reporting.
 

@@ -1510,9 +1510,28 @@ def test_conversation_flow_documented_correctly():
 
     # Verify documented nodes appear in actual code
     actual_nodes = [
-        "handle_greeting", "classify_query", "retrieve_chunks",
-        "generate_answer", "plan_actions", "apply_role_context",
-        "execute_actions", "log_and_notify"
+        "initialize_conversation_state",
+        "handle_greeting",
+        "classify_role_mode",
+        "classify_intent",
+        "detect_hiring_signals",
+        "handle_resume_request",
+        "extract_entities",
+        "assess_clarification_need",
+        "ask_clarifying_question",
+        "compose_query",
+        "retrieve_chunks",
+        "re_rank_and_dedup",
+        "validate_grounding",
+        "handle_grounding_gap",
+        "generate_draft",
+        "hallucination_check",
+        "plan_actions",
+        "format_answer",
+        "execute_actions",
+        "suggest_followups",
+        "update_memory",
+        "log_and_notify",
     ]
 
     for node in actual_nodes:

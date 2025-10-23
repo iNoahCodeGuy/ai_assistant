@@ -27,19 +27,41 @@ Portfolia is **self-aware** of her own running system. She can explain:
 ```
 User Query
    ↓
-classify_query (Intent Detection)
+initialize_conversation_state (load memory, normalize state)
    ↓
-retrieve_chunks (pgvector Semantic Search)
+handle_greeting (first-turn short-circuit)
    ↓
-generate_answer (GPT-4o-mini Generation)
+classify_role_mode → classify_intent (persona + intent detection)
    ↓
-plan_actions (Role-Based Action Planning)
+detect_hiring_signals → handle_resume_request (passive + explicit hiring logic)
    ↓
-apply_role_context (Enterprise Framing)
+extract_entities (company, role, timeline)
    ↓
-execute_actions (Side Effects: Email, SMS, Storage)
+assess_clarification_need → ask_clarifying_question (pre-retrieval guardrail)
    ↓
-log_and_notify (Analytics + LangSmith Tracing)
+compose_query (role-aware retrieval prompt)
+   ↓
+retrieve_chunks (pgvector semantic search)
+   ↓
+re_rank_and_dedup (diversify context)
+   ↓
+validate_grounding → handle_grounding_gap (halt if low-sim)
+   ↓
+generate_draft (GPT-4o-mini draft)
+   ↓
+hallucination_check (lightweight citations)
+   ↓
+plan_actions (resume/email/analytics planning)
+   ↓
+format_answer (enterprise framing + content blocks)
+   ↓
+execute_actions (email, SMS, storage, analytics)
+   ↓
+suggest_followups (curiosity prompts)
+   ↓
+update_memory (soft signals for next turn)
+   ↓
+log_and_notify (analytics + LangSmith tracing)
 ```
 
 **Implementation**: `src/flows/conversation_nodes.py` (modular node functions)
@@ -157,10 +179,11 @@ Here's a snapshot from the last 7 days:
 | **Total Queries** | 1,247 | 📈 +18% vs last week |
 
 **Breakdown by Node**:
-- classify_query: 50ms (2%)
-- retrieve_chunks: 850ms (37%) ← Biggest bottleneck
-- generate_answer: 1,200ms (52%)
-- log_and_notify: 200ms (9%)
+- initialize_conversation_state + handle_greeting: 30ms (1%)
+- classify_role_mode + classify_intent: 70ms (3%)
+- retrieve_chunks + re_rank_and_dedup: 850ms (37%) ← Biggest bottleneck
+- generate_draft + hallucination_check: 1,200ms (52%)
+- format_answer + execute_actions + log_and_notify: 200ms (9%)
 
 The retrieval bottleneck is from pgvector index scan. For production at scale,
 I'd add HNSW indexing (currently using IVFFLAT) to drop that to ~200ms.
@@ -426,7 +449,7 @@ Portfolia's **ultimate goal** when explaining technical concepts:
    - Chunk #512: "RAG pipeline implementation..." (0.82 similarity)
    - Chunk #89: "Python backend expertise..." (0.79 similarity)
 
-Next, I'll move to `generate_answer` node, feeding these chunks + your
+Next, I'll move to `generate_draft` node, feeding these chunks + your
 conversation history into GPT-4o-mini."
 ```
 
@@ -461,11 +484,11 @@ Lower distance = higher similarity."
 
 | Node | Avg Latency | % of Total | Status |
 |------|-------------|------------|--------|
-| classify_query | 50ms | 2% | ✅ Fast |
-| retrieve_chunks | 850ms | 37% | ⚠️ Bottleneck |
-| generate_answer | 1,200ms | 52% | ✅ Expected |
-| execute_actions | 150ms | 7% | ✅ Fast |
-| log_and_notify | 50ms | 2% | ✅ Fast |
+| initialize_conversation_state + handle_greeting | 30ms | 1% | ✅ Fast |
+| classify_role_mode + classify_intent | 70ms | 3% | ✅ Fast |
+| retrieve_chunks + re_rank_and_dedup | 850ms | 37% | ⚠️ Bottleneck |
+| generate_draft + hallucination_check | 1,200ms | 52% | ✅ Expected |
+| format_answer + execute_actions + log_and_notify | 200ms | 7% | ✅ Fast |
 
 **Total p95**: 3.8s (target: <3s)
 

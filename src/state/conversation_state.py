@@ -71,6 +71,12 @@ class ConversationState(TypedDict, total=False):
     role: str
     """Selected user role: 'Software Developer', 'Hiring Manager (technical)', etc."""
 
+    role_mode: str
+    """Normalized persona mode after classification (tech HM, nontech HM, developer, explorer)."""
+
+    role_confidence: float
+    """Confidence score (0-1) for role classification."""
+
     session_id: str
     """Unique session identifier for analytics and conversation tracking."""
 
@@ -91,11 +97,33 @@ class ConversationState(TypedDict, total=False):
     query_type: str
     """Classified query type: 'technical', 'career', 'analytics', 'greeting', etc."""
 
+    query_intent: str
+    """Higher level intent grouping (engineering, business, data, action)."""
+
+    intent_confidence: float
+    """Confidence score for query intent classification."""
+
     is_greeting: bool
     """True if query is a greeting (allows pipeline short-circuit)."""
 
     topic_focus: str
     """Primary topical focus of the query (architecture, data, testing, etc.)."""
+
+    # --- Entity Extraction & Memory ---
+    entities: Dict[str, Any]
+    """Extracted entities (company, position, timeline, technology, contact preference)."""
+
+    session_memory: Dict[str, Any]
+    """Lightweight memory store capturing soft signals across turns."""
+
+    clarification_needed: bool
+    """Whether Portfolia should pause to ask a clarifying question."""
+
+    clarifying_question: str
+    """Targeted clarifying question to ask the user when context is ambiguous."""
+
+    composed_query: str
+    """Reformulated query sent to retrieval once role and entities applied."""
 
     # --- Retrieval Results (RAG Pipeline) ---
     retrieved_chunks: List[Dict[str, Any]]
@@ -108,6 +136,9 @@ class ConversationState(TypedDict, total=False):
         - similarity_score: Cosine similarity (0-1)
     """
 
+    retrieval_scores: List[float]
+    """Similarity scores for retrieved chunks (kept for analytics and validation)."""
+
     code_snippets: List[Dict[str, Any]]
     """Code examples retrieved for technical queries.
 
@@ -118,10 +149,22 @@ class ConversationState(TypedDict, total=False):
     """
 
     # --- Response Generation ---
+    draft_answer: str
+    """Pre-format answer returned by the LLM before role styling."""
+
     answer: str
     """Generated assistant response (post-LLM generation)."""
 
+    grounding_status: str
+    """Outcome of grounding validation (ok, insufficient, broaden_search)."""
+
+    hallucination_safe: bool
+    """Indicates whether hallucination check passed."""
+
     # --- Action Planning & Execution ---
+    pending_actions: List[Dict[str, Any]]
+    """Actions queued for execution (resume send, analytics display, etc.)."""
+
     planned_actions: List[Dict[str, Any]]
     """Actions to execute after response generation.
 
@@ -134,9 +177,15 @@ class ConversationState(TypedDict, total=False):
     executed_actions: List[str]
     """List of action types that were successfully executed."""
 
+    followup_prompts: List[str]
+    """Persona-aware follow-up suggestions to continue the conversation."""
+
     # --- Metadata ---
     timestamp: str
     """ISO 8601 timestamp of conversation turn."""
+
+    analytics_metadata: Dict[str, Any]
+    """Collected analytics metrics for tracing and Supabase logging."""
 
     # --- Resume Distribution (Hiring Manager Flows) ---
     hiring_signals: List[str]

@@ -217,9 +217,13 @@ Portfolia operates in **5 distinct roles**, each with different teaching styles,
 ### Conversation Pipeline (LangGraph Orchestration)
 
 ```
-handle_greeting → classify_query → detect_hiring_signals →
-handle_resume_request → retrieve_chunks → generate_answer →
-plan_actions → apply_role_context → execute_actions → log_and_notify
+initialize_conversation_state → handle_greeting → classify_role_mode →
+classify_intent → detect_hiring_signals → handle_resume_request →
+extract_entities → assess_clarification_need → ask_clarifying_question →
+compose_query → retrieve_chunks → re_rank_and_dedup → validate_grounding →
+handle_grounding_gap → generate_draft → hallucination_check → plan_actions →
+format_answer → execute_actions → suggest_followups → update_memory →
+log_and_notify
 ```
 
 **Implementation:** `src/flows/conversation_flow.py` (stateless nodes, immutable state)
@@ -231,7 +235,7 @@ plan_actions → apply_role_context → execute_actions → log_and_notify
 
 ### Conversation Memory
 - Recent chat history maintained in `ConversationState`
-- `generate_answer` references prior turns for context
+- `generate_draft` references prior turns for context before formatting
 - Enables multi-turn conversations and follow-up questions
 
 ### Adaptive Personality (October 2025 Enhancements ⭐)
