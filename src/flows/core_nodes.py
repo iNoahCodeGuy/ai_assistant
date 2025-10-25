@@ -30,6 +30,7 @@ from src.analytics.supabase_analytics import (
     RetrievalLogData,
 )
 from src.flows import content_blocks
+from src.flows.code_display import get_self_code_snippets
 from src.flows.code_validation import is_valid_code_snippet, sanitize_generated_answer
 from src.observability.langsmith_tracer import create_custom_span
 
@@ -449,24 +450,53 @@ def _summarize_answer(text: str, depth: int) -> List[str]:
     return summary
 
 
-def _build_followups(variant: str) -> List[str]:
+def _build_followups(state: ConversationState) -> List[str]:
+    variant = state.get("followup_variant", "mixed")
+    depth = state.get("conversation_depth") or state.get("depth_level", 1)
+    topic_history = state.get("topic_history", []) or []
+    last_topic = topic_history[-1] if topic_history else None
+
     if variant == "engineering":
-        return [
+        suggestions = [
             "Walk through the LangGraph node transitions",
             "Inspect the pgvector retrieval implementation",
             "Map this pattern onto your stack",
         ]
-    if variant == "business":
-        return [
+    elif variant == "business":
+        suggestions = [
             "Review the rollout checklist for enterprise teams",
             "Estimate cost savings for your workflow",
             "Explore adoption risks and mitigation steps",
         ]
-    return [
-        "See how the architecture adapts to customer support",
-        "Peek at the analytics dashboard",
-        "Ask for the testing and QA strategy",
-    ]
+    else:
+        suggestions = [
+            "See how the architecture adapts to customer support",
+            "Peek at the analytics dashboard",
+            "Ask for the testing and QA strategy",
+        ]
+
+    topic_to_prompt = {
+        "architecture": "Sketch the full data flow so you can benchmark your system",
+        "data": "Review Supabase retention, backups, and IAM policies",
+        "testing": "Dive into the pytest suite and observability hooks",
+        "retrieval": "Compare pgvector to your current retrieval stack",
+        "career": "Ask for the tailored résumé variant or hire-ready summary",
+    }
+    if last_topic and last_topic in topic_to_prompt:
+        suggestions.insert(0, topic_to_prompt[last_topic])
+
+    if depth and depth >= 3:
+        suggestions.insert(0, "Zoom out with an executive-ready summary of this answer")
+    elif depth == 1:
+        suggestions.append("Drill into the implementation detail with code or diagrams")
+
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for item in suggestions:
+        if item not in seen:
+            deduped.append(item)
+            seen.add(item)
+    return deduped[:3]
 
 
 def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
@@ -487,6 +517,8 @@ def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, 
     action_types = {action["type"] for action in pending_actions}
     query = state.get("query", "")
     role = state.get("role", "Just looking around")
+    display_toggles = state.get("display_toggles", {})
+    code_guardrails_added = False
 
     body_text, sources_text = _split_answer_and_sources(base_answer)
     summary_lines = _summarize_answer(body_text, depth)
@@ -503,6 +535,27 @@ def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, 
     )
     sections.append("")
     sections.append(details_block)
+
+    if display_toggles.get("diagram"):
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                "LangGraph Pipeline",
+                content_blocks.conversation_pipeline_mermaid(),
+                summary="Visualize the conversation flow",
+                open_by_default=depth >= 2,
+            )
+        )
+        if depth >= 3 or layout_variant != "engineering":
+            sections.append("")
+            sections.append(
+                content_blocks.render_block(
+                    "Enterprise Scaling Blueprint",
+                    content_blocks.enterprise_scaling_mermaid(),
+                    summary="See how deployment scales with integrations",
+                    open_by_default=depth >= 3,
+                )
+            )
 
     if "render_live_analytics" in action_types:
         try:
@@ -568,7 +621,23 @@ def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, 
             )
         )
 
-    if "include_code_reference" in action_types:
+    self_code_sections = get_self_code_snippets(state)
+    for snippet in self_code_sections:
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                snippet["title"],
+                snippet["body"],
+                summary=snippet["summary"],
+                open_by_default=depth >= 3,
+            )
+        )
+    if self_code_sections and not code_guardrails_added:
+        sections.append("")
+        sections.append(content_blocks.code_display_guardrails())
+        code_guardrails_added = True
+
+    if display_toggles.get("code") and "include_code_reference" in action_types:
         try:
             results = rag_engine.retrieve_with_code(query, role=role)
             snippets = results.get("code_snippets", []) if results else []
@@ -596,7 +665,10 @@ def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, 
                         open_by_default=depth >= 3,
                     )
                 )
-                sections.append(content_blocks.code_display_guardrails())
+                if not code_guardrails_added:
+                    sections.append("")
+                    sections.append(content_blocks.code_display_guardrails())
+                    code_guardrails_added = True
         elif "include_code_reference" in action_types:
             sections.append("")
             sections.append("Code index is refreshing; happy to walk through the architecture instead.")
@@ -695,7 +767,7 @@ def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, 
             )
         )
 
-    followups = _build_followups(state.get("followup_variant", "mixed"))
+    followups = _build_followups(state)
     sections.append("")
     sections.append("**Where next?**")
     sections.extend(f"- {item}" for item in followups)
@@ -783,31 +855,12 @@ def suggest_followups(state: ConversationState) -> ConversationState:
     """Generate curiosity-driven follow-up prompts."""
     if state.get("followup_prompts"):
         return state
-    intent = state.get("query_intent") or state.get("query_type") or "general"
     role_mode = state.get("role_mode", "explorer")
 
-    suggestions: List[str] = []
-    if intent in {"technical", "engineering", "technical"}:
-        suggestions = [
-            "Want me to walk through the LangGraph node transitions in detail?",
-            "Curious how the Supabase pgvector query works under load?",
-            "Should we map this architecture to your internal stack?",
-        ]
-    elif intent in {"data", "analytics"}:
-        suggestions = [
-            "Need the retrieval accuracy metrics for last week?",
-            "Want the cost-per-query breakdown?",
-            "Should we compare grounding confidence across roles?",
-        ]
-    elif intent in {"career", "general"}:
-        suggestions = [
-            "Want the story behind building this assistant end to end?",
-            "Should I outline Noah's production launch checklist?",
-            "Curious how this adapts to your team's workflow?",
-        ]
-
     if role_mode == "confession":
-        suggestions = []  # Confession mode stays focused on the message
+        return state
+
+    suggestions = _build_followups(state)
 
     if suggestions:
         state["followup_prompts"] = suggestions
@@ -829,6 +882,23 @@ def update_memory(state: ConversationState) -> ConversationState:
     intent = state.get("query_intent")
     if intent and intent not in topics:
         topics.append(intent)
+
+    current_topic = state.get("topic_focus")
+    topic_history = list(state.get("topic_history", []) or [])
+    if current_topic:
+        if not topic_history or topic_history[-1] != current_topic:
+            topic_history.append(current_topic)
+            if len(topic_history) > 6:
+                topic_history = topic_history[-6:]
+        state["topic_history"] = topic_history
+        memory["topic_history"] = topic_history
+        memory["last_topic"] = current_topic
+
+    depth_level = state.get("depth_level", 1)
+    previous_max = memory.get("max_depth", 1)
+    max_depth = max(previous_max, depth_level)
+    memory["max_depth"] = max_depth
+    state["conversation_depth"] = max_depth
 
     entities = state.get("entities", {})
     if entities:

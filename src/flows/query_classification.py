@@ -21,12 +21,13 @@ Design Principles Applied:
 - Maintainability: Pure helper functions separated from I/O
 """
 
-import re
 import logging
+import re
 from typing import Dict, Any
 
 # Import NEW TypedDict state (Phase 3A migration)
 from src.state.conversation_state import ConversationState
+from src.flows.code_display import detect_requested_modules
 
 logger = logging.getLogger(__name__)
 
@@ -335,6 +336,7 @@ def classify_intent(state: ConversationState) -> Dict[str, Any]:
         logger.info(f"Expanded vague query: '{query}' → '{expanded_query}'")
 
     lowered = query.lower()
+    requested_modules = detect_requested_modules(query)
 
     # Detect when a longer teaching-focused response is needed
     # These queries require depth, explanation, and educational context
@@ -358,8 +360,14 @@ def classify_intent(state: ConversationState) -> Dict[str, Any]:
         "show me the", "show retrieval", "show api",
         "code snippet", "code example", "source code"
     ]
-    if any(keyword in lowered for keyword in code_display_keywords):
+    code_request_detected = any(keyword in lowered for keyword in code_display_keywords)
+    if requested_modules:
+        update["requested_code_modules"] = requested_modules
+        code_request_detected = True
+
+    if code_request_detected:
         update["code_display_requested"] = True
+        update["self_code_requested"] = True
         update["query_type"] = "technical"
 
     # PROACTIVE code detection - when code would clarify the answer for technical roles
