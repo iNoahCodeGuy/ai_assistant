@@ -161,6 +161,24 @@ class ConversationState(TypedDict, total=False):
     hallucination_safe: bool
     """Indicates whether hallucination check passed."""
 
+    depth_level: int
+    """Presentation depth chosen by depth_controller (1=overview, 2=guided, 3=deep dive)."""
+
+    detail_strategy: str
+    """Explanation of why the current depth level was selected (for analytics/QA)."""
+
+    display_toggles: Dict[str, Any]
+    """Flags from display_controller indicating which supporting artifacts to surface."""
+
+    display_reasons: Dict[str, str]
+    """Human-readable reasons for each display toggle (used in analytics/debugging)."""
+
+    layout_variant: str
+    """High-level layout variant: 'engineering', 'business', or 'mixed'."""
+
+    followup_variant: str
+    """Variant used to craft follow-up invitations (maps to layout variant)."""
+
     # --- Action Planning & Execution ---
     pending_actions: List[Dict[str, Any]]
     """Actions queued for execution (resume send, analytics display, etc.)."""
@@ -200,6 +218,12 @@ class ConversationState(TypedDict, total=False):
 
     resume_offered: bool
     """True if resume has been offered in this session (prevents duplicate offers)."""
+
+    hiring_signals_strength: int
+    """Number of distinct hiring signals detected during this session."""
+
+    hiring_signals_strong: bool
+    """Whether hiring signals are strong enough to unlock resume prompts."""
 
     # --- Error Tracking (Graceful Degradation) ---
     error: str | None

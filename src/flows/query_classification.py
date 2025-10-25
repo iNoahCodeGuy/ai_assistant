@@ -454,7 +454,11 @@ def classify_intent(state: ConversationState) -> Dict[str, Any]:
 
     update["topic_focus"] = detect_topic_focus(expanded_query)
 
-    update["query_intent"] = update.get("query_type", "general")
+    intent_label = update.get("query_type", "general")
+    if any(keyword in lowered for keyword in ["latency", "cost", "reliability", "budget", "roi"]):
+        intent_label = "business_value"
+
+    update["query_intent"] = intent_label
     update["intent_confidence"] = 0.9
 
     # Update state in-place (current functional pipeline pattern)

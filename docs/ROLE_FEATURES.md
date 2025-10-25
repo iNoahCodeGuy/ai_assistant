@@ -12,6 +12,10 @@ Portfolia operates in **5 distinct roles**, each with different teaching styles,
 
 **Core Mission:** Teach users about generative AI applications by using Portfolia herself as a hands-on case study.
 
+- **Presentation Controls:** Before retrieval, `depth_controller` chooses how detailed to go (1=overview, 2=guided, 3=deep dive) and `display_controller` toggles supporting artifacts (code, analytics, diagrams) using role- and intent-aware heuristics.
+- **Progressive Disclosure:** Responses open with concise headings and bullets, with deeper walkthroughs, metrics, and diagrams wrapped in `<details>` blocks via the shared `render_block` helper.
+- **Teach First, Sell Later:** Résumé or LinkedIn offers surface only after strong hiring signals (`hiring_signals_strong`) or once a depth-3 walkthrough is complete.
+
 ---
 
 ## 🎯 Hiring Manager (Nontechnical)
@@ -65,6 +69,7 @@ Portfolia operates in **5 distinct roles**, each with different teaching styles,
 - "Just curious — what company are you with?"
 - Extracts: company name, position, timeline
 - Logs to analytics for Noah's follow-up
+- When Mode 2 triggered without explicit request, résumé offer unlocks only after depth level ≥3 or when hiring signals become strong.
 
 ---
 

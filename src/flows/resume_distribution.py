@@ -98,8 +98,11 @@ def detect_hiring_signals(state: ConversationState) -> ConversationState:
         if "budget_mentioned" not in hiring_signals:
             hiring_signals.append("budget_mentioned")
 
-    # Return state with updated hiring_signals
+    # Return state with updated hiring_signals and strength metadata
     state["hiring_signals"] = hiring_signals
+    strength = len(hiring_signals)
+    state["hiring_signals_strength"] = strength
+    state["hiring_signals_strong"] = strength >= 2
     return state
 
 

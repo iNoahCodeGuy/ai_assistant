@@ -28,14 +28,17 @@ class TestConversationFlowAlignment:
         from src.flows.conversation_flow import run_conversation_flow
         source = inspect.getsource(run_conversation_flow)
 
-        # Expected nodes in actual implementation
+        # Expected nodes in actual implementation (use actual function names from pipeline, not aliases)
         actual_nodes = [
             "handle_greeting",
-            "classify_query",
+            "classify_role_mode",
+            "classify_intent",
+            "depth_controller",
+            "display_controller",
             "retrieve_chunks",
-            "generate_answer",
+            "generate_draft",
+            "format_answer",
             "plan_actions",
-            "apply_role_context",
             "execute_actions",
             "log_and_notify"
         ]

@@ -26,6 +26,7 @@ from src.flows.query_classification import classify_intent, classify_query
 from src.flows.entity_extraction import extract_entities
 from src.flows.clarification import assess_clarification_need, ask_clarifying_question
 from src.flows.query_composition import compose_query
+from src.flows.presentation_control import depth_controller, display_controller
 from src.flows.core_nodes import (
     retrieve_chunks,
     re_rank_and_dedup,
@@ -95,6 +96,8 @@ __all__ = [
     "classify_role_mode",
     "classify_intent",
     "classify_query",  # backward-compatible alias
+    "depth_controller",
+    "display_controller",
     "extract_entities",
     "assess_clarification_need",
     "ask_clarifying_question",

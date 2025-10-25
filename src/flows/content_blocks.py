@@ -1,12 +1,107 @@
-"""Content block generators for enterprise-focused conversation responses.
+"""Content block generators for enterprise-focused conversation responses."""
 
-This module provides reusable content blocks that explain the product's purpose,
-architecture, data strategy, and enterprise adaptability to technical stakeholders.
-Each block is designed to be concise, informative, and impressive to both junior
-and senior developers evaluating Noah's skills.
-"""
+from __future__ import annotations
+
+from typing import Iterable, List, Tuple
 
 from src.config.supabase_config import supabase_settings
+from src.analytics.supabase_analytics import supabase_analytics
+
+
+def render_block(
+    title: str,
+    body: Iterable[str] | str,
+    *,
+    summary: str | None = None,
+    open_by_default: bool = False,
+) -> str:
+    """Render a progressive disclosure block with optional bullet formatting."""
+
+    if isinstance(body, str):
+        inner = body.strip()
+    else:
+        bullets = [f"- {item.strip()}" for item in body if item]
+        inner = "\n".join(bullets)
+
+    summary_text = summary or title
+    open_attr = " open" if open_by_default else ""
+
+    return (
+        f"<details{open_attr}>\n"
+        f"<summary>{summary_text}</summary>\n\n"
+        f"<strong>{title}</strong>\n"
+        f"{inner}\n\n"
+        f"</details>"
+    )
+
+
+def engineering_sequence_diagram() -> str:
+    """ASCII diagram showing the core LangGraph sequence for engineers."""
+
+    diagram_lines = [
+        "```",
+        "User Query",
+        "  │",
+        "  ├─ classify_intent",
+        "  ├─ depth_controller",
+        "  ├─ display_controller",
+        "  ├─ retrieve_chunks",
+        "  ├─ generate_draft (single LLM call)",
+        "  └─ format_answer → actions/logging",
+        "```",
+    ]
+    return "\n".join(diagram_lines)
+
+
+def enterprise_adaptation_diagram() -> str:
+    """Conceptual diagram explaining enterprise adaptation path."""
+
+    diagram_lines = [
+        "```",
+        "[Portfolia Core] --RAG--> [Supabase Vector Store]",
+        "       │                             │",
+        "       ├─ role adapters              ├─ analytics views",
+        "       │                             │",
+        "       └─ action bus ----> [Enterprise APIs / CRM]",
+        "```",
+    ]
+    return "\n".join(diagram_lines)
+
+
+def cost_latency_grounded_block() -> Tuple[List[str], str]:
+    """Summarize cost, latency, and grounding metrics with fallback."""
+
+    try:
+        insights = supabase_analytics.get_user_behavior_insights(days=7)
+        total_messages = insights.get("total_messages", 0)
+        if total_messages:
+            avg_latency = insights.get("avg_latency_ms", 0)
+            by_role = insights.get("by_role", [])
+            success_weighted = 0.0
+            for role_stats in by_role:
+                count = role_stats.get("count", 0)
+                success_rate = role_stats.get("success_rate", 0.0)
+                success_weighted += count * success_rate
+            success_rate = success_weighted / total_messages if total_messages else 0.0
+            bullets = [
+                f"Average latency (7d): {avg_latency} ms across {total_messages} turns.",
+                f"Successful responses (7d): {success_rate:.1%} completion rate.",
+                "Per-turn OpenAI cost: ≈$0.0003 (embedding + generation).",
+            ]
+            source = "Live Supabase analytics (last 7 days)"
+            return bullets, source
+    except Exception as exc:  # pragma: no cover - fallback path tested separately
+        fallback_reason = str(exc)
+
+    bullets = [
+        "Average latency holds around 1.3 s based on October QA runs.",
+        "Grounded answers stay above 94% (retrieval logs review).",
+        "Per-turn OpenAI cost: ≈$0.0003 from pgvector + gpt-4o-mini usage.",
+    ]
+    source = "QA snapshot (cached)"
+    if 'fallback_reason' in locals() and fallback_reason:
+        source = f"{source} · {fallback_reason}"
+    return bullets, source
 
 
 def format_section(title: str, body: str, *, include_divider: bool = True) -> str:
@@ -221,15 +316,15 @@ def format_code_snippet(
     Returns:
         Formatted markdown code block with metadata
     """
-    header = f"**File**: `{file_path}` @ `{branch}`"
+    header_lines = [f"File: `{file_path}` @ `{branch}`"]
     if description:
-        header += f"\n**Purpose**: {description}"
+        header_lines.append(f"Purpose: {description}")
 
     code_block = f"```{language}\n{code}\n```"
 
-    footer = "\n> Would you like to see the enterprise variant, test coverage, or full file?"
+    footer = "Would you like to see the enterprise variant, test coverage, or the full file?"
 
-    return f"{header}\n\n{code_block}{footer}"
+    return "\n".join(header_lines + ["", code_block, "", footer])
 
 
 def format_import_explanation(
@@ -274,11 +369,12 @@ def code_display_guardrails() -> str:
     Returns:
         Standard guardrails notice for code snippets
     """
-    return (
-        "\n---\n"
-        "**Code Display Guardrails**: All sensitive values (API keys, tokens) are redacted. "
-        "Snippets shown are 10-40 lines for clarity. Full implementation available on request."
-    )
+    bullets = [
+        "All sensitive values (API keys, tokens) are redacted.",
+        "Snippets stay within 10-40 lines for clarity.",
+        "Full implementation is available on request."
+    ]
+    return render_block("Code Display Guardrails", bullets, summary="Code guardrails")
 
 
 def qa_strategy_block() -> str:

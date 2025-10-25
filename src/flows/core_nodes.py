@@ -19,6 +19,7 @@ For the full flow, see: docs/context/SYSTEM_ARCHITECTURE_SUMMARY.md
 
 import logging
 import os
+import re
 from typing import Dict, Any, List
 
 from src.state.conversation_state import ConversationState
@@ -29,7 +30,6 @@ from src.analytics.supabase_analytics import (
     RetrievalLogData,
 )
 from src.flows import content_blocks
-from src.flows.data_reporting import render_full_data_report
 from src.flows.code_validation import is_valid_code_snippet, sanitize_generated_answer
 from src.observability.langsmith_tracer import create_custom_span
 
@@ -73,18 +73,37 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
     - Observability: Logs retrieval metadata for LangSmith tracing
     """
     query = state.get("composed_query") or state["query"]
+    metadata = state.setdefault("analytics_metadata", {})
 
     with create_custom_span("retrieve_chunks", {"query": query[:120], "top_k": top_k}):
         try:
-            chunks = rag_engine.retrieve(query, top_k=top_k)
-            state["retrieved_chunks"] = chunks.get("chunks", [])
-            scores = [chunk.get("similarity", 0.0) for chunk in state["retrieved_chunks"]]
+            chunks = rag_engine.retrieve(query, top_k=top_k) or {}
+            raw_chunks = chunks.get("chunks", [])
+            normalized: List[Dict[str, Any]] = []
+
+            for item in raw_chunks:
+                if isinstance(item, dict):
+                    normalized.append(item)
+                else:
+                    normalized.append({"content": str(item)})
+
+            state["retrieved_chunks"] = normalized
+
+            raw_scores = chunks.get("scores")
+            if isinstance(raw_scores, list) and len(raw_scores) == len(normalized):
+                scores = [score if isinstance(score, (int, float)) else 0.0 for score in raw_scores]
+            else:
+                scores = []
+                for chunk in normalized:
+                    similarity = chunk.get("similarity", 0.0) if isinstance(chunk, dict) else 0.0
+                    scores.append(similarity if isinstance(similarity, (int, float)) else 0.0)
+
             state["retrieval_scores"] = scores
-            state["analytics_metadata"]["retrieval_count"] = len(state["retrieved_chunks"])
+            metadata["retrieval_count"] = len(normalized)
 
             if scores:
                 avg_similarity = sum(scores) / len(scores)
-                state["analytics_metadata"]["avg_similarity"] = round(avg_similarity, 3)
+                metadata["avg_similarity"] = round(avg_similarity, 3)
                 logger.info(
                     "Retrieved %s chunks, avg_similarity=%.3f",
                     len(state["retrieved_chunks"]),
@@ -99,7 +118,7 @@ def retrieve_chunks(state: ConversationState, rag_engine: RagEngine, top_k: int 
             )
             state["retrieved_chunks"] = []
             state["retrieval_scores"] = []
-            state["analytics_metadata"]["retrieval_error"] = str(e)
+            metadata["retrieval_error"] = str(e)
 
     return state
 
@@ -220,11 +239,13 @@ def generate_draft(state: ConversationState, rag_engine: RagEngine) -> Dict[str,
 
     # Initialize update dict (Loose Coupling)
     update: Dict[str, Any] = {}
+    state.setdefault("analytics_metadata", {})
 
     if state.get("pipeline_halt"):
         return state
 
-    if state.get("grounding_status") not in {"ok", "unknown"}:
+    grounding_status = state.get("grounding_status")
+    if grounding_status and grounding_status not in {"ok", "unknown"}:
         return state
 
     # For data display requests, we'll fetch live analytics later
@@ -406,277 +427,282 @@ def hallucination_check(state: ConversationState) -> ConversationState:
     return state
 
 
+def _split_answer_and_sources(answer: str) -> tuple[str, str]:
+    if "Sources:" in answer:
+        parts = answer.split("Sources:", 1)
+        body = parts[0].strip()
+        sources = parts[1].strip()
+        return body, sources
+    return answer.strip(), ""
+
+
+def _summarize_answer(text: str, depth: int) -> List[str]:
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+    limit = 2 if depth <= 1 else 3
+    summary = []
+    for sentence in sentences:
+        if sentence.lower().startswith("sources:"):
+            continue
+        summary.append(f"- {sentence}")
+        if len(summary) >= limit:
+            break
+    return summary
+
+
+def _build_followups(variant: str) -> List[str]:
+    if variant == "engineering":
+        return [
+            "Walk through the LangGraph node transitions",
+            "Inspect the pgvector retrieval implementation",
+            "Map this pattern onto your stack",
+        ]
+    if variant == "business":
+        return [
+            "Review the rollout checklist for enterprise teams",
+            "Estimate cost savings for your workflow",
+            "Explore adoption risks and mitigation steps",
+        ]
+    return [
+        "See how the architecture adapts to customer support",
+        "Peek at the analytics dashboard",
+        "Ask for the testing and QA strategy",
+    ]
+
+
 def format_answer(state: ConversationState, rag_engine: RagEngine) -> Dict[str, Any]:
-    """Add role-specific content blocks to the answer.
+    """Structure the draft answer using headings, bullets, and toggles."""
 
-    This is where we enrich the base answer with extra content based on
-    the actions we planned earlier. For example:
-    - Add code snippets for developers
-    - Add architecture diagrams for technical roles
-    - Add fun facts for casual visitors
-    - Add resume links when requested
-
-    Design Principles:
-    - **SRP**: Only enriches answer with content blocks, doesn't generate
-    - **Maintainability**: Uses content_blocks module for reusable components
-    - **Extensibility**: Easy to add new action types
-    - **Simplicity (DRY)**: Centralizes all content block assembly
-
-    Args:
-        state: Current conversation state with answer + pending_actions
-        rag_engine: RAG engine for code retrieval
-
-    Returns:
-        Partial state update dict with enriched 'answer' and optional metadata
-
-    Raises:
-        KeyError: If required 'answer' field missing from state
-    """
-    # Fail-fast: Validate required fields (Defensibility)
     base_answer = state.get("draft_answer") or state.get("answer")
     if base_answer is None:
-        logger.error("format_answer called without draft_answer")
-        raise KeyError("State must contain 'draft_answer' or 'answer' for enrichment")
+        logger.warning("format_answer called without draft_answer or answer - pipeline may have halted early")
+        # Return empty dict to allow pipeline to continue gracefully
+        return {}
 
-    # If no answer, skip enrichment (fail-safe)
     if not base_answer:
-        return {}  # No update needed
+        return {}
 
-    # Access optional fields safely (Defensibility)
+    depth = state.get("depth_level", 1)
+    layout_variant = state.get("layout_variant", "mixed")
     pending_actions = state.get("pending_actions", [])
-    query_type = state.get("query_type", "general")
-    role = state.get("role", "Just looking around")
+    action_types = {action["type"] for action in pending_actions}
     query = state.get("query", "")
+    role = state.get("role", "Just looking around")
 
-    # Start with the base answer, we'll append blocks to it
-    components = [base_answer]
-    actions = {action["type"] for action in pending_actions}
+    body_text, sources_text = _split_answer_and_sources(base_answer)
+    summary_lines = _summarize_answer(body_text, depth)
 
-    # Enterprise-focused content blocks (for hiring managers + developers)
-    if "include_purpose_overview" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Product Purpose", content_blocks.purpose_block())
-        )
+    sections: List[str] = []
+    sections.append("**Teaching Takeaways**")
+    sections.extend(summary_lines or ["- I pulled the relevant context and kept the answer grounded."])
 
-    if "include_qa_strategy" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Quality Assurance", content_blocks.qa_strategy_block())
-        )
+    details_block = content_blocks.render_block(
+        "Full Walkthrough",
+        body_text,
+        summary="Expand for the detailed explanation",
+        open_by_default=depth >= 2,
+    )
+    sections.append("")
+    sections.append(details_block)
 
-    # Live analytics rendering (replaces placeholder)
-    if "render_live_analytics" in actions:
+    if "render_live_analytics" in action_types:
         try:
             import requests
             from src.config.supabase_config import supabase_settings
-
-            # Determine analytics API URL (production vs local)
             if supabase_settings.is_vercel:
                 analytics_url = "https://noahsaiassistant.vercel.app/api/analytics"
             else:
                 analytics_url = "http://localhost:3000/api/analytics"
 
-            # Fetch live data
             response = requests.get(analytics_url, timeout=3)
             response.raise_for_status()
             analytics_data = response.json()
-
-            # Render with role-appropriate formatting
             from src.flows.analytics_renderer import render_live_analytics
-            analytics_report = render_live_analytics(
-                analytics_data,
-                state.get("role"),
-                focus=None
+
+            analytics_report = render_live_analytics(analytics_data, state.get("role"), focus=None)
+            sections.append("")
+            sections.append(
+                content_blocks.render_block(
+                    "Live Analytics Snapshot",
+                    analytics_report,
+                    summary="View Supabase analytics",
+                    open_by_default=depth >= 3,
+                )
             )
+        except Exception as exc:
+            logger.error(f"Failed to fetch live analytics: {exc}")
+            sections.append("")
+            sections.append("Live analytics are temporarily unavailable. I can share the cached summary if you like.")
 
-            # Replace placeholder with actual report
-            components = [analytics_report]
-
-        except Exception as e:
-            logger.error(f"Failed to fetch live analytics: {e}")
-            # Fallback to cached version
-            components.append(
-                "\n\n⚠️ Live analytics temporarily unavailable. Would you like to see a cached summary?"
+    if "include_metrics_block" in action_types:
+        metrics, source = content_blocks.cost_latency_grounded_block()
+        metrics_body = list(metrics) + [f"Source: {source}"]
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                "Cost · Latency · Grounding",
+                metrics_body,
+                summary="Metrics snapshot",
+                open_by_default=depth >= 3,
             )
-
-    # Legacy data report (for compatibility)
-    if "render_data_report" in actions and "render_live_analytics" not in actions:
-        report = state.get("data_report")
-        if not report:
-            report = render_full_data_report()
-            # Store for potential reuse in this conversation
-        components.append(
-            "\n\n" + content_blocks.format_section("Data Insights & Full Dataset", report)
         )
 
-    # Other enterprise content blocks
-    if "provide_data_tables" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Data Collection Overview", content_blocks.data_collection_table())
+    if "include_sequence_diagram" in action_types:
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                "Engineering Sequence",
+                content_blocks.engineering_sequence_diagram(),
+                summary="See the LangGraph handoff",
+                open_by_default=depth >= 2,
+            )
         )
 
-    if "include_architecture_overview" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Architecture Snapshot", content_blocks.architecture_snapshot())
+    if "include_adaptation_diagram" in action_types:
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                "Enterprise Adaptation",
+                content_blocks.enterprise_adaptation_diagram(),
+                summary="Show the adaptation map",
+                open_by_default=False,
+            )
         )
 
-    if "summarize_data_strategy" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Data Management Strategy", content_blocks.data_strategy_block())
-        )
-
-    if "explain_enterprise_usage" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Enterprise Fit", content_blocks.enterprise_fit_explanation())
-        )
-
-    if "explain_stack_currency" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Stack Importance", content_blocks.stack_importance_explanation())
-        )
-
-    if "suggest_technical_role_switch" in actions:
-        components.append(content_blocks.role_switch_suggestion("Hiring Manager (technical)"))
-
-    if "suggest_developer_role_switch" in actions:
-        components.append(content_blocks.role_switch_suggestion("Software Developer"))
-
-    if "highlight_enterprise_adaptability" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Enterprise Adaptability", content_blocks.enterprise_adaptability_block())
-        )
-
-    # Casual content blocks (for "Just looking around" role)
-    if "share_fun_facts" in actions:
-        components.append(
-            "\n\n" + content_blocks.format_section("Fun Facts About Noah", content_blocks.fun_facts_block())
-        )
-
-    if "share_mma_link" in actions or query_type == "mma":
-        components.append("\n\n" + content_blocks.mma_fight_link())
-
-    # Resource offers (LinkedIn, resume)
-    if "send_linkedin" in actions:
-        components.append(f"\n\nHere is Noah's LinkedIn profile: {LINKEDIN_URL}")
-        # Note: offer_sent tracked elsewhere (action execution)
-
-    if "send_resume" in actions:
-        resume_link = state.get("resume_signed_url", RESUME_DOWNLOAD_URL)
-        components.append(f"\n\nDownload Noah's resume: {resume_link}")
-        # Note: offer_sent tracked elsewhere (action execution)
-
-    # Code snippets (for developers and technical hiring managers)
-    if "include_code_snippets" in actions or "display_code_snippet" in actions:
+    if "include_code_reference" in action_types:
         try:
             results = rag_engine.retrieve_with_code(query, role=role)
             snippets = results.get("code_snippets", []) if results else []
-        except Exception as e:
-            logger.warning(f"Code retrieval failed: {e}")
+        except Exception as exc:
+            logger.warning(f"Code retrieval failed: {exc}")
             snippets = []
 
         if snippets:
             snippet = snippets[0]
             code_content = snippet.get("content", "")
             citation = snippet.get("citation", "codebase")
-
-            # Validate it's real code (not metadata)
             if is_valid_code_snippet(code_content):
                 formatted_code = content_blocks.format_code_snippet(
                     code=code_content,
                     file_path=citation,
                     language="python",
-                    description="Implementation showing the core logic referenced in your question"
+                    description="Core logic referenced in this explanation",
                 )
-                components.append(f"\n\n**Code Implementation**\n{formatted_code}")
-                components.append(content_blocks.code_display_guardrails())
-            else:
-                # Code index is empty or malformed
-                components.append(
-                    "\n\n"
-                    + content_blocks.format_section(
-                        "Code Display Unavailable",
-                        "The code index is being refreshed right now. In the meantime you can:\n"
-                        "- Browse the codebase on GitHub: https://github.com/iNoahCodeGuy/ai_assistant\n"
-                        "- Ask for architecture explanations or design walkthroughs\n"
-                        "- Request high-level summaries of how components interact"
+                sections.append("")
+                sections.append(
+                    content_blocks.render_block(
+                        "Code Reference",
+                        formatted_code,
+                        summary="Peek at the implementation",
+                        open_by_default=depth >= 3,
                     )
                 )
-        else:
-            # No code found for this query
-            if "display_code_snippet" in actions:
-                components.append(
-                    "\n\n"
-                    + content_blocks.format_section(
-                        "No Matching Code",
-                        "I couldn't find code matching that request. You can:\n"
-                        "- Browse the full codebase: https://github.com/iNoahCodeGuy/ai_assistant\n"
-                        "- Ask for an architectural overview or diagram\n"
-                        "- Request insights into specific features or services"
-                    )
-                )
+                sections.append(content_blocks.code_display_guardrails())
+        elif "include_code_reference" in action_types:
+            sections.append("")
+            sections.append("Code index is refreshing; happy to walk through the architecture instead.")
 
-    # Import/stack explanations (why did you choose X library?)
-    if "explain_imports" in actions:
+    if "explain_imports" in action_types:
         import_name = detect_import_in_query(query)
-
         if import_name:
-            # Get specific explanation for this import
             explanation_data = get_import_explanation(import_name, role)
             if explanation_data:
-                formatted_explanation = content_blocks.format_import_explanation(
+                formatted = content_blocks.format_import_explanation(
                     import_name=explanation_data["import"],
                     tier=explanation_data["tier"],
                     explanation=explanation_data["explanation"],
                     enterprise_concern=explanation_data.get("enterprise_concern", ""),
                     enterprise_alternative=explanation_data.get("enterprise_alternative", ""),
-                    when_to_switch=explanation_data.get("when_to_switch", "")
+                    when_to_switch=explanation_data.get("when_to_switch", ""),
                 )
-                components.append(f"\n\n{formatted_explanation}")
+                sections.append("")
+                sections.append(
+                    content_blocks.render_block(
+                        f"Why {import_name}",
+                        formatted,
+                        summary=f"Stack choice: {import_name}",
+                        open_by_default=False,
+                    )
+                )
         else:
-            # Search for relevant imports
             relevant_imports = search_import_explanations(query, role, top_k=3)
             if relevant_imports:
-                components.append("\n\n**Stack Justifications**\n")
+                bullets = []
                 for imp_data in relevant_imports:
-                    formatted = content_blocks.format_import_explanation(
-                        import_name=imp_data["import"],
-                        tier=imp_data["tier"],
-                        explanation=imp_data["explanation"],
-                        enterprise_concern=imp_data.get("enterprise_concern", ""),
-                        enterprise_alternative=imp_data.get("enterprise_alternative", ""),
-                        when_to_switch=imp_data.get("when_to_switch", "")
+                    bullets.append(
+                        f"{imp_data['import']}: {imp_data['explanation']}"
                     )
-                    components.append(f"\n{formatted}\n")
+                sections.append("")
+                sections.append(
+                    content_blocks.render_block(
+                        "Stack Justifications",
+                        bullets,
+                        summary="Why these libraries?",
+                        open_by_default=False,
+                    )
+                )
 
-    # Interactive prompts (ask if they want resume, outreach, etc.)
-    if "offer_resume_prompt" in actions and not state.get("offer_sent"):
-        components.append("\n\nWould you like me to email you my resume or share my LinkedIn profile?")
-
-    if "ask_reach_out" in actions:
-        components.append("\n\nWould you like Noah to reach out?")
-
-    if "collect_confession" in actions:
-        components.append(
-            "\n\n💌 Your message is safe. You can submit anonymously or include your name and contact info, and I'll pass it along with a private SMS to Noah."
+    if "share_fun_facts" in action_types:
+        sections.append("")
+        fun_fact_lines = [
+            line.lstrip("- ").strip()
+            for line in content_blocks.fun_facts_block().split("\n")
+            if line.strip()
+        ]
+        sections.append(
+            content_blocks.render_block(
+                "Fun Facts",
+                fun_fact_lines,
+                summary="Quick facts about Noah",
+                open_by_default=False,
+            )
         )
 
-    # Technical follow-up prompt (for technical roles)
-    if (
-        query_type in {"technical", "data"}
-        and role in {"Hiring Manager (technical)", "Software Developer"}
-    ):
-        components.append(
-            "\n\nWould you like me to go into further detail about the logic behind the architecture, display data collected, or go deeper on how a project like this could be adapted into enterprise use?"
+    if "share_mma_link" in action_types or state.get("query_type") == "mma":
+        sections.append("")
+        sections.append(content_blocks.mma_fight_link())
+
+    if "send_linkedin" in action_types:
+        sections.append("")
+        sections.append(f"LinkedIn profile: {LINKEDIN_URL}")
+
+    if "send_resume" in action_types:
+        resume_link = state.get("resume_signed_url", RESUME_DOWNLOAD_URL)
+        sections.append("")
+        sections.append(f"Résumé download: {resume_link}")
+
+    if "offer_resume_prompt" in action_types and not state.get("offer_sent"):
+        sections.append("")
+        sections.append("If it would help, I can share Noah's résumé or LinkedIn—just let me know.")
+
+    if "ask_reach_out" in action_types:
+        sections.append("")
+        sections.append("Would you like Noah to reach out directly?")
+
+    if "collect_confession" in action_types:
+        sections.append("")
+        sections.append(
+            "💌 Your message is safe. Share it anonymously or add contact info and I'll pass it privately to Noah."
         )
 
-    # Combine all components into final enriched answer
-    enriched_answer = "".join(components)
+    if sources_text:
+        sections.append("")
+        sections.append(
+            content_blocks.render_block(
+                "Sources",
+                [line.strip() for line in sources_text.splitlines() if line.strip()],
+                summary="Show citations",
+                open_by_default=False,
+            )
+        )
 
-    # Remove Markdown bold markers to honor plain-text presentation rules
-    enriched_answer = enriched_answer.replace("**", "")
+    followups = _build_followups(state.get("followup_variant", "mixed"))
+    sections.append("")
+    sections.append("**Where next?**")
+    sections.extend(f"- {item}" for item in followups)
+    state["followup_prompts"] = followups
 
-    # Update state in-place (current functional pipeline pattern)
-    # When we migrate to LangGraph StateGraph, this will return partial dict only
-    state["answer"] = enriched_answer
+    enriched_answer = "\n".join(section for section in sections if section is not None)
+    state["answer"] = enriched_answer.strip()
     return state
 
 
@@ -755,6 +781,8 @@ def log_and_notify(
 
 def suggest_followups(state: ConversationState) -> ConversationState:
     """Generate curiosity-driven follow-up prompts."""
+    if state.get("followup_prompts"):
+        return state
     intent = state.get("query_intent") or state.get("query_type") or "general"
     role_mode = state.get("role_mode", "explorer")
 

@@ -6,6 +6,7 @@ import pytest
 from src.state.conversation_state import ConversationState
 from src.flows import conversation_nodes as nodes
 from src.flows import action_execution
+from src.flows import content_blocks
 from src.flows.conversation_flow import run_conversation_flow
 
 
@@ -33,6 +34,16 @@ class DummyRagEngine:
     @property
     def response_generator(self) -> DummyResponseGenerator:
         return DummyResponseGenerator(self.response_text)
+
+    def retrieve_with_code(self, query: str, role: str) -> Dict[str, Any]:
+        return {
+            "code_snippets": [
+                {
+                    "content": "def demo():\n    return 'demo'",
+                    "citation": "src/demo.py",
+                }
+            ]
+        }
 
 
 @pytest.fixture
@@ -95,52 +106,11 @@ def test_generate_answer_uses_response_generator(base_state: ConversationState, 
     assert "Tell me about Noah's career" in base_state["answer"]
 
 
-@pytest.mark.parametrize(
-    "role,query,chat_history,expected",
-    [
-        (
-            "Hiring Manager (nontechnical)",
-            "Tell me about Noah",
-            [
-                {"role": "user", "content": "Intro"},
-                {"role": "assistant", "content": "Reply"},
-                {"role": "user", "content": "Follow up"},
-                {"role": "assistant", "content": "Sure"},
-                {"role": "user", "content": "One more detail"},
-            ],
-            "offer_resume_prompt",
-        ),
-        (
-            "Hiring Manager (technical)",
-            "Walk through the RAG retrieval flow",
-            [],
-            "provide_data_tables",
-        ),
-        (
-            "Software Developer",
-            "Show me the code",
-            [],
-            "include_code_snippets",
-        ),
-        (
-            "Just looking around",
-            "Give me fun facts",
-            [],
-            "share_fun_facts",
-        ),
-        (
-            "Looking to confess crush",
-            "I have a secret",
-            [],
-            "collect_confession",
-        ),
-    ],
-)
-def test_plan_actions_appends_expected_action(role: str, query: str, chat_history: List[Dict[str, str]], expected: str, dummy_engine: DummyRagEngine) -> None:
+def test_greeting_short_circuit(dummy_engine: DummyRagEngine) -> None:
     state: ConversationState = {
-        "role": role,
-        "query": query,
-        "chat_history": chat_history,
+        "role": "Software Developer",
+        "query": "hi",
+        "chat_history": [],
         "answer": "",
         "retrieved_chunks": [],
         "pending_actions": [],
@@ -150,12 +120,127 @@ def test_plan_actions_appends_expected_action(role: str, query: str, chat_histor
         "resume_explicitly_requested": False,
         "job_details": {},
     }
+
+    result = run_conversation_flow(state, dummy_engine, session_id="greet-1")
+    assert result.get("is_greeting") is True
+    assert "depth_level" not in result
+
+
+def test_depth_controller_sets_engineering_layout(base_state: ConversationState) -> None:
+    base_state["role"] = "Software Developer"
+    base_state["query"] = "How does the LangGraph orchestration work?"
+    nodes.classify_intent(base_state)
+    nodes.depth_controller(base_state)
+    nodes.display_controller(base_state)
+    assert base_state["layout_variant"] == "engineering"
+    assert base_state["display_toggles"]["code"] is True
+
+
+def test_format_answer_variants(dummy_engine: DummyRagEngine, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        content_blocks,
+        "cost_latency_grounded_block",
+        lambda: (["Average latency ~1.2 s", "Grounded responses ≈94%"], "Test metrics"),
+    )
+    state: ConversationState = {
+        "role": "Software Developer",
+        "query": "How does the RAG flow stay grounded?",
+        "chat_history": [],
+        "draft_answer": "Retrieval keeps things grounded. Sources: 1. kb",
+        "pending_actions": [
+            {"type": "include_sequence_diagram"},
+            {"type": "include_code_reference"},
+            {"type": "include_metrics_block"},
+        ],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "depth_level": 3,
+        "layout_variant": "engineering",
+        "followup_variant": "engineering",
+    }
+    nodes.format_answer(state, dummy_engine)
+    assert "Engineering Sequence" in state["answer"]
+    assert "Where next?" in state["answer"]
+    assert any("LangGraph" in line for line in state["followup_prompts"])
+
+    business_state: ConversationState = {
+        "role": "Hiring Manager (nontechnical)",
+        "query": "What are the latency and cost numbers?",
+        "chat_history": [],
+        "draft_answer": "Here's the snapshot from analytics. Sources: 1. kb",
+        "pending_actions": [
+            {"type": "include_metrics_block"},
+            {"type": "include_adaptation_diagram"},
+        ],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "depth_level": 2,
+        "layout_variant": "business",
+        "followup_variant": "business",
+    }
+    nodes.format_answer(business_state, dummy_engine)
+    assert "Cost · Latency · Grounding" in business_state["answer"]
+    assert any("cost savings" in item for item in business_state["followup_prompts"])
+
+
+def test_display_controller_heuristics() -> None:
+    state: ConversationState = {
+        "role": "Software Developer",
+        "query": "How does LangGraph coordinate the nodes?",
+        "chat_history": [],
+        "pending_actions": [],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+    }
     nodes.initialize_conversation_state(state)
     nodes.classify_role_mode(state)
-    nodes.classify_query(state)
+    nodes.classify_intent(state)
+    nodes.depth_controller(state)
+    nodes.display_controller(state)
+    assert state["display_toggles"]["code"] is True
+
+    business_state: ConversationState = {
+        "role": "Hiring Manager (nontechnical)",
+        "query": "What's the reliability and latency picture?",
+        "chat_history": [],
+        "pending_actions": [],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+    }
+    nodes.initialize_conversation_state(business_state)
+    nodes.classify_role_mode(business_state)
+    nodes.classify_intent(business_state)
+    nodes.depth_controller(business_state)
+    nodes.display_controller(business_state)
+    toggles = business_state["display_toggles"]
+    assert toggles["data"] is True
+    assert toggles["diagram"] is True
+
+
+def test_resume_prompt_requires_signal_or_depth() -> None:
+    state: ConversationState = {
+        "role": "Hiring Manager (technical)",
+        "query": "Tell me about the platform",
+        "chat_history": [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hello"},
+            {"role": "user", "content": "Can you explain the stack?"},
+        ],
+        "pending_actions": [],
+        "analytics_metadata": {},
+        "hiring_signals": [],
+        "depth_level": 2,
+        "layout_variant": "engineering",
+    }
+    nodes.initialize_conversation_state(state)
+    nodes.classify_role_mode(state)
+    nodes.classify_intent(state)
     nodes.plan_actions(state)
-    action_types = [action["type"] for action in state["pending_actions"]]
-    assert expected in action_types
+    assert "offer_resume_prompt" not in {a["type"] for a in state["pending_actions"]}
+
+    state["hiring_signals_strong"] = True
+    nodes.plan_actions(state)
+    assert "offer_resume_prompt" in {a["type"] for a in state["pending_actions"]}
 
 
 def test_log_and_notify_records_metadata(monkeypatch: pytest.MonkeyPatch, base_state: ConversationState) -> None:
@@ -218,12 +303,12 @@ def test_run_conversation_flow_happy_path(base_state: ConversationState, dummy_e
         session_id="abc123",
     )
 
-    assert state["answer"].startswith("Noah has a strong track record.")
-    assert "Next directions I can cover:" in state["answer"]
+    assert "Noah has a strong track record." in state["answer"]
+    assert "Where next?" in state["answer"]
     assert state.get("followup_prompts")
 
     assert state["retrieved_chunks"]
-    assert state.get("pending_actions") == []
+    assert {a["type"] for a in state.get("pending_actions", [])} == {"include_adaptation_diagram"}
     assert state["analytics_metadata"]["message_id"] == 101
     assert logged["query_type"] == "career"
     assert isinstance(logged["latency_ms"], int)

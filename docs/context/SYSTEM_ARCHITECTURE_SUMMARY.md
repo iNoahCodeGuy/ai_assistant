@@ -35,10 +35,24 @@ classify_role_mode
   → Splits role adaptation from pure intent detection for clarity
   → Source: src/flows/role_routing.py
 
-classify_intent
+classify_intent (exported as classify_query for legacy compatibility)
   → Analyzes user intent: teaching moment? code request? data request?
   → Sets flags: needs_longer_response, code_would_help, data_would_help
   → Source: src/flows/query_classification.py
+
+classify_query
+  → Legacy alias for classify_intent (backward compatibility)
+  → Source: src/flows/query_classification.py
+
+depth_controller
+  → Calibrates presentation depth using role, intent, and turn count (teach-first pacing)
+  → Stores depth_level + rationale for analytics and downstream layout
+  → Source: src/flows/presentation_control.py
+
+display_controller
+  → Applies heuristics to decide whether to surface code, metrics, or diagrams
+  → Uses query phrasing + depth to set display_toggles and layout_variant
+  → Source: src/flows/presentation_control.py
 
 detect_hiring_signals (Passive Tracking for HM Roles)
   → Scans query for hiring indicators (mentioned_hiring, described_role, team_context)
@@ -87,12 +101,27 @@ generate_draft
   → For HM roles (post-resume): Uses should_gather_job_details() to add job details question
   → Source: src/flows/core_nodes.py → src/core/response_generator.py
 
+generate_answer
+  → Backward-compatible alias for generate_draft (same functionality)
+  → Source: src/flows/core_nodes.py
+
+format_answer
+  → Structures the draft answer with headings, bullets, and progressive disclosure
+  → Applies depth-based formatting (summaries + collapsible details)
+  → Adds role-specific content blocks (code snippets, data tables, follow-ups)
+  → Source: src/flows/core_nodes.py
+
+apply_role_context
+  → Backward-compatible alias for format_answer (same functionality)
+  → Source: src/flows/core_nodes.py
+
 Helper Functions (Resume Distribution Support):
   • should_add_availability_mention(state) - Returns True if ≥2 hiring signals + not sent yet
   • should_gather_job_details(state) - Returns True if resume sent + no company info yet
   • get_job_details_prompt() - Returns natural question for company/position info
   • extract_email_from_query(query) - Regex-based email extraction
   • extract_name_from_query(query) - Regex-based name extraction
+  • extract_job_details_from_query(query) - Pulls company, role, timeline from user follow-up language
   → Source: src/flows/resume_distribution.py
 
 hallucination_check
@@ -106,8 +135,9 @@ plan_actions
   → Source: src/flows/action_planning.py
 
 format_answer
-  → Applies role-specific formatting, injects content blocks, enforces ≤40 line code rule
-  → Bridges raw draft into polished, persona-aware reply
+  → Structures the draft using headings, concise bullet takeaways, and <details> blocks
+  → Respects depth/display toggles, injects diagrams/metrics/code without new facts
+  → Ends with role-aware follow-ups (engineering, business, mixed variants)
   → Source: src/flows/core_nodes.py
 
 execute_actions
