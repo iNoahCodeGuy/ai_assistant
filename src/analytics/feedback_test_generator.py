@@ -229,7 +229,6 @@ Top issues identified:
 import pytest
 from src.core.rag_engine import RagEngine
 from src.config.settings import Settings
-from src.agents.role_router import RoleRouter
 
 
 class TestUserFeedbackIssues:

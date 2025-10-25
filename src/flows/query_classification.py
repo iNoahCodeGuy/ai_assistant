@@ -459,7 +459,6 @@ def classify_intent(state: ConversationState) -> Dict[str, Any]:
         intent_label = "business_value"
 
     update["query_intent"] = intent_label
-    update["intent_confidence"] = 0.9
 
     # Update state in-place (current functional pipeline pattern)
     state.update(update)

@@ -74,9 +74,6 @@ class ConversationState(TypedDict, total=False):
     role_mode: str
     """Normalized persona mode after classification (tech HM, nontech HM, developer, explorer)."""
 
-    role_confidence: float
-    """Confidence score (0-1) for role classification."""
-
     session_id: str
     """Unique session identifier for analytics and conversation tracking."""
 
@@ -99,9 +96,6 @@ class ConversationState(TypedDict, total=False):
 
     query_intent: str
     """Higher level intent grouping (engineering, business, data, action)."""
-
-    intent_confidence: float
-    """Confidence score for query intent classification."""
 
     is_greeting: bool
     """True if query is a greeting (allows pipeline short-circuit)."""
