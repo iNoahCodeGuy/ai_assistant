@@ -1,4 +1,13 @@
-"""Response Generation Engine
+"""⚠️ DEPRECATED MODULE - Legacy response generation engine
+
+This module is ONLY used by tests/test_conversation_quality.py for regression testing.
+Production code uses: src/flows/node_logic/generation_nodes.py
+
+TODO (Post-Launch): Migrate quality tests to use generation_nodes.py, then archive this file.
+
+---
+
+Response Generation Engine
 
 Handles LLM interactions, prompt management, and response formatting.
 Supports multiple response types: basic, technical, and role-specific.
